@@ -1,4 +1,4 @@
-# Theme — The Sundered Veil
+# Theme — Starbound Legions
 
 Original setting for all display text and art. Mechanics are unchanged by any of
 this; every name lives in the names files and nowhere else.

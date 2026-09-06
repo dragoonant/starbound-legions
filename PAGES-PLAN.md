@@ -94,7 +94,7 @@ the visibility flip.
 5. **README.** A short one: what it is, the live URL, the non-affiliation line from
    NOTICE.md, how to run tests. The repo has none.
 
-End state: the game plays on Pages with the original *Sundered Veil* names and the AI art.
+End state: the game plays on Pages with the original *Starbound Legions* names and the AI art.
 
 ## Phase B — real names and printed text on the site
 
