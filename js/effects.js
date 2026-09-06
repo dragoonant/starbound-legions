@@ -132,6 +132,12 @@
     base.damage += amount;
     SB.log(state, { type: 'baseDamage', player: playerIdx, amount: amount, why: why || null,
       source: sourceUid != null ? sourceUid : null, combat: why === 'attack' || why === 'overwhelm', sound: 'hit' });
+    // "When your base is dealt damage" observers — any source, not only combat
+    // (ash-204; onOwnBaseCombatDamaged above stays combat-only).
+    SB.allUnits(state, playerIdx).forEach(function (obs) {
+      SB.fireTriggers(state, 'onBaseDamaged', obs, { sourceUid: obs.uid });
+    });
+    if (SB.fireLeaderTrigger) SB.fireLeaderTrigger(state, playerIdx, 'onBaseDamaged', {});
     const hp = SB.card(base.cardId).hp;
     if (base.damage >= hp && state.winner == null) {
       state.winner = SB.other(playerIdx);
@@ -239,6 +245,11 @@
       SB.allUnits(state, SB.other(playerIdx)).forEach(function (u) {
         SB.fireTriggers(state, 'onOpponentDraw', u, { sourceUid: u.uid });
       });
+      // "When you draw 1 or more cards during the action phase" observers on the
+      // drawing player's own units (law-052).
+      SB.allUnits(state, playerIdx).forEach(function (u) {
+        SB.fireTriggers(state, 'onOwnDraw', u, { sourceUid: u.uid });
+      });
       delete state._drawObserverGuard;
     }
     for (let i = 0; i < n; i++) {
@@ -264,11 +275,8 @@
         if (ab.playedTrait && (!ctx || !ctx.playedCardId ||
             (SB.card(ctx.playedCardId).traits || []).indexOf(ab.playedTrait) < 0)) return;
         if (ab.playedUnique && (!ctx || !ctx.playedCardId || !SB.card(ctx.playedCardId).unique)) return;
-        if (ab.oncePerRoundTrigger) {
-          if (unit.triggerUsedRound === state.round) return;
-          unit.triggerUsedRound = state.round;
-        }
-        SB.queueEffects(state, unit.owner, ab.effects, {
+        if (ab.playedType && (!ctx || !ctx.playedCardId || SB.card(ctx.playedCardId).type !== ab.playedType)) return;
+        const effectCtx = {
           // viaTrigger: this ability spoke up on its own, so the log attributes its
           // lines to it instead of printing them as if the player chose each one.
           viaTrigger: true,
@@ -280,7 +288,18 @@
           baseDamageDealt: ctx && ctx.baseDamageDealt, attackEndedUid: ctx && ctx.attackEndedUid,
           defeatedUid: ctx && ctx.defeatedUid, playedUid: ctx && ctx.playedUid,
           combat: ctx && ctx.combat, defenderDamagedNonLeader: ctx && ctx.defenderDamagedNonLeader,
-        });
+        };
+        if (ab.oncePerRoundTrigger) {
+          if (unit.triggerUsedRound === state.round) return;
+          // A trigger paired with a condition (law-053: "a unit with the highest
+          // cost... is defeated") only spends its once-per-round use when it
+          // actually goes off — checked here, before consuming the flag, since
+          // the condition itself is otherwise only re-checked once the queued
+          // effect resolves (too late to gate the once-per-round flag by).
+          if (ab.condition && !SB.checkCondition(state, unit.owner, ab.condition, effectCtx)) return;
+          unit.triggerUsedRound = state.round;
+        }
+        SB.queueEffects(state, unit.owner, ab.effects, effectCtx);
       });
     });
   };

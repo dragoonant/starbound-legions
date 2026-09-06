@@ -213,7 +213,7 @@
   "ash-201": {"id":"ash-201","type":"unit","aspects":["cunning","heroism"],"traits":["tr33","tr46","tr10"],"cost":1,"power":2,"hp":2,"arena":"space"},
   "ash-202": {"id":"ash-202","type":"unit","aspects":["cunning","heroism"],"traits":["tr27"],"unique":true,"cost":2,"power":1,"hp":4,"arena":"ground","keywords":[{"k":"support"}]},
   "ash-203": {"id":"ash-203","type":"unit","aspects":["cunning","heroism"],"traits":["tr25","tr46","tr10"],"unique":true,"cost":2,"power":1,"hp":3,"arena":"space","keywords":[{"k":"support"}]},
-  "ash-204": {"id":"ash-204","type":"unit","aspects":["cunning","heroism"],"traits":["tr32","tr46","tr10"],"unique":true,"cost":3,"power":2,"hp":4,"arena":"space"},
+  "ash-204": {"id":"ash-204","type":"unit","aspects":["cunning","heroism"],"traits":["tr32","tr46","tr10"],"unique":true,"cost":3,"power":2,"hp":4,"arena":"space","abilities":[{"trigger":"onBaseDamaged","effects":[{"op":"giveAdvantage","amount":1,"target":{"self":true}}]}]},
   "ash-205": {"id":"ash-205","type":"unit","aspects":["cunning","heroism"],"traits":["tr50","tr43"],"cost":3,"power":3,"hp":3,"arena":"ground"},
   "ash-206": {"id":"ash-206","type":"unit","aspects":["cunning","heroism"],"traits":["tr12","tr21"],"unique":true,"cost":4,"power":3,"hp":5,"arena":"ground","keywords":[{"k":"ambush"}]},
   "ash-207": {"id":"ash-207","type":"unit","aspects":["cunning","heroism"],"traits":["tr07"],"cost":5,"power":3,"hp":6,"arena":"space","keywords":[{"k":"ambush"}]},

@@ -172,7 +172,7 @@
   "lof-135": {"id":"lof-135","type":"unit","aspects":["aggression","villainy"],"traits":["tr17","tr46","tr41","tr19"],"unique":true,"cost":4,"power":3,"hp":5,"arena":"space"},
   "lof-139": {"id":"lof-139","type":"upgrade","aspects":["aggression","villainy"],"traits":["tr18"],"cost":2,"power":3,"hp":3,"abilities":[{"trigger":"onAttack","effects":[{"op":"discard","who":"self","amount":1}]}]},
   "lof-141": {"id":"lof-141","type":"event","aspects":["aggression","villainy"],"traits":["tr12"],"cost":4},
-  "lof-142": {"id":"lof-142","type":"unit","aspects":["aggression","heroism"],"traits":["tr12","tr21","tr33"],"unique":true,"cost":2,"power":2,"hp":4,"arena":"ground"},
+  "lof-142": {"id":"lof-142","type":"unit","aspects":["aggression","heroism"],"traits":["tr12","tr21","tr33"],"unique":true,"cost":2,"power":2,"hp":4,"arena":"ground","abilities":[{"trigger":"onOpponentPlaysCard","playedType":"event","effects":[{"op":"damage","amount":1,"target":{"who":"enemy","what":"base"}}]}]},
   "lof-143": {"id":"lof-143","type":"unit","aspects":["aggression","heroism"],"traits":["tr07"],"cost":2,"power":4,"hp":1,"arena":"ground","keywords":[{"k":"hidden"}]},
   "lof-144": {"id":"lof-144","type":"unit","aspects":["aggression","heroism"],"traits":["tr21","tr33","tr46","tr10"],"cost":2,"power":1,"hp":4,"arena":"space","abilities":[{"trigger":"onAttack","effects":[{"op":"damage","amount":1,"target":{"who":"any","what":"unit","arena":"space","optional":true}}]}]},
   "lof-145": {"id":"lof-145","type":"unit","aspects":["aggression","heroism"],"traits":["tr12","tr21"],"cost":3,"power":3,"hp":3,"arena":"ground"},

@@ -16,7 +16,9 @@
     // competitive expansion (js/ops2.js)
     'onTakeInitiative', 'onWhenDefeatedUsed', 'onFriendlyDamagedSurvives', 'onEnemyUnitDefeated',
     'onFriendlyUpgradeDefeated', 'onFriendlyDealsDamageToEnemyUnit', 'onOpponentPlaysCard',
-    'onOwnBaseCombatDamaged', 'onUseForce'];
+    'onOwnBaseCombatDamaged', 'onUseForce',
+    // cluster-c3 expansion
+    'onOwnDraw', 'onDeckDiscard', 'onBaseDamaged', 'onPilotAttached'];
   const ASPECTS = ['command', 'aggression', 'cunning', 'vigilance', 'heroism', 'villainy'];
 
   function fail(id, msg) { throw new Error('content error [' + id + ']: ' + msg); }

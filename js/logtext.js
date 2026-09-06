@@ -103,8 +103,10 @@
     // --- tokens and economy ---
     creditsGained: function (l) { return player(l.player) + ' gained ' + n(l.amount, 'credit') + '.'; },
     creditSpent: function (l) { return player(l.player) + ' spent a credit.'; },
-    forceGained: function (l) { return player(l.player) + ' gained the Current.'; },
-    forceUsed: function (l) { return player(l.player) + ' spent the Current.'; },
+    // The token's name is vocabulary (names.js terms), read here so the line follows
+    // the active name set: "spent the Current" or "spent a Force token".
+    forceGained: function (l) { return player(l.player) + ' gained ' + SB.names.terms.forceToken + '.'; },
+    forceUsed: function (l) { return player(l.player) + ' spent ' + SB.names.terms.forceToken + '.'; },
     tokenCreated: function (l, s) {
       return 'A ' + cardName(l.cardId) + ' token joined the board alongside ' + nameOf(l.uid, s, 'its summoner') + '.';
     },
@@ -223,7 +225,7 @@
         case 'cantPay': return who + ' could not be paid for.';
         case 'emptyDeck': return who + ' found an empty deck.';
         case 'noDamage': return who + ' found nothing to heal.';
-        case 'noForce': return who + ' needed the Force.';
+        case 'noForce': return who + ' needed ' + SB.names.terms.force + '.';
         default: return who + ' had no effect.';
       }
     },

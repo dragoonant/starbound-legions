@@ -526,6 +526,8 @@
         if (ab.trigger !== 'onPlayAsPilot') return;
         SB.queueEffects(state, me, ab.effects, { sourceUid: bearer.uid, cardId: inst.cardId, condition: ab.condition });
       });
+      // "When a Pilot attaches to this unit" observers on the bearer itself (jtl-223).
+      SB.fireTriggers(state, 'onPilotAttached', bearer, { sourceUid: bearer.uid });
     } else if (card.type === 'unit') {
       const unit = SB.makeUnit(state, inst.cardId, me);
       unit.uid = inst.uid; // keep instance identity

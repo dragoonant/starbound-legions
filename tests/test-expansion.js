@@ -841,4 +841,119 @@
     T.eq(SB.findUnit(s, chosen.uid).experience, 2, 'two resources paid, two experience tokens on the chosen unit');
     T.eq(SB.readyResources(s, me), before - 2, 'two resources were spent');
   });
+
+  // ---- cluster-c3: eight tournament cards whose triggers didn't exist yet -------
+
+  T.add('cluster-c3: onOwnDraw fires when you draw during the action phase, not on an opponent draw (law-052)', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    rich(s, foe);
+    const u = T.putOnBoard(s, me, 'law-052');
+    s = play(s, me, 'fx-supply'); // draws 2 for me
+    T.eq(SB.findUnit(s, u.uid).shields, 1, 'shielded once for my own draw event, regardless of card count');
+    s = play(s, foe, 'fx-supply'); // draws 2 for the opponent instead
+    T.eq(SB.findUnit(s, u.uid).shields, 1, 'no shield from an opponent draw');
+  });
+
+  T.add('cluster-c3: onDeckDiscard fires only for a discard from the deck, not the hand, once per round (law-176)', function () {
+    let s = T.game(); const me = 0;
+    const u = T.putOnBoard(s, me, 'law-176', { exhausted: true });
+    SB.queueEffects(s, me, [{ op: 'discard', who: 'self' }], {}); // discard from HAND
+    SB.drainQueue(s);
+    s = drive(s);
+    T.ok(SB.findUnit(s, u.uid).exhausted, 'a hand discard does not ready it');
+    SB.queueEffects(s, me, [{ op: 'mill', amount: 1 }], {}); // discard from DECK
+    SB.drainQueue(s);
+    s = drive(s, function (a) { return a.type === 'binary' && a.pick === 'a'; });
+    T.ok(!SB.findUnit(s, u.uid).exhausted, 'readied after a deck discard');
+    SB.findUnit(s, u.uid).exhausted = true;
+    SB.queueEffects(s, me, [{ op: 'mill', amount: 1 }], {});
+    SB.drainQueue(s);
+    s = drive(s, function (a) { return a.type === 'binary' && a.pick === 'a'; });
+    T.ok(SB.findUnit(s, u.uid).exhausted, 'once per round: a second deck discard does nothing more');
+  });
+
+  T.add('cluster-c3: law-053 gains a credit only when the defeated enemy unit was the highest-cost enemy, once per round', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    T.putOnBoard(s, me, 'law-053');
+    const grunt = T.putOnBoard(s, foe, 'fx-grunt');   // cost 1
+    const brute1 = T.putOnBoard(s, foe, 'fx-brute');  // cost 4
+    const brute2 = T.putOnBoard(s, foe, 'fx-brute');  // cost 4 — tied for highest
+    SB.defeatUnit(s, SB.findUnit(s, grunt.uid), {});
+    SB.drainQueue(s);
+    T.eq(s.players[me].credits || 0, 0, 'the cheapest enemy unit dying pays nothing');
+    SB.defeatUnit(s, SB.findUnit(s, brute1.uid), {});
+    SB.drainQueue(s);
+    T.eq(s.players[me].credits || 0, 1, 'the (tied) highest-cost enemy unit dying pays a credit');
+    SB.defeatUnit(s, SB.findUnit(s, brute2.uid), {});
+    SB.drainQueue(s);
+    T.eq(s.players[me].credits || 0, 1, 'once per round: a second highest-cost death this round pays nothing more');
+  });
+
+  T.add('cluster-c3: lof-142 hits the enemy base only when they play an event, not a unit (playedType filter)', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    rich(s, foe);
+    T.putOnBoard(s, me, 'lof-142');
+    const fodder = T.putOnBoard(s, foe, 'fx-grunt'); // fx-bolt's own damage lands here, not the base
+    const before = s.players[foe].base.damage;
+    s = play(s, foe, 'fx-bolt', {}); // an event
+    // Aim fx-bolt's own damage at the spare unit, not the base, so the base-damage
+    // count below isolates lof-142's observer effect.
+    const idx = s.queue[0].candidates.findIndex(function (c) { return c.kind === 'unit' && c.uid === fodder.uid; });
+    s = SB.apply(s, SB.legalActions(s).find(function (a) { return a.type === 'choose' && a.index === idx; }));
+    T.eq(s.players[foe].base.damage, before + 1, 'the observer added exactly 1 base damage for the event');
+    T.ok(!SB.findUnit(s, fodder.uid), 'fx-bolt\'s own 3 damage defeated the spare unit, confirming it took the hit, not the base');
+    const baseAfterEvent = s.players[foe].base.damage;
+    s = play(s, foe, 'fx-grunt'); // a unit, not an event
+    T.eq(s.players[foe].base.damage, baseAfterEvent, 'no extra base damage from a unit play');
+  });
+
+  T.add('cluster-c3: ash-204 gains Advantage from any damage to your base, not only combat (onBaseDamaged)', function () {
+    let s = T.game(); const me = 0;
+    const u = T.putOnBoard(s, me, 'ash-204');
+    SB.damageBase(s, me, 2, 'indirect');
+    SB.drainQueue(s);
+    T.eq(u.advantage || 0, 1, 'non-combat damage to the base still gives the unit Advantage');
+  });
+
+  T.add('cluster-c3: jtl-186 may draw on attack only after playing a Bounty Hunter or Pilot card this phase', function () {
+    let s = T.game(); s.active = 0; const me = 0, foe = 1;
+    const u = T.putOnBoard(s, me, 'jtl-186');
+    const deckBefore = s.players[me].deck.length;
+    s = T.act(s, { type: 'attack', attacker: u.uid, target: { kind: 'base', player: foe } });
+    T.eq(s.queue.length, 0, 'nothing played this phase: the ability does not even offer a choice');
+    T.eq(s.players[me].deck.length, deckBefore, 'no draw happened');
+
+    let s2 = rich(T.game(), 0); s2.active = 0;
+    s2 = play(s2, me, 'shd-254'); // trait tr03 (Bounty Hunter)
+    s2.active = me; // a play passes the turn; take it back for the attack below
+    const u2 = T.putOnBoard(s2, me, 'jtl-186');
+    const deckBefore2 = s2.players[me].deck.length;
+    s2 = T.act(s2, { type: 'attack', attacker: u2.uid, target: { kind: 'base', player: foe } });
+    s2 = drive(s2, function (a) { return a.type === 'binary' && a.pick === 'a'; });
+    T.eq(s2.players[me].deck.length, deckBefore2 - 1, 'drew a card after playing a Bounty Hunter card this phase');
+  });
+
+  T.add('cluster-c3: law-076 shields itself on play only if you discarded a card (hand or deck) this phase', function () {
+    let s = T.game(); const me = 0;
+    const u1 = T.putOnBoard(s, me, 'law-076');
+    T.eq(u1.shields || 0, 0, 'putOnBoard bypasses onPlay entirely — sanity check');
+    let s2 = rich(T.game(), 0); s2.active = 0;
+    SB.queueEffects(s2, me, [{ op: 'mill', amount: 1 }], {}); // a deck discard this phase
+    SB.drainQueue(s2);
+    s2 = play(s2, me, 'law-076');
+    const u2 = unitsOf(s2, me, 'law-076')[0];
+    T.eq(u2.shields, 1, 'shielded: a card was discarded from the deck this phase');
+  });
+
+  T.add('cluster-c3: jtl-223 may return a cheap or exhausted unit to hand when a Pilot attaches to it', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const bearer = T.putOnBoard(s, me, 'jtl-223'); // trait tr46 (Vehicle), no pilot yet
+    const cheap = T.putOnBoard(s, foe, 'fx-grunt'); // cost 1: qualifies even while ready
+    T.putInHand(s, me, 'jtl-057'); // cost 1, keyword piloting (trait tr30)
+    s = T.act(s, { type: 'playCard', cardId: 'jtl-057', asPilot: true, attachTo: bearer.uid });
+    T.ok(SB.hasPilot(s, SB.findUnit(s, bearer.uid)), 'the pilot attached');
+    s = drive(s);
+    T.ok(!SB.findUnit(s, cheap.uid), 'the cheap unit left play');
+    T.ok(s.players[foe].hand.some(function (inst) { return inst.cardId === 'fx-grunt'; }), 'it went back to its owner\'s hand');
+  });
 })(window.SB = window.SB || {});

@@ -20,15 +20,24 @@
     const u = SB.findUnit(state, t.uid);
     return u ? u.owner : null;
   }
+  // Its only caller (searchTake's discardIt) always pulls the discarded card off
+  // the top of the deck, so this is a deck-originated discard (see noteDiscarded).
   function pushDiscardInst(state, playerIdx, inst) {
     state.players[playerIdx].discard.push(inst);
-    SB.noteDiscarded(state, playerIdx, inst);
+    SB.noteDiscarded(state, playerIdx, inst, true);
   }
   // Discards made this phase (uids) — shd-135-style discard actions read it.
-  SB.noteDiscarded = function (state, playerIdx, inst) {
+  // fromDeck: the card came from the deck rather than the hand — fires the "when
+  // you discard a card from your deck" observers (law-176).
+  SB.noteDiscarded = function (state, playerIdx, inst, fromDeck) {
     const p = state.players[playerIdx];
     p.discardedThisPhase = p.discardedThisPhase || [];
     p.discardedThisPhase.push(inst.uid);
+    if (fromDeck) {
+      SB.allUnits(state, playerIdx).forEach(function (u) {
+        SB.fireTriggers(state, 'onDeckDiscard', u, { sourceUid: u.uid });
+      });
+    }
   };
 
   // All abilities a unit currently carries, in a stable order: its own definition
@@ -222,6 +231,14 @@
       if (c == null || SB.costOf(u.cardId) > c) return false;
     }
     if (sel.notCardIs && sel.notCardIs.indexOf(u.cardId) >= 0) return false;
+    // "...that costs X or less or an exhausted ...that costs Y or less" (jtl-223):
+    // a ready unit only qualifies under the low threshold; an exhausted one may
+    // also qualify under the higher one.
+    if (sel.costOrExhaustedCost) {
+      const cc = sel.costOrExhaustedCost;
+      const cost = SB.costOf(u.cardId);
+      if (!(cost <= cc.max || (u.exhausted && cost <= cc.exhaustedMax))) return false;
+    }
     if (sel.arenaRef) {
       const a = SB.efx(state, ctx)[sel.arenaRef];
       if (!a || SB.arenaOf(state, u) !== a) return false;
@@ -323,13 +340,33 @@
       return !!u && cond.cards.indexOf(u.cardId) >= 0;
     },
     playedThisPhaseHasTrait: function (state, c, cond) {
-      return (state.players[c].playedThisPhase || []).some(function (cid) { return (SB.card(cid).traits || []).indexOf(cond.trait) >= 0; });
+      // cond.traits (array) is an OR of kinds (jtl-186: Bounty Hunter or Pilot);
+      // cond.trait (single) is the older, still-supported shape.
+      const wanted = cond.traits || (cond.trait != null ? [cond.trait] : []);
+      return (state.players[c].playedThisPhase || []).some(function (cid) {
+        const traits = SB.card(cid).traits || [];
+        return wanted.some(function (t) { return traits.indexOf(t) >= 0; });
+      });
     },
     fewerResourcesThanOpponent: function (state, c) {
       return state.players[c].resources.length < state.players[SB.other(c)].resources.length;
     },
     opponentControlsNoGroundUnits: function (state, c) {
       return !state.ground.some(function (u) { return u.owner === SB.other(c); });
+    },
+    // "If you discarded a card from your hand or deck this phase" (law-076).
+    discardedThisPhase: function (state, c) {
+      return (state.players[c].discardedThisPhase || []).length > 0;
+    },
+    // "A unit with the highest cost among enemy units is defeated" (law-053):
+    // at the moment this fires the defeated unit has already left play, so the
+    // check is whether its cost was >= every unit still owned by the same player.
+    defeatedWasHighestCostEnemy: function (state, c, cond, ctx) {
+      const entry = (state.defeatedThisPhase || []).slice().reverse()
+        .find(function (d) { return d.uid === ctx.defeatedUid; });
+      if (!entry) return false;
+      const cost = SB.costOf(entry.cardId);
+      return SB.allUnits(state, entry.owner).every(function (u) { return SB.costOf(u.cardId) <= cost; });
     },
   };
 
@@ -592,7 +629,7 @@
     prevMill(state, item);
     const milled = p.discard.slice(before);
     SB.efx(state, item.ctx).milledAspects = milled.map(function (inst) { return SB.card(inst.cardId).aspects || []; });
-    milled.forEach(function (inst) { SB.noteDiscarded(state, who, inst); });
+    milled.forEach(function (inst) { SB.noteDiscarded(state, who, inst, true); });
   };
   SB.extraConditions.milledHasChosenAspect = function (state, c, cond, ctx) {
     const st = SB.efx(state, ctx);
@@ -710,6 +747,9 @@
         const inst = src.upgrades.splice(action.index, 1)[0];
         bearer.upgrades.push(inst);
         SB.log(state, { type: 'attached', uid: bearer.uid, cardId: inst.cardId, sound: 'attach' });
+        // "When a Pilot attaches to this unit" observers (jtl-223) — both branches
+        // above are filtered to trait tr30 (Pilot) in `actions`.
+        SB.fireTriggers(state, 'onPilotAttached', bearer, { sourceUid: bearer.uid });
       }
     },
   };
@@ -723,6 +763,8 @@
     const inst = { uid: unit.uid, cardId: unit.cardId, owner: unit.owner };
     bearer.upgrades.push(inst);
     SB.log(state, { type: 'attached', uid: bearer.uid, cardId: inst.cardId, sound: 'attach' });
+    // Its only caller filters to trait tr30 (Pilot) units.
+    SB.fireTriggers(state, 'onPilotAttached', bearer, { sourceUid: bearer.uid });
   };
   // A pilot upgrade leaves its bearer and enters the ground arena as an exhausted unit.
   SB.upgradeToGroundUnit = function (state, bearer, inst) {
@@ -1548,12 +1590,9 @@
       if (ab.playedTrait && (!ctx || !ctx.playedCardId ||
           (SB.card(ctx.playedCardId).traits || []).indexOf(ab.playedTrait) < 0)) return;
       if (ab.playedUnique && (!ctx || !ctx.playedCardId || !SB.card(ctx.playedCardId).unique)) return;
+      if (ab.playedType && (!ctx || !ctx.playedCardId || SB.card(ctx.playedCardId).type !== ab.playedType)) return;
       if (ab.notCreated && ctx && ctx.created) return;
-      if (ab.oncePerRoundTrigger) {
-        if (unit.triggerUsedRound === state.round) return;
-        unit.triggerUsedRound = state.round;
-      }
-      SB.queueEffects(state, unit.owner, ab.effects, {
+      const effectCtx = {
         viaTrigger: true,   // see js/effects.js fireTriggers
         sourceUid: unit.uid, cardId: unit.cardId, condition: ab.condition,
         playedCardId: ctx && ctx.playedCardId, bearerUid: ctx && ctx.bearerUid,
@@ -1565,7 +1604,16 @@
         combat: ctx && ctx.combat, defenderDamagedNonLeader: ctx && ctx.defenderDamagedNonLeader,
         defeatedPower: ctx && ctx.defeatedPower, playedCardCost: ctx && ctx.playedCardCost,
         controller: unit.owner,
-      });
+      };
+      if (ab.oncePerRoundTrigger) {
+        if (unit.triggerUsedRound === state.round) return;
+        // A trigger paired with a condition (law-053) only spends its once-per-round
+        // use when it actually goes off — see js/effects.js fireTriggers for why
+        // this has to happen before the flag is consumed, not at effect resolution.
+        if (ab.condition && !SB.checkCondition(state, unit.owner, ab.condition, effectCtx)) return;
+        unit.triggerUsedRound = state.round;
+      }
+      SB.queueEffects(state, unit.owner, ab.effects, effectCtx);
     });
   };
   // Aura-granted abilities must not be re-collected through auraGrants of the source

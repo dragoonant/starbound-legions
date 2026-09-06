@@ -11,6 +11,9 @@
 
   // 'an' by sound, not spelling: 'a unit', 'a used card' but 'an Umbra unit'.
   function an(phrase) { return (/^[aeiou]/i.test(phrase) && !/^u(ni|se)/i.test(phrase) ? 'an ' : 'a ') + phrase; }
+  // The unique insignia's word is vocabulary (names.js terms: "champion", or the pack's
+  // word), read at render time so the describers follow the active name set.
+  function U() { return SB.names.terms.unique; }
 
   // A stat modifier prints as a matched pair (-2/-0, +1/+0): a zero half takes the
   // sign of the other half rather than defaulting to '+'.
@@ -41,7 +44,7 @@
     if (sel.maxPower != null) s += ' with power ' + sel.maxPower + ' or less';
     if (sel.maxCostRefPlayed) s += ' that costs no more than the played card';
     if (sel.tokenOnly) s = s.replace(/unit$/, 'token unit');
-    if (sel.traitOrCards) s += ' (of the matching kind or the named champion)';
+    if (sel.traitOrCards) s += ' (of the matching kind or the named ' + U() + ')';
     if (sel.pilotish) s += ' that is a pilot or carries one';
     if (sel.noPilot) s += ' without a pilot';
     if (sel.anyTrait) s += ' of an eligible kind';
@@ -53,7 +56,7 @@
     if (sel.powerLessThanSource) s += ' with less power than this unit';
     if (sel.exhaustedOnly) s += ' that is exhausted';
     if (sel.nonLeader) s += ' (non-leader)';
-    if (sel.nonUnique) s += ' (non-champion)';
+    if (sel.nonUnique) s += ' (non-' + U() + ')';
     if (sel.damagedBaseThisPhase) s += ' that dealt damage to a base this phase';
     if (sel.sharesTraitWithFriendlyLeader) s += ' that shares a kind with a friendly leader';
     if (sel.sameArenaAsSaved) s += ' in the same arena as the chosen unit';
@@ -77,6 +80,10 @@
     if (sel.hasShield) s += ' carrying a shield token';
     if (sel.notLeaderPilotBearer) s += ' not carrying a leader';
     if (sel.token === false) s += ' (non-token)';
+    if (sel.costOrExhaustedCost) {
+      s += ' that costs ' + sel.costOrExhaustedCost.max + ' or less, or an exhausted ' + head +
+        ' that costs ' + sel.costOrExhaustedCost.exhaustedMax + ' or less';
+    }
     return s;
   }
 
@@ -589,7 +596,12 @@
     onFriendlyDealsDamageToEnemyUnit: 'When a friendly unit deals damage to an enemy unit',
     onOpponentPlaysCard: 'When an opponent plays a card',
     onOwnBaseCombatDamaged: 'When your base is dealt combat damage',
-    onUseForce: 'When you use the Force',
+    get onUseForce() { return 'When you use ' + SB.names.terms.force; },
+    // cluster-c3 expansion
+    onOwnDraw: 'When you draw 1 or more cards during the action phase',
+    onDeckDiscard: 'When you discard a card from your deck',
+    onBaseDamaged: 'When your base is dealt damage',
+    onPilotAttached: 'When a pilot attaches to this unit',
   };
 
   const conditionText = {
@@ -637,7 +649,7 @@
     selfDamaged: function () { return 'if this unit is damaged'; },
     selfUpgraded: function () { return 'while this unit has an upgrade'; },
     controlUnitWithAspect: function (c) { return 'if you control another ' + (SB.names.aspects[c.aspect] || c.aspect) + ' unit'; },
-    bountyUnitUnique: function () { return 'if the defeated unit was a champion'; },
+    bountyUnitUnique: function () { return 'if the defeated unit was ' + an(U()); },
     defenderHasBounty: function () { return 'if the defender carries a bounty'; },
     coordinate: function () { return 'while you control 3 or more units'; },
     baseDamageAtLeast: function (c) { return 'while your base has ' + c.n + ' or more damage'; },
@@ -661,8 +673,8 @@
     milledHasAspect: function (c) { return 'if the discarded card is ' + (SB.names.aspects[c.aspect] || c.aspect); },
     milledHasChosenAspect: function () { return 'if the discarded card has the chosen aspect'; },
     discardHasAspect: function (c) { return 'if there is ' + an((SB.names.aspects[c.aspect] || c.aspect) + ' card') + ' in your discard pile'; },
-    controlNonUniqueUnit: function () { return 'if you control a non-champion unit'; },
-    controlUniqueUnit: function () { return 'if you control a champion unit'; },
+    controlNonUniqueUnit: function () { return 'if you control a non-' + U() + ' unit'; },
+    controlUniqueUnit: function () { return 'if you control ' + an(U() + ' unit'); },
     controlDamagedUnit: function () { return 'if you control a damaged unit'; },
     moreSpaceUnitsThanOpponent: function () { return 'if you control more space units than the opponent'; },
     selfPowerAtLeast: function (c) { return 'while this unit has ' + c.n + ' or more power'; },
@@ -676,8 +688,15 @@
     baseRemHpAtMost: function (c) { return 'if your base has ' + c.n + ' or less remaining HP'; },
     controlUnitWithTraitAny: function (c) { return 'if you control ' + an((SB.names.traits[c.trait] || c.trait) + ' unit'); },
     controlCapitalOrTrait: function (c) { return 'if you control ' + an((SB.names.traits[c.trait] || c.trait) + ' unit'); },
-    savedIsCard: function () { return 'if it is the named champion'; },
-    playedThisPhaseHasTrait: function (c) { return 'if you played ' + an((SB.names.traits[c.trait] || c.trait) + ' card') + ' this round'; },
+    savedIsCard: function () { return 'if it is the named ' + U(); },
+    playedThisPhaseHasTrait: function (c) {
+      const traits = c.traits || [c.trait];
+      const names = traits.map(function (t) { return SB.names.traits[t] || t; });
+      const kind = names.length > 1 ? names.slice(0, -1).join(', ') + ' or ' + names[names.length - 1] : names[0];
+      return 'if you played ' + an(kind + ' card') + ' this round';
+    },
+    discardedThisPhase: function () { return 'if you discarded a card from your hand or deck this round'; },
+    defeatedWasHighestCostEnemy: function () { return 'if that unit had the highest cost among enemy units'; },
     bearerWasFriendlyWithTrait: function (c) { return 'if this upgrade was on a friendly ' + (SB.names.traits[c.trait] || c.trait) + ' unit'; },
     fewerResourcesThanOpponent: function () { return 'if you control fewer resources than an opponent'; },
     opponentControlsNoGroundUnits: function () { return 'if an opponent controls no ground units'; },
@@ -780,6 +799,7 @@
     if (ab.oncePerRoundTrigger) s += ' Use this only once each round.';
     if (ab.notCreated) s = s.replace('When you play another unit', 'When you play a unit from hand');
     if (ab.trigger === 'onUnitPlayed') s = s.replace('When you play another unit', 'When you play or create another unit');
+    if (ab.playedType === 'event' && ab.trigger === 'onOpponentPlaysCard') s = s.replace('plays a card', 'plays an event');
     return s;
   }
 
@@ -868,7 +888,7 @@
     const f = card.attachFilter;
     const bits = [];
     if (card.attachArena) bits.push(card.attachArena);
-    if (f && f.uniqueOnly) bits.push('champion');
+    if (f && f.uniqueOnly) bits.push(U());
     if (f && f.notTrait) bits.push('non-' + traitName(f.notTrait));
     if (f && f.trait) bits.push(traitName(f.trait));
     if (f && f.damaged) bits.push('damaged');
@@ -886,7 +906,7 @@
     }
     const a = card.costModAttach;
     if (a && a.delta < 0) {
-      const who = a.uniqueOnly ? 'a champion unit' : (a.cards || []).map(function (id) { return SB.names.card(id); }).join(' or ');
+      const who = a.uniqueOnly ? an(U() + ' unit') : (a.cards || []).map(function (id) { return SB.names.card(id); }).join(' or ');
       out.push('This upgrade costs ' + (-a.delta) + ' less to play on ' + (who || 'certain units') + '.');
     }
     return out;
