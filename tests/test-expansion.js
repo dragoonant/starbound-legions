@@ -683,4 +683,162 @@
       SB.validateContent(); // restore a clean world for tests that follow
     }
   });
+
+  // ==== tournament cluster c2 (js/ops2.js additions) ==========================
+
+  T.add('expansion c2: a unit\'s power/hp scale with resources controlled, and it keeps Sentinel only while undamaged (ts26-050)', function () {
+    SB.cards['fx-c2res'] = { id: 'fx-c2res', type: 'unit', arena: 'ground', cost: 1, power: 1, hp: 1, aspects: ['command'],
+      abilities: [
+        { trigger: 'constant', scope: { self: true }, grant: { dynamicStat: 'resourcesOwned', dynamicPowerPer: 1, dynamicHpPer: 1 } },
+        { trigger: 'constant', scope: { self: true }, grant: { keywords: [{ k: 'sentinel' }] }, condition: { if: 'selfDamaged', not: true } },
+      ] };
+    try {
+      let s = T.game(); const me = 0;
+      T.giveResources(s, me, 3);
+      const u = T.putOnBoard(s, me, 'fx-c2res');
+      const n = s.players[me].resources.length; // T.game() already resources a few cards during setup
+      T.eq(SB.unitPower(s, u), 1 + n, 'power is base 1 plus the resources controlled');
+      T.eq(SB.unitMaxHp(s, u), 1 + n, 'hp scales the same way');
+      T.ok(SB.hasKeyword(s, u, 'sentinel'), 'undamaged: gains Sentinel');
+      u.damage = 1;
+      T.ok(!SB.hasKeyword(s, u, 'sentinel'), 'damaged: loses Sentinel');
+    } finally { delete SB.cards['fx-c2res']; }
+  });
+
+  T.add('expansion c2: "When you use the Force" fires only when a power token is actually spent, not on a fizzled attempt (lof-101)', function () {
+    SB.cards['fx-c2force'] = { id: 'fx-c2force', type: 'unit', arena: 'ground', cost: 1, power: 1, hp: 1, aspects: ['command'],
+      abilities: [{ trigger: 'onUseForce', effects: [{ op: 'draw', amount: 1 }] }] };
+    try {
+      let s = T.game(); const me = 0;
+      const u = T.putOnBoard(s, me, 'fx-c2force');
+      const before = s.players[me].hand.length;
+      SB.queueEffects(s, me, [{ op: 'useForce' }], { sourceUid: u.uid });
+      SB.drainQueue(s);
+      T.eq(s.players[me].hand.length, before, 'no power token held — useForce fizzles and the trigger does not fire');
+      s.players[me].force = true;
+      SB.queueEffects(s, me, [{ op: 'useForce' }], { sourceUid: u.uid });
+      SB.drainQueue(s);
+      T.eq(s.players[me].hand.length, before + 1, 'spending an actual power token fires the trigger');
+    } finally { delete SB.cards['fx-c2force']; }
+  });
+
+  T.add('expansion c2: a "When Defeated" ability can read/gate on this unit\'s power after it has already left play (sec-035, jtl-104)', function () {
+    SB.cards['fx-c2ret7'] = { id: 'fx-c2ret7', type: 'unit', arena: 'ground', cost: 1, power: 7, hp: 1, aspects: ['command'],
+      abilities: [{ trigger: 'whenDefeated', condition: { if: 'selfPowerWasAtLeast', n: 7 }, effects: [{ op: 'selfDefeatedToHand' }] }] };
+    SB.cards['fx-c2ret3'] = { id: 'fx-c2ret3', type: 'unit', arena: 'ground', cost: 1, power: 3, hp: 1, aspects: ['command'],
+      abilities: [{ trigger: 'whenDefeated', condition: { if: 'selfPowerWasAtLeast', n: 7 }, effects: [{ op: 'selfDefeatedToHand' }] }] };
+    SB.cards['fx-c2dmg'] = { id: 'fx-c2dmg', type: 'unit', arena: 'ground', cost: 1, power: 5, hp: 1, aspects: ['command'],
+      abilities: [{ trigger: 'whenDefeated', effects: [{ op: 'damage', amount: 0, amountRef: 'powerOfDefeatedSource', target: { who: 'any', what: 'unit' } }] }] };
+    try {
+      let s = T.game(); const me = 0, foe = 1;
+      const strong = T.putOnBoard(s, me, 'fx-c2ret7');
+      const weak = T.putOnBoard(s, me, 'fx-c2ret3');
+      SB.defeatUnit(s, strong, {}); SB.drainQueue(s);
+      SB.defeatUnit(s, weak, {}); SB.drainQueue(s);
+      T.ok(s.players[me].hand.some(function (i) { return i.cardId === 'fx-c2ret7'; }), 'the 7-power unit returned to hand');
+      T.ok(!s.players[me].hand.some(function (i) { return i.cardId === 'fx-c2ret3'; }), 'the 3-power unit did not qualify');
+      T.ok(s.players[me].discard.some(function (i) { return i.cardId === 'fx-c2ret3'; }), 'it stayed in the discard pile instead');
+
+      const attacker = T.putOnBoard(s, me, 'fx-c2dmg');
+      const victim = T.putOnBoard(s, foe, 'fx-gritty'); // hp 6, survives 5 damage
+      SB.defeatUnit(s, attacker, {});
+      SB.drainQueue(s);
+      s = drive(s, function (a) { return a.type === 'choose' && s.queue[0].candidates[a.index].uid === victim.uid; });
+      T.eq(SB.findUnit(s, victim.uid).damage, 5, 'the damage equals the defeated unit’s power, read from the snapshot');
+    } finally { delete SB.cards['fx-c2ret7']; delete SB.cards['fx-c2ret3']; delete SB.cards['fx-c2dmg']; }
+  });
+
+  T.add('expansion c2: "control another <trait> card (unit, upgrade, or leader)" checks every zone in play, not just units (jtl-104)', function () {
+    SB.cards['fx-c2sentinel'] = { id: 'fx-c2sentinel', type: 'unit', arena: 'ground', cost: 1, power: 1, hp: 1, aspects: ['command'],
+      abilities: [{ trigger: 'constant', scope: { self: true }, grant: { keywords: [{ k: 'sentinel' }] },
+        condition: { if: 'controlsTraitCardAnywhere', trait: 'tr50' } }] };
+    SB.cards['fx-c2trup'] = { id: 'fx-c2trup', type: 'upgrade', cost: 1, aspects: [], traits: ['tr50'] };
+    try {
+      let s = T.game(); const me = 0;
+      const u = T.putOnBoard(s, me, 'fx-c2sentinel');
+      const other = T.putOnBoard(s, me, 'fx-wall');
+      T.ok(!SB.hasKeyword(s, u, 'sentinel'), 'no matching card anywhere yet');
+      other.upgrades.push({ uid: s.nextUid++, cardId: 'fx-c2trup', owner: me });
+      T.ok(SB.hasKeyword(s, u, 'sentinel'), 'an upgrade of the trait, on ANOTHER unit, satisfies it — not just units in play');
+    } finally { delete SB.cards['fx-c2sentinel']; delete SB.cards['fx-c2trup']; }
+  });
+
+  T.add('expansion c2: "while an opponent controls a unit of trait X" reads the opponent\'s board, not your own (lof-118)', function () {
+    SB.cards['fx-c2amb'] = { id: 'fx-c2amb', type: 'unit', arena: 'ground', cost: 1, power: 1, hp: 1, aspects: ['command'],
+      abilities: [{ trigger: 'constant', scope: { self: true }, grant: { keywords: [{ k: 'ambush' }] },
+        condition: { if: 'opponentControlsUnitWithTrait', trait: 'tr12' } }] };
+    SB.cards['fx-c2forceunit'] = { id: 'fx-c2forceunit', type: 'unit', arena: 'ground', cost: 1, power: 1, hp: 1, aspects: ['command'], traits: ['tr12'] };
+    try {
+      let s = T.game(); const me = 0, foe = 1;
+      const u = T.putOnBoard(s, me, 'fx-c2amb');
+      T.ok(!SB.hasKeyword(s, u, 'ambush'), 'opponent controls no Force unit yet');
+      T.putOnBoard(s, me, 'fx-c2forceunit'); // one of my own — should NOT satisfy "an opponent controls"
+      T.ok(!SB.hasKeyword(s, u, 'ambush'), 'a Force unit under my own control does not count');
+      T.putOnBoard(s, foe, 'fx-c2forceunit');
+      T.ok(SB.hasKeyword(s, u, 'ambush'), 'now the opponent controls one — Ambush granted');
+    } finally { delete SB.cards['fx-c2amb']; delete SB.cards['fx-c2forceunit']; }
+  });
+
+  T.add('expansion c2: an amountRef counting enemy units defeated this phase (sec-035)', function () {
+    let s = rich(T.game(), 0); const me = 0, foe = 1;
+    const a = T.putOnBoard(s, foe, 'fx-grunt');
+    const b = T.putOnBoard(s, foe, 'fx-wall');
+    const mine = T.putOnBoard(s, me, 'fx-flyer');
+    SB.defeatUnit(s, a, {});
+    SB.defeatUnit(s, mine, {}); // a friendly defeat should NOT count
+    SB.defeatUnit(s, b, {});
+    const c = T.putOnBoard(s, me, 'fx-flyer');
+    SB.queueEffects(s, me, [{ op: 'experience', amountRef: 'enemyDefeatedThisPhaseCount', target: { who: 'any', what: 'unit' } }], {});
+    SB.drainQueue(s);
+    s = drive(s, function (a) { return a.type === 'choose' && s.queue[0].candidates[a.index].uid === c.uid; });
+    T.eq(SB.findUnit(s, c.uid).experience, 2, 'counts only the 2 enemy units defeated this phase, not the friendly one');
+  });
+
+  T.add('expansion c2: an amountRef equal to twice the number of units controlled (lof-101)', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    T.putOnBoard(s, me, 'fx-grunt'); // 1 friendly unit controlled -> 2x = 2
+    const victim = T.putOnBoard(s, foe, 'fx-wall'); // hp 5, survives 2 damage
+    SB.queueEffects(s, me, [{ op: 'damage', amountRef: 'doubleControlledUnits', target: { who: 'any', what: 'unit' } }], {});
+    SB.drainQueue(s);
+    s = drive(s, function (a) { return a.type === 'choose' && s.queue[0].candidates[a.index].uid === victim.uid; });
+    T.eq(SB.findUnit(s, victim.uid).damage, 2, 'twice the 1 unit controlled');
+  });
+
+  T.add('expansion c2: returning a unit remembers its cost for a follow-up op, even after it leaves play (ash-038)', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    const returned = T.putOnBoard(s, me, 'jtl-183'); // a real costed card, not a token/fixture
+    const cost = SB.costOf('jtl-183');
+    const victim = T.putOnBoard(s, foe, 'fx-wall'); // hp 5, survives the 2 damage
+    SB.queueEffects(s, me, [
+      { op: 'returnHandSaveCost', target: { who: 'friendly', what: 'unit' }, saveCostAs: 'rc' },
+      { op: 'damage', target: { who: 'any', what: 'unit' }, amountRef: 'stored:rc' },
+    ], {});
+    SB.drainQueue(s);
+    s = drive(s, function (a) {
+      return a.type === 'choose' && s.queue[0].candidates &&
+        (s.queue[0].candidates[a.index].uid === returned.uid || s.queue[0].candidates[a.index].uid === victim.uid);
+    });
+    T.ok(!SB.findUnit(s, returned.uid), 'the unit went back to hand');
+    T.ok(s.players[me].hand.some(function (i) { return i.uid === returned.uid; }), 'confirm it is in hand');
+    T.eq(SB.findUnit(s, victim.uid).damage, cost, 'damage equals the returned unit’s printed cost');
+  });
+
+  T.add('expansion c2: paying resources one at a time onto a chosen (non-self) unit, each one an experience token (sec-040)', function () {
+    let s = rich(T.game(), 0); const me = 0;
+    const before = SB.readyResources(s, me);
+    const chosen = T.putOnBoard(s, me, 'fx-wall');
+    SB.queueEffects(s, me, [{ op: 'payForExperienceOn', target: { who: 'any', what: 'unit', nonLeader: true } }], {});
+    SB.drainQueue(s);
+    let acts = SB.legalActions(s);
+    s = SB.apply(s, acts.find(function (a) { return a.type === 'payXpTargetPick' && a.uid === chosen.uid; }));
+    // Pay twice, then stop.
+    for (let i = 0; i < 2; i++) {
+      acts = SB.legalActions(s);
+      s = SB.apply(s, acts.find(function (a) { return a.type === 'payXp' && a.pay; }));
+    }
+    acts = SB.legalActions(s);
+    s = SB.apply(s, acts.find(function (a) { return a.type === 'payXp' && !a.pay; }));
+    T.eq(SB.findUnit(s, chosen.uid).experience, 2, 'two resources paid, two experience tokens on the chosen unit');
+    T.eq(SB.readyResources(s, me), before - 2, 'two resources were spent');
+  });
 })(window.SB = window.SB || {});

@@ -54,7 +54,7 @@
   "ts26-047": {"id":"ts26-047","type":"event","aspects":["vigilance"],"traits":["tr39"],"cost":3},
   "ts26-048": {"id":"ts26-048","type":"event","aspects":["vigilance"],"traits":["tr39"],"cost":4,"abilities":[{"trigger":"onPlay","effects":[{"op":"buffAll","power":-2,"hp":-2,"scope":{"who":"enemy","what":"unit","arena":"ground"}}]}]},
   "ts26-049": {"id":"ts26-049","type":"unit","aspects":["command","villainy"],"traits":["tr34","tr29"],"unique":true,"cost":4,"power":2,"hp":6,"arena":"ground"},
-  "ts26-050": {"id":"ts26-050","type":"unit","aspects":["command","villainy"],"traits":["tr34","tr29"],"unique":true,"cost":5,"power":0,"hp":0,"arena":"ground"},
+  "ts26-050": {"id":"ts26-050","type":"unit","aspects":["command","villainy"],"traits":["tr34","tr29"],"unique":true,"cost":5,"power":0,"hp":0,"arena":"ground","abilities":[{"trigger":"constant","scope":{"self":true},"grant":{"dynamicStat":"resourcesOwned","dynamicPowerPer":1,"dynamicHpPer":1}},{"trigger":"constant","scope":{"self":true},"grant":{"keywords":[{"k":"sentinel"}]},"condition":{"if":"selfDamaged","not":true}}]},
   "ts26-051": {"id":"ts26-051","type":"unit","aspects":["command","villainy"],"traits":["tr45"],"unique":true,"cost":5,"power":5,"hp":5,"arena":"ground"},
   "ts26-052": {"id":"ts26-052","type":"upgrade","aspects":["command","villainy"],"traits":["tr35","tr23"],"cost":2},
   "ts26-053": {"id":"ts26-053","type":"unit","aspects":["command"],"traits":["tr29"],"cost":1,"power":0,"hp":2,"arena":"ground","keywords":[{"k":"raid","n":2}]},

@@ -141,7 +141,7 @@
   "jtl-100": {"id":"jtl-100","type":"unit","aspects":["command","heroism"],"traits":["tr50","tr30"],"unique":true,"cost":4,"power":3,"hp":3,"arena":"ground","keywords":[{"k":"piloting","cost":0,"aspects":["command","heroism"]}]},
   "jtl-101": {"id":"jtl-101","type":"unit","aspects":["command","heroism"],"traits":["tr32","tr46","tr10"],"unique":true,"cost":4,"power":3,"hp":4,"arena":"space"},
   "jtl-102": {"id":"jtl-102","type":"unit","aspects":["command","heroism"],"traits":["tr50","tr46","tr10"],"cost":4,"power":3,"hp":4,"arena":"space","abilities":[{"trigger":"onPlay","effects":[{"op":"damage","amount":0,"target":{"who":"any","what":"unit","optional":true},"amountRef":"friendlySpaceCount"}]}]},
-  "jtl-104": {"id":"jtl-104","type":"unit","aspects":["command","heroism"],"traits":["tr50","tr46","tr04"],"unique":true,"cost":7,"power":8,"hp":6,"arena":"space"},
+  "jtl-104": {"id":"jtl-104","type":"unit","aspects":["command","heroism"],"traits":["tr50","tr46","tr04"],"unique":true,"cost":7,"power":8,"hp":6,"arena":"space","abilities":[{"trigger":"constant","scope":{"self":true},"grant":{"keywords":[{"k":"sentinel"}]},"condition":{"if":"controlsTraitCardAnywhere","trait":"tr50"}},{"trigger":"whenDefeated","effects":[{"op":"damage","amountRef":"powerOfDefeatedSource","target":{"who":"enemy","what":"unit"}}]}]},
   "jtl-105": {"id":"jtl-105","type":"unit","aspects":["command","heroism"],"traits":["tr27","tr46","tr04"],"unique":true,"cost":9,"power":6,"hp":9,"arena":"space","keywords":[{"k":"ambush"}]},
   "jtl-106": {"id":"jtl-106","type":"event","aspects":["command","command"],"traits":["tr31"],"cost":6},
   "jtl-107": {"id":"jtl-107","type":"unit","aspects":["command"],"traits":["tr17","tr43"],"cost":1,"power":2,"hp":1,"arena":"ground"},

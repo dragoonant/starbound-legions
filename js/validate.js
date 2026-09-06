@@ -16,7 +16,7 @@
     // competitive expansion (js/ops2.js)
     'onTakeInitiative', 'onWhenDefeatedUsed', 'onFriendlyDamagedSurvives', 'onEnemyUnitDefeated',
     'onFriendlyUpgradeDefeated', 'onFriendlyDealsDamageToEnemyUnit', 'onOpponentPlaysCard',
-    'onOwnBaseCombatDamaged'];
+    'onOwnBaseCombatDamaged', 'onUseForce'];
   const ASPECTS = ['command', 'aggression', 'cunning', 'vigilance', 'heroism', 'villainy'];
 
   function fail(id, msg) { throw new Error('content error [' + id + ']: ' + msg); }

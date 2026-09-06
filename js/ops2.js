@@ -274,6 +274,10 @@
     controlNonUniqueUnit: function (state, c, cond, ctx) {
       return SB.allUnits(state, c).some(function (u) { return !SB.card(u.cardId).unique && u.uid !== ctx.sourceUid; });
     },
+    // The mirror of controlNonUniqueUnit: cards print "a champion unit" for a unique one.
+    controlUniqueUnit: function (state, c, cond, ctx) {
+      return SB.allUnits(state, c).some(function (u) { return !!SB.card(u.cardId).unique && u.uid !== (ctx || {}).sourceUid; });
+    },
     controlDamagedUnit: function (state, c) { return SB.allUnits(state, c).some(function (u) { return u.damage > 0; }); },
     moreSpaceUnitsThanOpponent: function (state, c) {
       const mine = state.space.filter(function (u) { return u.owner === c; }).length;
@@ -1624,6 +1628,116 @@
       const uid = it.ctx && it.ctx.damagedUid;
       SB.efx(state, it.ctx || {}).damagedTarget = uid != null ? { kind: 'unit', uid: uid } : null;
       it.op = Object.assign({}, it.op, { useTarget: 'damagedTarget' });
+    }
+  };
+
+  // ==== tournament cluster c2 extensions ====================================
+
+  // A unit's power/hp scaling with how many resources its controller has in play
+  // (ts26-050): plugs into the existing dynamicStat/dynamicCount machinery above.
+  const prevDynamicCount = dynamicCount;
+  dynamicCount = function (state, unit, kind) {
+    if (kind === 'resourcesOwned') return state.players[unit.owner].resources.length;
+    return prevDynamicCount(state, unit, kind);
+  };
+
+  // Snapshot a unit's power the instant before it leaves play in SB.defeatUnit, so a
+  // "When Defeated" ability can still read/gate on "this unit's power" after the
+  // unit itself is gone (sec-035, jtl-104).
+  const prevDefeatUnitC2 = SB.defeatUnit;
+  SB.defeatUnit = function (state, unit, ctx) {
+    state.defeatPowerSnapshot = state.defeatPowerSnapshot || {};
+    state.defeatPowerSnapshot[unit.uid] = SB.unitPower(state, unit);
+    return prevDefeatUnitC2(state, unit, ctx);
+  };
+  SB.extraConditions.selfPowerWasAtLeast = function (state, c, cond, ctx) {
+    const p = state.defeatPowerSnapshot && state.defeatPowerSnapshot[ctx.sourceUid];
+    return (p || 0) >= cond.n;
+  };
+
+  // "You control another <trait> card (unit, upgrade, or leader)" — control checked
+  // across every zone a card can sit in while in play, not just units (jtl-104).
+  SB.extraConditions.controlsTraitCardAnywhere = function (state, c, cond, ctx) {
+    const trait = cond.trait;
+    if (SB.allUnits(state, c).some(function (u) { return u.uid !== ctx.sourceUid && SB.unitTraits(state, u).indexOf(trait) >= 0; })) return true;
+    if (SB.allUnits(state, c).some(function (u) { return u.upgrades.some(function (inst) { return (SB.card(inst.cardId).traits || []).indexOf(trait) >= 0; }); })) return true;
+    const leader = state.players[c].leader;
+    return leader && (SB.card(leader.cardId).traits || []).indexOf(trait) >= 0;
+  };
+
+  // "An opponent controls a unit of trait X" (lof-118).
+  SB.extraConditions.opponentControlsUnitWithTrait = function (state, c, cond) {
+    return SB.allUnits(state, SB.other(c)).some(function (u) { return SB.unitTraits(state, u).indexOf(cond.trait) >= 0; });
+  };
+
+  // ---- amount refs: enemy-units-defeated-this-phase, double unit count, and a
+  // defeated unit's snapshotted power (see SB.defeatUnit wrapper above).
+  const prevExtraAmounts = SB.extraAmounts;
+  SB.extraAmounts = function (state, item, target, ref) {
+    const ctx = item.ctx || {};
+    if (ref === 'enemyDefeatedThisPhaseCount') {
+      return (state.defeatedThisPhase || []).filter(function (d) { return d.owner === SB.other(item.controller); }).length;
+    }
+    if (ref === 'doubleControlledUnits') return SB.allUnits(state, item.controller).length * 2;
+    if (ref === 'powerOfDefeatedSource') {
+      return (state.defeatPowerSnapshot && state.defeatPowerSnapshot[ctx.sourceUid]) || 0;
+    }
+    return prevExtraAmounts(state, item, target, ref);
+  };
+
+  // A unit that already left play (defeated, its {uid,cardId} pushed to discard by
+  // SB.defeatUnit) returns itself to its owner's hand instead of staying discarded
+  // (sec-035's "if this unit had 7 or more power, return him to his owner's hand").
+  O.selfDefeatedToHand = function (state, item) {
+    const owner = state.players[item.controller];
+    const uid = item.ctx && item.ctx.sourceUid;
+    const i = owner.discard.findIndex(function (inst) { return inst.uid === uid; });
+    if (i < 0) return;
+    const inst = owner.discard.splice(i, 1)[0];
+    owner.hand.push(inst);
+    SB.log(state, { type: 'returnedToHand', player: item.controller, cardId: inst.cardId, sound: 'returnHand' });
+  };
+
+  // Return another friendly unit to hand and remember its printed cost, so a
+  // follow-up op can read "the returned unit's cost" even though the unit is gone
+  // by the time that op runs (ash-038).
+  O.returnHandSaveCost = function (state, item, target) {
+    const u = SB.findUnit(state, target.uid);
+    if (!u) return;
+    SB.efx(state, item.ctx)[item.op.saveCostAs || 'rc'] = SB.costOf(u.cardId);
+    O.returnHand(state, item, target);
+  };
+
+  // Choose a unit, then pay resources one at a time (unbounded — capped only by
+  // resources actually available), granting an experience token to that chosen
+  // unit for each one paid (sec-040's "pay any number of resources").
+  O.payForExperienceOn = function (state, item) {
+    state.queue.unshift({ step: 'payXpTargetPick', player: item.controller,
+      target: item.op.target || { who: 'any', what: 'unit', nonLeader: true }, ctx: item.ctx });
+  };
+  S.payXpTargetPick = {
+    actions: function (state, itemStep) {
+      const cands = SB.selectorCandidates(state, itemStep.player, itemStep.target, itemStep.ctx || {});
+      if (!cands.length) return null;
+      return cands.map(function (c) { return { type: 'payXpTargetPick', player: itemStep.player, uid: c.uid }; });
+    },
+    apply: function (state, itemStep, action) {
+      if (action.uid == null) return;
+      state.queue.unshift({ step: 'payXpPick', player: itemStep.player, left: 99, uid: action.uid });
+    },
+  };
+
+  // "When you use the Force" (lof-101): fires for every friendly unit carrying a
+  // matching ability whenever a power token is actually spent (not on a fizzled
+  // attempt with no token to spend).
+  const prevUseForceC2 = O.useForce;
+  O.useForce = function (state, item) {
+    const had = !!state.players[item.controller].force;
+    prevUseForceC2(state, item);
+    if (had) {
+      SB.allUnits(state, item.controller).forEach(function (u) {
+        SB.fireTriggers(state, 'onUseForce', u, { sourceUid: u.uid });
+      });
     }
   };
 })(window.SB = window.SB || {});

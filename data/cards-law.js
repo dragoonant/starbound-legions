@@ -254,7 +254,7 @@
   "law-242": {"id":"law-242","type":"event","aspects":["cunning"],"traits":["tr14"],"cost":1},
   "law-243": {"id":"law-243","type":"event","aspects":["cunning"],"traits":["tr39"],"cost":1},
   "law-245": {"id":"law-245","type":"event","aspects":["cunning"],"traits":["tr38"],"cost":1},
-  "law-247": {"id":"law-247","type":"event","aspects":["cunning"],"traits":["tr38"],"cost":3},
+  "law-247": {"id":"law-247","type":"event","aspects":["cunning"],"traits":["tr38"],"cost":3,"abilities":[{"trigger":"onPlay","effects":[{"op":"gainCredits","amount":1},{"op":"damage","target":{"who":"any","what":"unit","optional":true},"amountRef":"creditsOwned"}]}]},
   "law-248": {"id":"law-248","type":"event","aspects":["cunning"],"traits":["tr38"],"cost":5},
   "law-250": {"id":"law-250","type":"unit","aspects":["villainy"],"traits":["tr45","tr03"],"cost":3,"power":3,"hp":4,"arena":"ground","keywords":[{"k":"saboteur"}]},
   "law-251": {"id":"law-251","type":"unit","aspects":["villainy"],"traits":["tr45"],"cost":5,"power":5,"hp":5,"arena":"ground","keywords":[{"k":"sentinel"}]},

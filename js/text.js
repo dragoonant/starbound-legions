@@ -115,6 +115,9 @@
     if (op.amountRef === 'resourcesOwned') return '1 for each resource you control';
     if (op.amountRef === 'friendlyTraitCount') return '1 for each friendly ' + (SB.names.traits[op.trait] || op.trait) + ' unit you control';
     if (/^remHpOf:/.test(op.amountRef)) return 'as much as the chosen unit’s remaining HP in';
+    if (op.amountRef === 'enemyDefeatedThisPhaseCount') return '1 for each enemy unit that was defeated this phase';
+    if (op.amountRef === 'doubleControlledUnits') return 'twice the number of units you control';
+    if (op.amountRef === 'powerOfDefeatedSource') return 'as much as this unit’s power in';
     return String(op.amount);
   }
 
@@ -134,6 +137,9 @@
       powerOfPlayed: 'the played unit’s power', friendlySpaceCount: 'the number of friendly space units', handSize: 'the number of cards in your hand',
       defeatedPower: 'this unit’s power', playedCardCost: 'that card’s cost', creditsOwned: 'the number of your credit tokens',
       resourcesOwned: 'the number of resources you control',
+      enemyDefeatedThisPhaseCount: 'the number of enemy units that were defeated this phase',
+      doubleControlledUnits: 'twice the number of units you control',
+      powerOfDefeatedSource: 'this unit’s power',
     };
     if (fixed[ref]) return fixed[ref];
     if (/^powerOf:/.test(ref)) return 'the chosen unit’s power';
@@ -325,6 +331,11 @@
     },
     collectBountiesOf: function (op) { return 'collect the bounties on ' + targetText(op); },
     selfDefeatedToResource: function () { return 'put this card into play as a ready resource'; },
+    selfDefeatedToHand: function () { return 'return this unit to its owner’s hand'; },
+    returnHandSaveCost: function (op) { return 'return ' + targetText(op) + ' to its owner’s hand'; },
+    payForExperienceOn: function (op) {
+      return 'choose ' + targetText(op) + ' and pay any number of resources — give an experience token to the chosen unit for each';
+    },
     defeatCountUpgrades: function (op) { return 'defeat ' + targetText(op) + ', counting its upgrades'; },
     repeat: function (op) {
       const fn = opText[op.effect.op];
@@ -578,6 +589,7 @@
     onFriendlyDealsDamageToEnemyUnit: 'When a friendly unit deals damage to an enemy unit',
     onOpponentPlaysCard: 'When an opponent plays a card',
     onOwnBaseCombatDamaged: 'When your base is dealt combat damage',
+    onUseForce: 'When you use the Force',
   };
 
   const conditionText = {
@@ -650,6 +662,7 @@
     milledHasChosenAspect: function () { return 'if the discarded card has the chosen aspect'; },
     discardHasAspect: function (c) { return 'if there is ' + an((SB.names.aspects[c.aspect] || c.aspect) + ' card') + ' in your discard pile'; },
     controlNonUniqueUnit: function () { return 'if you control a non-champion unit'; },
+    controlUniqueUnit: function () { return 'if you control a champion unit'; },
     controlDamagedUnit: function () { return 'if you control a damaged unit'; },
     moreSpaceUnitsThanOpponent: function () { return 'if you control more space units than the opponent'; },
     selfPowerAtLeast: function (c) { return 'while this unit has ' + c.n + ' or more power'; },
@@ -668,6 +681,9 @@
     bearerWasFriendlyWithTrait: function (c) { return 'if this upgrade was on a friendly ' + (SB.names.traits[c.trait] || c.trait) + ' unit'; },
     fewerResourcesThanOpponent: function () { return 'if you control fewer resources than an opponent'; },
     opponentControlsNoGroundUnits: function () { return 'if an opponent controls no ground units'; },
+    selfPowerWasAtLeast: function (c) { return 'if this unit had ' + c.n + ' or more power'; },
+    controlsTraitCardAnywhere: function (c) { return 'while you control another ' + (SB.names.traits[c.trait] || c.trait) + ' card (unit, upgrade, or leader)'; },
+    opponentControlsUnitWithTrait: function (c) { return 'while an opponent controls ' + an((SB.names.traits[c.trait] || c.trait) + ' unit'); },
   };
 
   function describeAbility(ab) {
@@ -720,7 +736,7 @@
       // Grants added by js/ops2.js (keep in step with its aura wrappers).
       (g.loseKeywords || []).forEach(function (k) { parts.push('loses ' + (SB.names.keywords[k] || k)); });
       if (g.dynamicStat) {
-        const per = { damagedEnemyUnits: 'damaged enemy unit', otherFriendlySpace: 'other friendly space unit', upgradesOnSelf: 'upgrade on it' }[g.dynamicStat] || g.dynamicStat;
+        const per = { damagedEnemyUnits: 'damaged enemy unit', otherFriendlySpace: 'other friendly space unit', upgradesOnSelf: 'upgrade on it', resourcesOwned: 'resource you control' }[g.dynamicStat] || g.dynamicStat;
         parts.push('gets ' + statPair(g.dynamicPowerPer, g.dynamicHpPer) + ' for each ' + per);
       }
       if (g.dynamicKeyword) {
