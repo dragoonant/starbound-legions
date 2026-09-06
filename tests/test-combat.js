@@ -149,6 +149,26 @@
     T.ok(SB.findUnit(s, g.uid), 'no attack happened');
   });
 
+  T.add('granted ambush on a unit that already has ambush attacks only once', function () {
+    let s = duel('amb3');
+    const me = s.active, foe = SB.other(me);
+    const a = T.putOnBoard(s, foe, 'fx-grunt');
+    const b = T.putOnBoard(s, foe, 'fx-flyer');
+    T.putInHand(s, me, 'fx-intervene');
+    T.putInHand(s, me, 'fx-ambusher');
+    T.giveResources(s, me, 8);
+    s = T.act(s, { type: 'playCard', cardId: 'fx-intervene' });
+    // Pick the ambusher to put into play.
+    s = SB.apply(s, SB.legalActions(s).find(function (x) { return x.cardId === 'fx-ambusher'; }));
+    const ambushItems = s.queue.filter(function (it) { return it.op && it.op.op === 'ambushAttack'; });
+    T.eq(ambushItems.length, 1, 'only one ambush attack queued');
+    // Resolve the one ambush, then there must be no second choice waiting.
+    s = SB.apply(s, SB.legalActions(s).find(function (x) { return x.type === 'choose' && x.index >= 0; }));
+    T.eq(s.queue.filter(function (it) { return it.op && it.op.op === 'ambushAttack'; }).length, 0,
+      'no leftover ambush');
+    T.ok(SB.findUnit(s, a.uid) || SB.findUnit(s, b.uid), 'it did not clear the whole board');
+  });
+
   T.add('ambush + leader trigger: the player picks which resolves first', function () {
     function setup(seed) {
       let s = duel(seed);

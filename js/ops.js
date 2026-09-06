@@ -1711,7 +1711,10 @@
         const played = SB.allUnits(state, itemStep.player).find(function (u) {
           return u.cardId === action.cardId && u.enteredRound === state.round && u.exhausted;
         });
-        if (played && SB.card(action.cardId).type === 'unit') {
+        // A unit that already has ambush queued its own attack when it entered play;
+        // granting it again would let it attack twice.
+        if (played && SB.card(action.cardId).type === 'unit' &&
+            !SB.hasKeyword(state, played, 'ambush')) {
           state.queue.push({ step: 'effect', controller: itemStep.player,
             ctx: { sourceUid: played.uid, cardId: played.cardId }, op: { op: 'ambushAttack', target: null } });
         }
