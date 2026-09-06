@@ -115,6 +115,7 @@
             const traits = (SB.unitDef(u).traits || []).concat(SB.card(u.cardId).traits || []);
             if (f.notTrait && traits.indexOf(f.notTrait) >= 0) return;
             if (f.trait && traits.indexOf(f.trait) < 0) return;
+            if (f.nonLeader && SB.card(u.cardId).type === 'leader') return;
           }
           if (card.costModAttach && attachDiscountApplies(card.costModAttach, u)) {
             const c2 = Math.max(0, SB.cardCost(state, me, inst.cardId) + card.costModAttach.delta);
@@ -535,6 +536,7 @@
           SB.card(inst.cardId).staticFlags.indexOf('defeatAtRegroup') >= 0) unit.defeatAtRegroup = true;
       if (mods.entersReady) unit.exhausted = false;
       if (card.entersReadyIf && SB.checkCondition(state, me, card.entersReadyIf, { sourceUid: unit.uid })) unit.exhausted = false;
+      if ((card.staticFlags || []).indexOf('entersReady') >= 0) unit.exhausted = false;
       if (mods.defeatAtRegroup) unit.defeatAtRegroup = true;
       if (mods.returnAtRegroup) unit.commandeered = { originalOwner: me };
       // "The next unit you play this phase (matching) enters play ready" grants.
@@ -1060,6 +1062,9 @@
     state.attackedThisPhase = [];
     state.leftPlayThisPhase = 0;
     state.lastWhenDefeated = null;
+    // "Name a card. Cards with that name can't be played this phase" (law-243) —
+    // scoped to the action phase it was cast in, so it clears here.
+    state.phaseNamedBlocks = [];
     state.players.forEach(function (p) {
       p.playedThisPhase = []; p.eventsThisRound = 0; p.discounts = []; p.plotDiscount = 0;
       p.discardedThisPhase = []; p.entersReadyGrants = [];
@@ -1179,6 +1184,18 @@
       p.resources.forEach(function (r) { r.exhausted = false; });
       p.leader.exhausted = false;
     });
+    // "There is an additional regroup phase after the first regroup phase each
+    // round" (law-072): run the whole regroup sequence (ready/draw/resource) a
+    // second time before the next round's action phase starts.
+    const extraRegroup = SB.allUnits(state).some(function (u) {
+      return SB.unitHasGrantedStaticFlag && SB.unitHasGrantedStaticFlag(state, u, 'extraRegroupPhase');
+    });
+    if (extraRegroup && !state.extraRegroupDone) {
+      state.extraRegroupDone = true;
+      startRegroup(state);
+      return;
+    }
+    delete state.extraRegroupDone;
     state.round += 1;
     startActionPhase(state);
   }

@@ -210,7 +210,7 @@
   "sec-190": {"id":"sec-190","type":"unit","aspects":["cunning","villainy"],"traits":["tr34","tr46","tr10"],"unique":true,"cost":3,"power":3,"hp":3,"arena":"space"},
   "sec-191": {"id":"sec-191","type":"unit","aspects":["cunning","villainy"],"traits":["tr33","tr29"],"cost":5,"power":3,"hp":4,"arena":"ground"},
   "sec-192": {"id":"sec-192","type":"unit","aspects":["cunning","villainy"],"traits":["tr17","tr29"],"arena":"ground","cost":6,"power":2,"hp":6,"unique":true,"abilities":[{"trigger":"onPlay","effects":[{"op":"takeControl","target":{"who":"enemy","what":"unit","nonLeader":true,"trait":"tr46"},"untilSourceLeaves":true}]}]},
-  "sec-193": {"id":"sec-193","type":"unit","aspects":["cunning","villainy"],"traits":["tr17","tr29"],"unique":true,"cost":7,"power":8,"hp":7,"arena":"ground"},
+  "sec-193": {"id":"sec-193","type":"unit","aspects":["cunning","villainy"],"traits":["tr17","tr29"],"unique":true,"cost":7,"power":8,"hp":7,"arena":"ground","abilities":[{"trigger":"onPlay","effects":[{"op":"captureOrReady"}]},{"trigger":"whenDefeated","effects":[{"op":"pickUnit","target":{"who":"friendly","what":"unit"},"saveTargetAs":"t"},{"op":"capture","captorSaved":"t","target":{"who":"enemy","what":"unit","nonLeader":true,"sameArenaAsSaved":"t"}}]}]},
   "sec-194": {"id":"sec-194","type":"event","aspects":["cunning","villainy"],"traits":["tr42"],"cost":1},
   "sec-195": {"id":"sec-195","type":"event","aspects":["cunning","villainy"],"traits":["tr22"],"cost":2,"abilities":[{"trigger":"onPlay","effects":[{"op":"captureToBase","target":{"who":"enemy","what":"unit","nonLeader":true}}]}]},
   "sec-196": {"id":"sec-196","type":"event","aspects":["cunning","villainy"],"traits":["tr42"],"cost":2},

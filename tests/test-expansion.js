@@ -379,6 +379,124 @@
     return bearer;
   }
 
+  // ---- cluster-c4 expansion: credit tokens, naming, capture forms, extra regroup ----
+
+  T.add('cluster-c4: law-221 takes control of an enemy Credit token on attack', function () {
+    let s = T.game(); s.active = 0; const me = 0, foe = 1;
+    s.players[foe].credits = 1;
+    const u = T.putOnBoard(s, me, 'law-221');
+    s = T.act(s, { type: 'attack', attacker: u.uid, target: { kind: 'base', player: foe } });
+    s = drive(s);
+    T.eq(s.players[foe].credits, 0, 'the opponent lost their credit token');
+    T.eq(s.players[me].credits, 1, 'this unit\'s controller gained it');
+  });
+
+  T.add('cluster-c4: law-106 may defeat an enemy Credit token when played', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    s.players[foe].credits = 1;
+    s = play(s, me, 'law-106');
+    s = drive(s, function (a) { return a.type === 'binary' && a.pick === 'a'; });
+    T.eq(s.players[foe].credits, 0, 'the enemy credit token was defeated, not taken');
+    T.eq(s.players[me].credits || 0, 0, 'this player did not gain a credit');
+  });
+
+  T.add('cluster-c4: law-243 blocks a named card from being played for the rest of the phase', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    T.putInHand(s, foe, 'fx-grunt'); // seen in the opponent's hand so it is nameable
+    s = play(s, me, 'law-243');
+    s = drive(s, function (a) { return a.type === 'nameCard' && a.cardId === 'fx-grunt'; });
+    T.ok(SB.nameBlocked(s, foe, 'fx-grunt'), 'fx-grunt is blocked for the rest of this phase');
+    T.ok(SB.nameBlocked(s, me, 'fx-grunt'), 'the block applies to either player, not just the opponent');
+    T.eq(s.phaseNamedBlocks.length, 1, 'tracked as a phase-scoped block, not a unit-bound one');
+  });
+
+  T.add('cluster-c4: shd-202 names a card that costs opponents 3 more while this unit is in play', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    T.putInHand(s, foe, 'fx-grunt');
+    const before = SB.cardCost(s, foe, 'fx-grunt');
+    s = play(s, me, 'shd-202');
+    s = drive(s, function (a) { return a.type === 'nameCard' && a.cardId === 'fx-grunt'; });
+    T.eq(SB.cardCost(s, foe, 'fx-grunt'), before + 3, 'costs 3 more for the opponent to play');
+    T.eq(SB.cardCost(s, me, 'fx-grunt'), before, 'unaffected for this unit\'s own controller');
+  });
+
+  T.add('cluster-c4: twi-187 captures up to 3 enemy non-leader units totalling 8 or less remaining HP', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const a1 = T.putOnBoard(s, foe, 'fx-grunt'); // cheap, low HP
+    const a2 = T.putOnBoard(s, foe, 'fx-grunt');
+    const big = T.putOnBoard(s, foe, 'fx-wall'); // too much HP to fit the budget alongside the others
+    s = play(s, me, 'twi-187');
+    s = drive(s, function (a) { return a.type === 'captureBudget' && (a.uid === a1.uid || a.uid === a2.uid); }, 60);
+    const captor = unitsOf(s, me, 'twi-187')[0];
+    T.ok(!SB.findUnit(s, a1.uid) || !SB.findUnit(s, a2.uid), 'at least one cheap unit was captured');
+    T.ok(SB.findUnit(s, big.uid), 'the high-HP unit was never a legal pick and stayed in play');
+    T.ok(captor.captured && captor.captured.length <= 3, 'never more than 3 captives');
+  });
+
+  T.add('cluster-c4: sec-193 lets an opponent give up a unit to be captured, or this unit readies', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const victim = T.putOnBoard(s, foe, 'fx-grunt');
+    s = play(s, me, 'sec-193');
+    const captor = unitsOf(s, me, 'sec-193')[0];
+    s = drive(s, function (a) { return a.type === 'captureOrReady' && a.uid === victim.uid; });
+    T.ok(!SB.findUnit(s, victim.uid), 'the opponent\'s unit was captured');
+    T.ok(SB.findUnit(s, captor.uid).captured.some(function (c) { return c.uid === victim.uid; }), 'held by sec-193');
+
+    let s2 = rich(T.game(), 0); s2.active = 0;
+    s2 = play(s2, me, 'sec-193');
+    const captor2 = unitsOf(s2, me, 'sec-193')[0];
+    captor2.exhausted = true;
+    s2 = drive(s2, function (a) { return a.type === 'captureOrReady' && a.uid == null; });
+    T.ok(!SB.findUnit(s2, captor2.uid).exhausted, 'declining readies sec-193 instead');
+  });
+
+  T.add('cluster-c4: law-072 adds a second regroup phase each round', function () {
+    let s = T.game();
+    T.putOnBoard(s, 0, 'law-072');
+    const round0 = s.round;
+    s = T.act(s, { type: 'pass' });
+    s = T.act(s, { type: 'pass' });
+    s = drive(s, null, 200); // resource/ready choices for both regroup phases
+    T.eq(s.round, round0 + 1, 'still exactly one round later — the extra phase does not skip a round');
+    T.eq(s.phase, 'action', 'settles back into a normal action phase');
+    const regroupEntries = s.log.filter(function (l) { return l.type === 'regroup'; });
+    T.eq(regroupEntries.length, 2, 'two regroup phases happened this round');
+  });
+
+  T.add('cluster-c4: sor-193 enters play ready and must pay 1 or bounce at regroup', function () {
+    T.ok((SB.card('sor-193').staticFlags || []).indexOf('entersReady') >= 0, 'card data carries the entersReady flag');
+
+    // Can pay: stays.
+    let s1 = rich(T.game(), 0); const me = 0;
+    const u1 = T.putOnBoard(s1, me, 'sor-193');
+    SB.fireTriggers(s1, 'onRegroup', u1, { sourceUid: u1.uid });
+    SB.drainQueue(s1);
+    s1 = drive(s1, function (a) { return a.type === 'binary' && a.pick === 'a'; });
+    T.ok(SB.findUnit(s1, u1.uid), 'stays in play after paying 1');
+
+    // Cannot pay: returns to hand.
+    let s2 = T.game();
+    const u2 = T.putOnBoard(s2, me, 'sor-193');
+    s2.players[me].resources.forEach(function (r) { r.exhausted = true; });
+    SB.fireTriggers(s2, 'onRegroup', u2, { sourceUid: u2.uid });
+    SB.drainQueue(s2);
+    s2 = drive(s2);
+    T.ok(!SB.findUnit(s2, u2.uid), 'left play');
+    T.ok(s2.players[me].hand.some(function (inst) { return inst.cardId === 'sor-193'; }), 'returned to hand');
+  });
+
+  T.add('cluster-c4: law-077 upgrade stops its bearer readying and burns the base at regroup', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    const bearer = T.putOnBoard(s, me, 'fx-grunt');
+    bearer.exhausted = true;
+    s = play(s, me, 'law-077', { attachTo: bearer.uid });
+    const before = s.players[me].base.damage;
+    SB.fireTriggers(s, 'onRegroup', SB.findUnit(s, bearer.uid), { sourceUid: bearer.uid });
+    SB.drainQueue(s);
+    T.eq(s.players[me].base.damage, before + 2, 'the bearer\'s controller took 2 base damage at regroup');
+    T.ok(SB.unitHasGrantedStaticFlag(s, SB.findUnit(s, bearer.uid), 'cantReady'), 'the bearer cannot ready while wearing it');
+  });
+
   T.add('expansion: killing a seized ship sidelines ITS leader, not yours', function () {
     let s = rich(T.game(), 0);
     const bearer = leaderAboard(s, 1, 'fx-grunt');   // their leader, aboard their unit

@@ -103,6 +103,8 @@
     // --- tokens and economy ---
     creditsGained: function (l) { return player(l.player) + ' gained ' + n(l.amount, 'credit') + '.'; },
     creditSpent: function (l) { return player(l.player) + ' spent a credit.'; },
+    creditStolen: function (l) { return player(l.player) + ' took control of an enemy credit token.'; },
+    creditDefeated: function (l) { return player(l.player) + '’s credit token was defeated.'; },
     // The token's name is vocabulary (names.js terms), read here so the line follows
     // the active name set: "spent the Current" or "spent a Force token".
     forceGained: function (l) { return player(l.player) + ' gained ' + SB.names.terms.forceToken + '.'; },
@@ -198,7 +200,10 @@
     arenaChosen: function (l) { return player(l.player) + ' chose the ' + l.arena + ' arena.'; },
     toppedCard: function (l) { return player(l.player) + ' put a card on top of the deck.'; },
     ejected: function (l, s) { return name(l, s) + ' ejected into the ground arena.'; },
-    cardNamed: function (l, s) { return name(l, s) + ' named ' + cardName(l.cardId) + '.'; },
+    cardNamed: function (l, s) {
+      if (l.uid == null) return player(l.player) + ' named ' + cardName(l.cardId) + ' — it can’t be played this phase.';
+      return nameOf(l.uid, s) + ' named ' + cardName(l.cardId) + '.';
+    },
     cloned: function (l, s) { return name(l, s) + ' took the form of ' + cardName(l.cardId) + '.'; },
     damagePrevented: function (l, s) { return 'Damage to ' + name(l, s) + ' was prevented.'; },
 

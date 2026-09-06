@@ -63,3 +63,8 @@ missing mechanic):
   "choose up to N" is modeled as repeated single picks with a Stop action. The
   `multiPicks` toggle list, Confirm/Clear buttons and set-equality matching therefore
   have no counterpart to drive, and are not implemented.
+- **Naming a card.** Two cards print "name a card", meaning any card in the game. The
+  engine offers only the cards the opponent has already revealed this game, because a
+  free-text picker over the whole pool has no counterpart in the targeting model and
+  would let a player fish for information the rules never give them. The lockout and the
+  cost tax themselves behave as printed once a name is chosen.

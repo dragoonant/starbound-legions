@@ -217,7 +217,7 @@
   "twi-183": {"id":"twi-183","type":"unit","aspects":["cunning","villainy"],"traits":["tr34","tr29"],"unique":true,"cost":4,"power":3,"hp":5,"arena":"ground","keywords":[{"k":"raid","n":2}]},
   "twi-185": {"id":"twi-185","type":"unit","aspects":["cunning","villainy"],"traits":["tr45","tr16"],"unique":true,"cost":5,"power":2,"hp":8,"arena":"ground"},
   "twi-186": {"id":"twi-186","type":"unit","aspects":["cunning","villainy"],"traits":["tr34","tr29"],"unique":true,"cost":6,"power":3,"hp":7,"arena":"ground","keywords":[{"k":"exploit","n":3}]},
-  "twi-187": {"id":"twi-187","type":"unit","aspects":["cunning","villainy"],"traits":["tr45","tr03"],"unique":true,"cost":7,"power":7,"hp":7,"arena":"ground"},
+  "twi-187": {"id":"twi-187","type":"unit","aspects":["cunning","villainy"],"traits":["tr45","tr03"],"unique":true,"cost":7,"power":7,"hp":7,"arena":"ground","abilities":[{"trigger":"onPlay","effects":[{"op":"captureBudget","budget":8,"maxCount":3,"target":{"self":true}}]},{"trigger":"onAttack","effects":[{"op":"rescueChoice"}]}]},
   "twi-188": {"id":"twi-188","type":"event","aspects":["cunning","villainy"],"traits":["tr38"],"cost":1},
   "twi-189": {"id":"twi-189","type":"event","aspects":["cunning","villainy"],"traits":["tr12"],"cost":3},
   "twi-192": {"id":"twi-192","type":"unit","aspects":["cunning","heroism"],"traits":["tr26","tr33","tr29"],"unique":true,"cost":2,"power":1,"hp":4,"arena":"ground"},

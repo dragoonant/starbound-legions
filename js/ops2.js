@@ -75,9 +75,20 @@
     });
   };
   SB.nameBlocked = function (state, ownerIdx, cardId) {
+    if ((state.phaseNamedBlocks || []).some(function (b) { return b.cardId === cardId; })) return true;
     return SB.allUnits(state, SB.other(ownerIdx)).some(function (u) {
       return u.namedCard === cardId && u.namedMode === 'block';
     });
+  };
+  // "Each card with that name costs 3 more for your opponents to play" (shd-202):
+  // extra cost added when the player about to pay is the enemy of the unit that
+  // named the card, while that unit remains in play.
+  SB.nameCostTax = function (state, ownerIdx, cardId) {
+    let tax = 0;
+    SB.allUnits(state, SB.other(ownerIdx)).forEach(function (u) {
+      if (u.namedCard === cardId && u.namedMode === 'costTax') tax += u.namedTaxAmount || 3;
+    });
+    return tax;
   };
 
   // ---- aura extensions: lost keywords, dynamic stats, numeric keyword auras ------
@@ -161,6 +172,7 @@
         cost = Math.max(0, cost - d.amount);
       });
     });
+    cost += SB.nameCostTax(state, playerIdx, cardId);
     return cost;
   };
   function discountMatches(card, f) {
@@ -842,11 +854,19 @@
 
   // Name a card: choose among the cards visible in the opponent's hand and discard
   // pile (DEVIATIONS.md). mode 'block' = they cannot play it; 'silence' = their copies
-  // lose all abilities. Both last while this unit remains in play.
+  // lose all abilities; 'costTax' = it costs `amount` more for opponents to play.
+  // 'block'/'silence'/'costTax' last while the naming unit remains in play.
+  // mode 'phaseBlock' (law-243) has no naming unit — it blocks for both players for
+  // the rest of the current action phase (cleared in startActionPhase).
   O.nameCard = function (state, item) {
+    const mode = item.op.mode || 'block';
+    if (mode === 'phaseBlock') {
+      state.queue.unshift({ step: 'namePick', player: item.controller, uid: null, mode: mode });
+      return;
+    }
     const src = SB.findUnit(state, item.ctx && item.ctx.sourceUid);
     if (!src) return;
-    state.queue.unshift({ step: 'namePick', player: item.controller, uid: src.uid, mode: item.op.mode || 'block' });
+    state.queue.unshift({ step: 'namePick', player: item.controller, uid: src.uid, mode: mode, amount: item.op.amount });
   };
   S.namePick = {
     actions: function (state, it) {
@@ -857,9 +877,16 @@
       return acts.length ? acts : null;
     },
     apply: function (state, it, action) {
+      if (it.mode === 'phaseBlock') {
+        state.phaseNamedBlocks = state.phaseNamedBlocks || [];
+        state.phaseNamedBlocks.push({ cardId: action.cardId });
+        SB.log(state, { type: 'cardNamed', cardId: action.cardId, player: it.player, notice: true });
+        return;
+      }
       const u = SB.findUnit(state, it.uid);
       if (!u) return;
       u.namedCard = action.cardId; u.namedMode = it.mode;
+      if (it.mode === 'costTax') u.namedTaxAmount = it.amount || 3;
       SB.log(state, { type: 'cardNamed', uid: u.uid, cardId: action.cardId, notice: true });
     },
   };
@@ -1787,5 +1814,104 @@
         SB.fireTriggers(state, 'onUseForce', u, { sourceUid: u.uid });
       });
     }
+  };
+
+  // ---- cluster-c4 expansion: credit tokens as targetable objects, capture forms,
+  // extra regroup phase (see scratch/cluster-c4.json) ---------------------------
+
+  // Take control of one of the opponent's credit tokens (law-221). Credits are a
+  // plain per-player counter (state.players[i].credits), not objects, so "take
+  // control of one" is modeled as moving a single count from their pool to yours.
+  O.stealCredit = function (state, item) {
+    const opp = state.players[SB.other(item.controller)];
+    if (!(opp.credits > 0)) { SB.log(state, { type: 'fizzle', why: 'noCredits', fizzled: true }); return; }
+    opp.credits -= 1;
+    const me = state.players[item.controller];
+    me.credits = (me.credits || 0) + 1;
+    SB.log(state, { type: 'creditStolen', player: item.controller });
+  };
+
+  // Defeat one of the opponent's credit tokens (law-106): remove one from their
+  // pool without giving it to anyone.
+  O.defeatCredit = function (state, item) {
+    const opp = state.players[SB.other(item.controller)];
+    if (!(opp.credits > 0)) { SB.log(state, { type: 'fizzle', why: 'noCredits', fizzled: true }); return; }
+    opp.credits -= 1;
+    SB.log(state, { type: 'creditDefeated', player: SB.other(item.controller) });
+  };
+
+  // "On Attack: The defending player may rescue a card they own guarded by this
+  // unit. If they do, draw 2 cards." (twi-187). The defending player picks one of
+  // their own cards currently held captive by the attacker; releasing it returns
+  // it to play the same way a captor's death does (see releaseCaptured), and the
+  // attacker's controller draws 2.
+  O.rescueChoice = function (state, item) {
+    const src = SB.findUnit(state, item.ctx && item.ctx.sourceUid);
+    if (!src || !(src.captured && src.captured.length)) return;
+    const t = item.ctx.attackTarget;
+    let defender = null;
+    if (t) defender = t.kind === 'base' ? t.player : ((SB.findUnit(state, t.uid) || {}).owner);
+    if (defender == null) return;
+    if (!src.captured.some(function (c) { return c.owner === defender; })) return;
+    state.queue.unshift({ step: 'rescuePick', player: defender, captorUid: src.uid, ctx: item.ctx, drawController: item.controller });
+  };
+  S.rescuePick = {
+    actions: function (state, itemStep) {
+      const captor = SB.findUnit(state, itemStep.captorUid);
+      if (!captor) return null;
+      const acts = [{ type: 'rescuePick', player: itemStep.player, uid: null }];
+      (captor.captured || []).forEach(function (c) {
+        if (c.owner === itemStep.player) acts.push({ type: 'rescuePick', player: itemStep.player, uid: c.uid, cardId: c.cardId });
+      });
+      return acts.length > 1 ? acts : null;
+    },
+    apply: function (state, itemStep, action) {
+      if (action.uid == null) return;
+      const captor = SB.findUnit(state, itemStep.captorUid);
+      if (!captor) return;
+      const idx = (captor.captured || []).findIndex(function (c) { return c.uid === action.uid; });
+      if (idx < 0) return;
+      const cap = captor.captured.splice(idx, 1)[0];
+      const u = SB.makeUnit(state, cap.cardId, cap.owner);
+      u.uid = cap.uid;
+      u.upgrades = cap.upgrades || [];
+      state[SB.card(cap.cardId).arena].push(u);
+      SB.log(state, { type: 'rescued', uid: u.uid, cardId: u.cardId });
+      SB.queueEffects(state, itemStep.drawController, [{ op: 'draw', amount: 2 }], itemStep.ctx);
+    },
+  };
+
+  // "An opponent may choose a non-leader unit they control. If they do, this unit
+  // captures that unit. If they don't, ready this unit." (sec-193). The opponent
+  // (not this card's controller) makes the choice, from among their own units.
+  O.captureOrReady = function (state, item) {
+    const src = SB.findUnit(state, item.ctx && item.ctx.sourceUid);
+    if (!src) return;
+    state.queue.unshift({ step: 'captureOrReadyPick', player: SB.other(item.controller), captorUid: src.uid });
+  };
+  S.captureOrReadyPick = {
+    actions: function (state, itemStep) {
+      const acts = [{ type: 'captureOrReady', player: itemStep.player, uid: null }];
+      SB.allUnits(state, itemStep.player).forEach(function (u) {
+        if (SB.card(u.cardId).type === 'leader') return;
+        acts.push({ type: 'captureOrReady', player: itemStep.player, uid: u.uid });
+      });
+      return acts;
+    },
+    apply: function (state, itemStep, action) {
+      const captor = SB.findUnit(state, itemStep.captorUid);
+      if (action.uid == null) {
+        if (captor) { captor.exhausted = false; SB.log(state, { type: 'readied', uid: captor.uid }); }
+        return;
+      }
+      const victim = SB.findUnit(state, action.uid);
+      if (!captor || !victim) return;
+      SB.collectBounties(state, victim);
+      const arena = SB.arenaOf(state, victim);
+      state[arena].splice(state[arena].indexOf(victim), 1);
+      captor.captured = captor.captured || [];
+      captor.captured.push({ uid: victim.uid, cardId: victim.cardId, owner: victim.owner, upgrades: victim.upgrades });
+      SB.log(state, { type: 'captured', uid: victim.uid, cardId: victim.cardId, by: captor.uid, sound: 'capture' });
+    },
   };
 })(window.SB = window.SB || {});

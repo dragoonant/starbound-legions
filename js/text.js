@@ -415,7 +415,8 @@
     plotOffer: function () { return 'you may play scheme cards from your resources'; },
     massAttack: function () { return 'attack with any number of other units, one at a time, even exhausted ones — they cannot attack bases'; },
     captureBudget: function (op) {
-      return targetText(op) + ' captures any number of enemy non-leader units with total remaining HP ' + op.budget + ' or less';
+      const who = op.maxCount != null ? 'up to ' + op.maxCount + ' enemy non-leader units' : 'any number of enemy non-leader units';
+      return targetText(op) + ' captures ' + who + ' with total remaining HP ' + op.budget + ' or less';
     },
     revealHand: function () { return 'look at the opponent’s hand'; },
     experienceAll: function (op) { return 'give an experience token to each ' + scopeNoun(op.scope); },
@@ -491,14 +492,20 @@
     moveTokenCounter: function () { return 'you may move a shield or experience token from one unit to another'; },
     spendAnyCredit: function () { return 'you may spend a credit token belonging to either player'; },
     nameCard: function (op) {
-      return op.mode === 'silence'
-        ? 'name a card the opponent has shown — while this unit is in play, every copy they own loses all abilities'
-        : 'name a card the opponent has shown — while this unit is in play, they cannot play it';
+      if (op.mode === 'silence') return 'name a card the opponent has shown — while this unit is in play, every copy they own loses all abilities';
+      if (op.mode === 'costTax') return 'name a card the opponent has shown — while this unit is in play, each card with that name costs ' + (op.amount || 3) + ' resources more for your opponents to play';
+      if (op.mode === 'phaseBlock') return 'name a card the opponent has shown — cards with that name can’t be played this phase';
+      return 'name a card the opponent has shown — while this unit is in play, they cannot play it';
     },
     captureToBase: function (op) { return 'your base captures ' + describeTarget(op.target) + ' until the start of the regroup phase'; },
     countOnAttackAbilities: function () { return 'count the chosen unit’s on-attack abilities'; },
     cloneEnter: function (op) { return 'you may have this unit enter play as a copy of ' + describeTarget(op.target).replace(/^another /, 'any other '); },
     opponentMayPlayDefeated: function () { return 'the opponent may play this card from your discard pile for free'; },
+    // ---- cluster-c4 expansion ----
+    stealCredit: function () { return 'take control of an enemy Credit token'; },
+    defeatCredit: function () { return 'defeat an enemy Credit token'; },
+    captureOrReady: function () { return 'an opponent may choose a non-leader unit they control — if they do, this unit captures that unit; if they don’t, ready this unit'; },
+    rescueChoice: function () { return 'the defending player may rescue a card they own guarded by this unit — if they do, draw 2 cards'; },
   };
   // Late-bound alias so grantAbilityTemp can render nested abilities.
   function describeAbilityPublic(ab) { return describeAbility(ab); }
@@ -880,6 +887,9 @@
     providesAspects: 'The attached unit’s aspect icons count as yours when paying costs.',
     cantAttackBases: function (card) { return (card.type === 'upgrade' ? 'Attached unit' : 'This unit') + ' can’t attack bases.'; },
     cantReady: 'This unit doesn’t ready during the regroup phase.',
+    // cluster-c4 expansion
+    extraRegroupPhase: 'There is an additional regroup phase after the first regroup phase each round.',
+    entersReady: 'This unit enters play ready.',
   };
 
   function traitName(t) { return SB.names.traits[t] || t; }
@@ -892,6 +902,7 @@
     if (f && f.notTrait) bits.push('non-' + traitName(f.notTrait));
     if (f && f.trait) bits.push(traitName(f.trait));
     if (f && f.damaged) bits.push('damaged');
+    if (f && f.nonLeader) bits.push('non-leader');
     if (!bits.length) return null;
     return 'Attach to ' + an(bits.join(' ') + ' unit') + '.';
   }

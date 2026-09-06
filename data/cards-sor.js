@@ -270,7 +270,7 @@
   "sor-188": {"id":"sor-188","type":"unit","aspects":["cunning","heroism"],"traits":["tr32","tr08","tr36"],"unique":true,"cost":1,"power":1,"hp":3,"arena":"ground"},
   "sor-190": {"id":"sor-190","type":"unit","aspects":["cunning","heroism"],"traits":["tr32"],"cost":2,"power":3,"hp":2,"arena":"ground"},
   "sor-191": {"id":"sor-191","type":"unit","aspects":["cunning","heroism"],"traits":["tr27","tr46","tr10"],"cost":2,"power":1,"hp":1,"arena":"space"},
-  "sor-193": {"id":"sor-193","type":"unit","aspects":["cunning","heroism"],"traits":["tr45","tr46","tr41"],"unique":true,"cost":3,"power":3,"hp":4,"arena":"space"},
+  "sor-193": {"id":"sor-193","type":"unit","aspects":["cunning","heroism"],"traits":["tr45","tr46","tr41"],"unique":true,"cost":3,"power":3,"hp":4,"arena":"space","staticFlags":["entersReady"],"abilities":[{"trigger":"onRegroup","effects":[{"op":"binaryChoice","chooser":"self","aGate":{"if":"canPay","n":1},"a":{"effects":[{"op":"spendResources","amount":1}]},"b":{"effects":[{"op":"returnHand","target":{"self":true}}]}}]}]},
   "sor-194": {"id":"sor-194","type":"unit","aspects":["cunning","heroism"],"traits":["tr32","tr43"],"cost":3,"power":2,"hp":4,"arena":"ground","keywords":[{"k":"raid","n":2},{"k":"saboteur"}]},
   "sor-195": {"id":"sor-195","type":"unit","aspects":["cunning","heroism"],"traits":["tr46","tr10"],"cost":4,"power":3,"hp":4,"arena":"space","keywords":[{"k":"ambush"}]},
   "sor-197": {"id":"sor-197","type":"unit","aspects":["cunning","heroism"],"traits":["tr13","tr29"],"unique":true,"cost":6,"power":6,"hp":5,"arena":"ground"},

@@ -223,7 +223,7 @@
   "shd-199": {"id":"shd-199","type":"unit","aspects":["cunning","heroism"],"traits":["tr45","tr44"],"cost":3,"power":3,"hp":4,"arena":"ground"},
   "shd-200": {"id":"shd-200","type":"unit","aspects":["cunning","heroism"],"traits":["tr13","tr08","tr44","tr49"],"cost":3,"power":3,"hp":5,"arena":"ground"},
   "shd-201": {"id":"shd-201","type":"unit","aspects":["cunning","heroism"],"traits":["tr45"],"cost":4,"power":4,"hp":4,"arena":"ground","keywords":[{"k":"smuggle","cost":0,"aspects":["cunning","heroism"]}]},
-  "shd-202": {"id":"shd-202","type":"unit","aspects":["cunning","heroism"],"traits":["tr45"],"unique":true,"cost":4,"power":3,"hp":5,"arena":"ground"},
+  "shd-202": {"id":"shd-202","type":"unit","aspects":["cunning","heroism"],"traits":["tr45"],"unique":true,"cost":4,"power":3,"hp":5,"arena":"ground","abilities":[{"trigger":"onPlay","effects":[{"op":"revealHand"},{"op":"nameCard","mode":"costTax","amount":3}]}]},
   "shd-203": {"id":"shd-203","type":"unit","aspects":["cunning","heroism"],"traits":["tr45"],"unique":true,"cost":5,"power":4,"hp":7,"arena":"ground","keywords":[{"k":"smuggle","cost":0,"aspects":["cunning","heroism"]}]},
   "shd-204": {"id":"shd-204","type":"unit","aspects":["cunning","heroism"],"traits":["tr45","tr46","tr41"],"unique":true,"cost":6,"power":5,"hp":5,"arena":"space","keywords":[{"k":"smuggle","cost":0,"aspects":["cunning","heroism"]}]},
   "shd-205": {"id":"shd-205","type":"event","aspects":["cunning","heroism"],"traits":["tr42"],"cost":2},
