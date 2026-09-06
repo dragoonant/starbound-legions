@@ -34,6 +34,9 @@ Suite: `node tools/run-tests.mjs --quiet` → 82 passed. Run it before every com
   dump; `--fetch` downloads one). Loaded by `index.html` only, never by `tests.html` (a
   test enforces this). `names.js registerSource` keeps both sets; the HUD drawer's
   names button toggles, remembered in `localStorage['sb.names']`; default is printed.
+- The pack also carries the published game's words for the vocabulary the theme
+  renames — the power token and the unique insignia (`terms`; theme words in THEME.md).
+  Generated prose reads `SB.names.terms` at render time, so it follows the toggle.
 - Third-party names go nowhere else: not card data, engine, tests, art prompts, docs
   or commit messages. Regenerate the file rather than editing it.
 

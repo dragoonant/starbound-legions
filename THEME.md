@@ -33,6 +33,12 @@ Strider (walker) · Skimmer (speeder).
 The Current: each player's power token (the Force analogue). Credits, schemes
 (Plot), disclosures, bounties keep their generic English names.
 
+The Current and *champion* (the unique insignia) are the two words of game vocabulary
+the theme renames. They live in `names.js` as `terms`; every generated log line,
+prompt, label and help paragraph builds from them at render time, and the source pack
+swaps them together with the names (`tools/gen-source-names.mjs` TERMS), so switching
+the printed names off brings the theme's words back.
+
 ## Recurring champions
 
 Kael Verin (young Warden hero) · Sera Verin (his sister, Freeburn princess) ·

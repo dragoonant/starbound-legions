@@ -26,11 +26,14 @@
 
       const body = document.createElement('div');
       body.id = 'help-body';
+      // A section entry may be a function: its prose is built from the game vocabulary
+      // (names.js terms) at open time, so it follows the active name set.
+      const text = function (v) { return typeof v === 'function' ? v() : v; };
       H.sections.forEach(function (sec) {
         const h = document.createElement('h3');
-        h.textContent = sec[0];
+        h.textContent = text(sec[0]);
         const p = document.createElement('p');
-        p.textContent = sec[1];
+        p.textContent = text(sec[1]);
         body.appendChild(h);
         body.appendChild(p);
       });
