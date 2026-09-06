@@ -106,6 +106,10 @@ if (existsSync(uniquePath) && !FETCH) {
     if (row[F.printing] !== 'Standard' || !MAIN_SETS.includes(row[F.setId])) continue;
     const id = idOf(row[F.setId], row[F.number]);
     if (!ourIds.has(id) || rows.has(id)) continue;
+    // A set number can carry BOTH a token and a real card (LAW-2 is the Experience token
+    // and a leader). Taking whichever came first put seven leaders under a token's name,
+    // so match the row against what our own card at that id actually is.
+    if (isLeaderId.has(id) !== (row[F.type] === 'Leader')) continue;
     rows.set(id, {
       name: row[F.name], subtitle: row[F.subtitle],
       text: textKey ? row[F[textKey]] : '',

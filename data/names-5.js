@@ -234,6 +234,7 @@
   const TR = {
     tr50: 'Rekindled', tr51: 'Risen', tr52: 'Modification', tr53: 'Disaster',
     tr54: 'Musician', tr55: 'Sandborn', tr56: 'Reaver', tr57: 'Vatwright',
+    tr58: 'Commissioned', tr59: 'Duneling',
   };
   Object.keys(TR).forEach(function (id) { SB.names.traits[id] = TR[id]; });
 
