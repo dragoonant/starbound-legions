@@ -218,7 +218,7 @@
   "law-199": {"id":"law-199","type":"unit","aspects":["aggression"],"traits":["tr45"],"cost":7,"power":6,"hp":7,"arena":"ground","keywords":[{"k":"raid","n":3}]},
   "law-200": {"id":"law-200","type":"upgrade","aspects":["aggression"],"traits":["tr20","tr48"],"cost":2,"power":2,"hp":0},
   "law-201": {"id":"law-201","type":"upgrade","aspects":["aggression"],"traits":["tr20","tr48"],"cost":3,"power":1,"hp":1},
-  "law-202": {"id":"law-202","type":"event","aspects":["aggression"],"traits":["tr31"],"cost":1},
+  "law-202": {"id":"law-202","type":"event","aspects":["aggression"],"traits":["tr31"],"cost":1,"abilities":[{"trigger":"onPlay","effects":[{"op":"attackWith","target":{"who":"friendly","what":"unit","readyOnly":true},"grantSaboteurForAttack":true,"bonusIfCond":{"cond":{"if":"fewerResourcesThanOpponent"},"power":2,"hp":0}}]}]},
   "law-203": {"id":"law-203","type":"event","aspects":["aggression"],"traits":["tr14"],"cost":1},
   "law-204": {"id":"law-204","type":"event","aspects":["aggression"],"traits":["tr18"],"cost":1},
   "law-205": {"id":"law-205","type":"event","aspects":["aggression"],"traits":["tr14"],"cost":1},

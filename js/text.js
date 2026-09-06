@@ -73,6 +73,7 @@
     if (sel.arenaRef) s += ' in the chosen arena';
     if (sel.aspectRef) s += ' of the chosen aspect';
     if (sel.hasShieldOrExperience) s += ' carrying a shield or experience token';
+    if (sel.hasShield) s += ' carrying a shield token';
     if (sel.notLeaderPilotBearer) s += ' not carrying a leader';
     if (sel.token === false) s += ' (non-token)';
     return s;
@@ -110,15 +111,19 @@
     if (op.amountRef === 'defeatedPower') return 'as many as this unit’s power';
     if (op.amountRef === 'playedCardCost') return 'as much as that card’s cost in';
     if (op.amountRef === 'creditsOwned') return '1 for each of your credit tokens';
+    if (op.amountRef === 'resourcesOwned') return '1 for each resource you control';
+    if (op.amountRef === 'friendlyTraitCount') return '1 for each friendly ' + (SB.names.traits[op.trait] || op.trait) + ' unit you control';
     if (/^remHpOf:/.test(op.amountRef)) return 'as much as the chosen unit’s remaining HP in';
     return String(op.amount);
   }
 
   // A counted amount reads as a trailing "equal to …" clause: 'deal damage to a unit
   // equal to the number of cards in your hand'. Keep in step with SB.resolveAmount and
-  // SB.extraAmounts (js/ops2.js).
-  function countPhrase(ref) {
+  // SB.extraAmounts (js/ops2.js). `op` is passed through for refs whose text depends
+  // on another field on the same op (friendlyTraitCount reads op.trait).
+  function countPhrase(ref, op) {
     if (ref == null) return null;
+    if (ref === 'friendlyTraitCount') return 'the number of friendly ' + (SB.names.traits[op.trait] || op.trait) + ' units you control';
     const fixed = {
       lastHealed: 'the damage healed this way', healedAmount: 'the damage healed', excess: 'the excess damage',
       friendlyInTargetArena: 'the number of friendly units in its arena', otherFriendlyCount: 'the number of other friendly units',
@@ -127,6 +132,7 @@
       targetRemHpMinus1: 'its remaining HP minus 1', distinctDiscardCosts: 'the number of different costs among cards in your discard pile',
       powerOfPlayed: 'the played unit’s power', friendlySpaceCount: 'the number of friendly space units', handSize: 'the number of cards in your hand',
       defeatedPower: 'this unit’s power', playedCardCost: 'that card’s cost', creditsOwned: 'the number of your credit tokens',
+      resourcesOwned: 'the number of resources you control',
     };
     if (fixed[ref]) return fixed[ref];
     if (/^powerOf:/.test(ref)) return 'the chosen unit’s power';
@@ -136,7 +142,7 @@
   }
   function dealText(verb, op, what, to) {
     // verb: 'deal' | 'heal'; what: 'damage'; to: the target phrase
-    if (op.amountRef != null) return verb + ' ' + what + ' ' + to + ' equal to ' + countPhrase(op.amountRef);
+    if (op.amountRef != null) return verb + ' ' + what + ' ' + to + ' equal to ' + countPhrase(op.amountRef, op);
     return verb + ' ' + op.amount + ' ' + what + ' ' + to;
   }
 
@@ -191,7 +197,8 @@
     indirectDamage: function (op) {
       const who = op.who === 'self' ? 'you distribute' :
         op.who === 'defending' ? 'the defending player distributes' : 'your opponent distributes';
-      return who + ' ' + amountText(op) + ' indirect damage among their units and base';
+      const amt = op.amountRef != null ? 'indirect damage equal to ' + countPhrase(op.amountRef, op) : amountText(op) + ' indirect damage';
+      return who + ' ' + amt + ' among their units and base';
     },
     searchDeck: function (op) {
       const n = op.take || 1;
@@ -227,7 +234,7 @@
     pickUnit: function (op) { return 'choose ' + describeTarget(op.target); },
     dividedDamage: function (op) {
       const among = ' divided as you choose among ' + scopeNounPlural(op.scope || { who: 'enemy', what: 'unit' });
-      if (op.amountRef != null) return 'deal damage' + among + ' equal to ' + countPhrase(op.amountRef);
+      if (op.amountRef != null) return 'deal damage' + among + ' equal to ' + countPhrase(op.amountRef, op);
       return 'deal ' + op.amount + ' damage' + among;
     },
     attackWith: function (op) {
@@ -245,6 +252,9 @@
       if (op.bonusPowerRef) perks.push('it gets +1/+0 for this attack ' + amountText({ amountRef: op.bonusPowerRef }).replace(/^1 /, ''));
       if (op.abilitiesFromDiscarded) perks.push('for this round it gains the discarded card’s abilities');
       if (op.defenderFirst) perks.push('the defender deals its combat damage first');
+      if (op.bonusIfCond) {
+        perks.push(conditionClause(op.bonusIfCond.cond) + ', it gets ' + statPair(op.bonusIfCond.power, op.bonusIfCond.hp) + ' for this attack');
+      }
       if (perks.length) s += ' — ' + perks.join(' and ');
       return s;
     },
@@ -388,7 +398,7 @@
     giveAdvantage: function (op) {
       if (op.amountRef === 'otherFriendlyCount') return 'give an advantage token to ' + targetText(op) + ' for each other friendly unit';
       if (op.amountRef === 'lastHealed') return 'give an advantage token to ' + targetText(op) + ' for each damage healed this way';
-      if (op.amountRef != null) return 'give advantage tokens to ' + targetText(op) + ' equal to ' + countPhrase(op.amountRef);
+      if (op.amountRef != null) return 'give advantage tokens to ' + targetText(op) + ' equal to ' + countPhrase(op.amountRef, op);
       const n = op.amount || 1;
       return 'give ' + (n === 1 ? 'an advantage token' : n + ' advantage tokens') + ' to ' + targetText(op);
     },
@@ -432,7 +442,7 @@
     selfUpgradeToHand: function () { return 'return this upgrade from your discard pile to your hand'; },
     dividedAdvantage: function (op) {
       const among = ' among ' + scopeNounPlural(op.scope || { who: 'friendly', what: 'unit' });
-      if (op.amountRef != null) return 'distribute advantage tokens equal to ' + countPhrase(op.amountRef) + among;
+      if (op.amountRef != null) return 'distribute advantage tokens equal to ' + countPhrase(op.amountRef, op) + among;
       return 'distribute ' + (op.optional ? 'up to ' : '') + op.amount + ' advantage tokens' + among;
     },
     chooseAspect: function () { return 'choose an aspect'; },
@@ -643,6 +653,8 @@
     savedIsCard: function () { return 'if it is the named champion'; },
     playedThisPhaseHasTrait: function (c) { return 'if you played ' + an((SB.names.traits[c.trait] || c.trait) + ' card') + ' this round'; },
     bearerWasFriendlyWithTrait: function (c) { return 'if this upgrade was on a friendly ' + (SB.names.traits[c.trait] || c.trait) + ' unit'; },
+    fewerResourcesThanOpponent: function () { return 'if you control fewer resources than an opponent'; },
+    opponentControlsNoGroundUnits: function () { return 'if an opponent controls no ground units'; },
   };
 
   function describeAbility(ab) {
@@ -813,6 +825,8 @@
     doubleSearch: 'When the attached unit searches cards from your deck, it searches twice as many.',
     bearerIsLeader: 'The attached unit counts as a leader unit.',
     providesAspects: 'The attached unit’s aspect icons count as yours when paying costs.',
+    cantAttackBases: function (card) { return (card.type === 'upgrade' ? 'Attached unit' : 'This unit') + ' can’t attack bases.'; },
+    cantReady: 'This unit doesn’t ready during the regroup phase.',
   };
 
   function traitName(t) { return SB.names.traits[t] || t; }
@@ -850,8 +864,9 @@
     const at = attachRule(card);
     if (at) out.push(at);
     (card.staticFlags || []).forEach(function (f) {
-      if (STATIC_FLAG_TEXT[f]) out.push(STATIC_FLAG_TEXT[f]);
-      else throw new Error('no text for staticFlag ' + f);
+      const t = STATIC_FLAG_TEXT[f];
+      if (t == null) throw new Error('no text for staticFlag ' + f);
+      out.push(typeof t === 'function' ? t(card) : t);
     });
     // Engine-enforced card fields outside the ability list (keep in step with
     // engine.playCard / legalActions / state.newGame).
@@ -859,6 +874,10 @@
     if (card.discardAction) out.push('Action: if this card was discarded from your hand or deck this round, play it from your discard pile (paying its cost).');
     if (card.copyLimit) out.push('A deck may hold up to ' + card.copyLimit + ' copies of this card.');
     if (card.startingHandDelta) out.push('Draw ' + Math.abs(card.startingHandDelta) + (card.startingHandDelta < 0 ? ' less' : ' more') + ' in your opening hand.');
+    if (card.minDeckSizeDelta) {
+      out.push('Your minimum deck size is ' + (card.minDeckSizeDelta > 0 ? 'increased' : 'decreased') +
+        ' by ' + Math.abs(card.minDeckSizeDelta) + ' cards.');
+    }
     return out;
   }
 

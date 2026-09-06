@@ -178,6 +178,13 @@
   SB.bearerCountsAsLeader = function (unit) {
     return unit.upgrades.some(function (inst) { return (SB.card(inst.cardId).staticFlags || []).indexOf('bearerIsLeader') >= 0; });
   };
+  // True if a unit's own printed staticFlags, or any upgrade attached to it, carry
+  // `flag` — an upgrade grants its own staticFlags to its bearer (sor-072 style).
+  SB.unitHasGrantedStaticFlag = function (state, unit, flag) {
+    if (!unit) return false;
+    if ((SB.unitDef(unit).staticFlags || []).indexOf(flag) >= 0) return true;
+    return unit.upgrades.some(function (inst) { return (SB.card(inst.cardId).staticFlags || []).indexOf(flag) >= 0; });
+  };
   const prevPlayerAspects = SB.playerAspects;
   SB.playerAspects = function (state, playerIdx) {
     let a = prevPlayerAspects(state, playerIdx);
@@ -224,6 +231,7 @@
     }
     if (sel.hasShieldOrExperience && !(u.shields > 0 || u.experience > 0)) return false;
     if (sel.notLeaderPilotBearer && u.upgrades.some(function (i) { return i.leaderPilot; })) return false;
+    if (sel.hasShield && !(u.shields > 0)) return false;
     return true;
   };
 
@@ -312,6 +320,12 @@
     playedThisPhaseHasTrait: function (state, c, cond) {
       return (state.players[c].playedThisPhase || []).some(function (cid) { return (SB.card(cid).traits || []).indexOf(cond.trait) >= 0; });
     },
+    fewerResourcesThanOpponent: function (state, c) {
+      return state.players[c].resources.length < state.players[SB.other(c)].resources.length;
+    },
+    opponentControlsNoGroundUnits: function (state, c) {
+      return !state.ground.some(function (u) { return u.owner === SB.other(c); });
+    },
   };
 
   // ---- amount refs -------------------------------------------------------------
@@ -326,6 +340,11 @@
     if (ref === 'defeatedPower') return ctx.defeatedPower || 0;
     if (ref === 'playedCardCost') return ctx.playedCardCost || 0;
     if (ref === 'creditsOwned') return state.players[item.controller].credits || 0;
+    if (ref === 'resourcesOwned') return state.players[item.controller].resources.length;
+    if (ref === 'friendlyTraitCount') {
+      const trait = item.op.trait;
+      return SB.allUnits(state, item.controller).filter(function (u) { return SB.unitTraits(state, u).indexOf(trait) >= 0; }).length;
+    }
     const m = ref.match(/^remHpOf:(.+)$/);
     if (m) { const u = savedUnit(state, ctx, m[1]); return u ? SB.unitRemainingHp(state, u) : 0; }
     return undefined;
@@ -892,7 +911,10 @@
         if (played) st[it.savePlayedAs || 'played'] = { kind: 'unit', uid: played.uid };
       }
       const grantAmbush = it.withAmbush || (it.withAmbushIfCredit && state.lastPaymentUsedCredit);
-      if (grantAmbush && played && played.exhausted && SB.card(action.cardId).type === 'unit') {
+      // A unit that already has ambush queued its own attack when it entered play;
+      // granting it again would let it attack twice.
+      if (grantAmbush && played && played.exhausted && SB.card(action.cardId).type === 'unit' &&
+          !SB.hasKeyword(state, played, 'ambush')) {
         state.queue.push({ step: 'effect', controller: it.player,
           ctx: { sourceUid: played.uid, cardId: played.cardId }, op: { op: 'ambushAttack', target: null } });
       }
@@ -1029,6 +1051,12 @@
     if (item.op.defenderFirst) {
       const u = SB.findUnit(state, target.uid);
       if (u) u.defenderFirstNext = true;
+    }
+    // A stat bump for this attack, gated by an arbitrary condition (law-202: +2/+0
+    // while you control fewer resources than an opponent).
+    if (item.op.bonusIfCond && SB.checkCondition(state, item.controller, item.op.bonusIfCond.cond, item.ctx || {})) {
+      const u = SB.findUnit(state, target.uid);
+      if (u) { u.temp.power += item.op.bonusIfCond.power || 0; u.temp.hp += item.op.bonusIfCond.hp || 0; }
     }
     prevAttackWith(state, item, target);
   };

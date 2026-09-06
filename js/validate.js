@@ -100,6 +100,16 @@
         const limit = SB.cards[cid].copyLimit || 3;
         if (counts[cid] > limit) fail(deckId, counts[cid] + ' copies of ' + cid);
       });
+      // Minimum deck size: 50, raised by the leader, the base, or any main-deck
+      // card carrying minDeckSizeDelta (jtl-024 style). Only enforced for
+      // tournament-format decks — test fixtures (tests/fixtures.js) run small
+      // decks on purpose and carry no format.
+      if (d.format) {
+        const minSize = 50 +
+          (SB.cards[d.leader].minDeckSizeDelta || 0) + (SB.cards[d.base].minDeckSizeDelta || 0) +
+          d.cards.reduce(function (sum, cid) { return sum + (SB.cards[cid].minDeckSizeDelta || 0); }, 0);
+        if (d.cards.length < minSize) fail(deckId, d.cards.length + ' cards, needs ' + minSize + ' or more');
+      }
     });
   };
 })(window.SB = window.SB || {});

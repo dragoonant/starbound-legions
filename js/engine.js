@@ -829,7 +829,10 @@
     const sab = SB.hasKeyword(state, unit, 'saboteur');
     const pool = (sentinels.length > 0 && !sab) ? sentinels : enemies;
     const targets = pool.map(function (e) { return { kind: 'unit', uid: e.uid }; });
-    if (sentinels.length === 0 || sab) targets.push({ kind: 'base', player: SB.other(me) });
+    if ((sentinels.length === 0 || sab) &&
+        !(SB.unitHasGrantedStaticFlag && SB.unitHasGrantedStaticFlag(state, unit, 'cantAttackBases'))) {
+      targets.push({ kind: 'base', player: SB.other(me) });
+    }
     return targets;
   };
 
@@ -1144,6 +1147,7 @@
       const wasExhausted = u.exhausted;
       if (u.stunned) { delete u.stunned; } // stunned units miss this ready step
       else if (SB.isJailed(state, u)) { /* jailed units stay exhausted */ }
+      else if (SB.unitHasGrantedStaticFlag && SB.unitHasGrantedStaticFlag(state, u, 'cantReady')) { /* skipped */ }
       else {
         u.exhausted = false;
         // "When this unit readies: pay N or exhaust it" taxes from upgrades.

@@ -463,4 +463,117 @@
     s = SB.apply(s, acts[0]);
     T.eq(s.queue.length && s.queue[0].step === "discardChoice" ? 1 : 0, 0, "the pick resolves");
   });
+
+  // ---- new vocabulary: fewerResourcesThanOpponent, opponentControlsNoGroundUnits,
+  // hasShield, resourcesOwned, friendlyTraitCount, cantAttackBases, cantReady,
+  // minDeckSizeDelta ---------------------------------------------------------
+
+  T.add('expansion: law-202 buffs its attacker when you control fewer resources than an opponent', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    s.active = me;
+    const atk = T.putOnBoard(s, me, 'fx-grunt');
+    fund(s, me, 3);
+    T.giveResources(s, foe, 10); // strictly more resources than me
+    s = play(s, me, 'law-202');
+    s = drive(s);
+    const u = SB.findUnit(s, atk.uid);
+    T.ok(SB.hasKeyword(s, u, 'saboteur'), 'gains Saboteur for the attack');
+    T.eq(u.temp.power, 2, 'the +2/+0 bonus applied while behind on resources');
+  });
+
+  T.add('expansion: law-202 withholds the stat bonus without fewer resources than an opponent', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    s.active = me;
+    const atk = T.putOnBoard(s, me, 'fx-grunt');
+    fund(s, me, 5); fund(s, foe, 5); // tied, not fewer
+    s = play(s, me, 'law-202');
+    s = drive(s);
+    const u = SB.findUnit(s, atk.uid);
+    T.ok(SB.hasKeyword(s, u, 'saboteur'), 'still gains Saboteur');
+    T.eq(u.temp.power, 0, 'no bonus while not behind on resources');
+  });
+
+  T.add('expansion: sec-170 enters play ready only while the opponent controls no ground units', function () {
+    let s = rich(T.game(), 0); s.active = 0;
+    s = play(s, 0, 'sec-170');
+    T.ok(!unitsOf(s, 0, 'sec-170')[0].exhausted, 'ready — the opponent has no ground units');
+    let s2 = rich(T.game(), 0); s2.active = 0;
+    T.putOnBoard(s2, 1, 'fx-wall');
+    s2 = play(s2, 0, 'sec-170');
+    T.ok(unitsOf(s2, 0, 'sec-170')[0].exhausted, 'exhausted — the opponent controls a ground unit');
+  });
+
+  T.add('expansion: sor-090 deals damage equal to the resources you control', function () {
+    SB.cards['fx-tank'] = { id: 'fx-tank', type: 'unit', arena: 'space', cost: 1, power: 0, hp: 20, aspects: ['vigilance'] };
+    try {
+      let s = rich(T.game(), 0); const me = 0, foe = 1;
+      s.active = me;
+      fund(s, me, 12);
+      const n = s.players[me].resources.length;
+      const victim = T.putOnBoard(s, foe, 'fx-tank'); // hp 20: survives any resource count in this test
+      s = play(s, me, 'sor-090');
+      s = drive(s, function (a) { return a.uid === victim.uid; });
+      T.eq(SB.findUnit(s, victim.uid).damage, n, 'damage dealt equals the number of resources controlled');
+      const u = unitsOf(s, me, 'sor-090')[0];
+      T.ok(SB.hasKeyword(s, u, 'sentinel') && SB.hasKeyword(s, u, 'overwhelm'), 'keeps its printed Sentinel and Overwhelm');
+    } finally {
+      delete SB.cards['fx-tank'];
+    }
+  });
+
+  T.add('expansion: jtl-116 deals indirect damage equal to the Vehicle units you control', function () {
+    let s = rich(T.game(), 0); const me = 0, foe = 1;
+    s.active = me;
+    T.putOnBoard(s, me, 'jtl-183'); // a Vehicle already in play (tr46)
+    const before = s.players[foe].base.damage;
+    s = play(s, me, 'jtl-116'); // itself a Vehicle too: 2 on the board once played
+    s = drive(s);
+    T.eq(s.players[foe].base.damage - before, 2, 'indirect damage equals the number of friendly Vehicles');
+  });
+
+  T.add('expansion: sor-072 stops its bearer from attacking a base', function () {
+    let s = T.game(); const me = 0;
+    const bearer = T.putOnBoard(s, me, 'fx-grunt');
+    bearer.upgrades.push({ uid: s.nextUid++, cardId: 'sor-072', owner: me });
+    T.ok(!SB.attackTargets(s, bearer).some(function (t) { return t.kind === 'base'; }), 'no base among its attack targets');
+    T.ok(SB.unitHasGrantedStaticFlag(s, bearer, 'cantAttackBases'), 'the flag is picked up from the upgrade');
+  });
+
+  T.add('expansion: a unit with cantReady is skipped when units ready at regroup', function () {
+    SB.cards['fx-frozen'] = { id: 'fx-frozen', type: 'unit', arena: 'ground', cost: 1, power: 1, hp: 1,
+      aspects: ['vigilance'], staticFlags: ['cantReady'] };
+    try {
+      let s = T.game('fixtureA', 'fixtureB', 'cantready'); const me = 0;
+      const u = T.putOnBoard(s, me, 'fx-frozen', { exhausted: true });
+      const other = T.putOnBoard(s, me, 'fx-grunt', { exhausted: true });
+      s = T.act(s, { type: 'pass' });
+      s = T.act(s, { type: 'pass' }); // pass/pass ends the round
+      s = drive(s); // resolve the regroup resource picks, which trigger the ready step
+      T.ok(SB.findUnit(s, u.uid).exhausted, 'cantReady unit stayed exhausted through regroup');
+      T.ok(!SB.findUnit(s, other.uid).exhausted, 'an ordinary unit readied normally');
+    } finally {
+      delete SB.cards['fx-frozen'];
+    }
+  });
+
+  T.add('expansion: a shield-selector filter (hasShield) keeps only shielded candidates', function () {
+    let s = T.game(); const me = 0;
+    const shielded = T.putOnBoard(s, me, 'fx-grunt', { shields: 1 });
+    const bare = T.putOnBoard(s, me, 'fx-wall');
+    const cands = SB.selectorCandidates(s, me, { who: 'friendly', what: 'unit', hasShield: true }, {});
+    T.ok(cands.some(function (c) { return c.uid === shielded.uid; }), 'the shielded unit is a candidate');
+    T.ok(!cands.some(function (c) { return c.uid === bare.uid; }), 'the unshielded unit is filtered out');
+  });
+
+  T.add('expansion: minDeckSizeDelta raises a deck’s minimum size (jtl-024)', function () {
+    T.eq(SB.card('jtl-024').minDeckSizeDelta, 10, 'jtl-024 carries the +10 delta');
+    SB.decks['fx-shortdeck'] = { leader: 'law-010', base: 'jtl-024', format: 'premier',
+      cards: (function () { const a = []; for (let i = 0; i < 59; i++) a.push('law-041'); return a; })() };
+    try {
+      T.throws(function () { SB.validateContent(); }, 'a 59-card deck fails the 60-card minimum a jtl-024 base imposes');
+    } finally {
+      delete SB.decks['fx-shortdeck'];
+      SB.validateContent(); // restore a clean world for tests that follow
+    }
+  });
 })(window.SB = window.SB || {});
