@@ -171,7 +171,8 @@
       const who = op.who === 'self' ? 'you discard' : 'your opponent discards';
       const f = op.filter || {};
       const what = f.type ? an(f.type) : f.notType ? 'a non-' + f.notType + ' card' : 'a card';
-      return who + ' ' + ((op.amount || 1) === 1 ? what : (op.amount + ' cards')) + ' from their hand';
+      const whose = op.who === 'self' ? ' from your hand' : ' from their hand';
+      return who + ' ' + ((op.amount || 1) === 1 ? what : (op.amount + ' cards')) + whose;
     },
     discardRandom: function (op) {
       const who = op.who === 'self' ? 'you discard' : 'your opponent discards';

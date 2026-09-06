@@ -101,7 +101,7 @@
   "shd-034": {"id":"shd-034","type":"unit","aspects":["vigilance","villainy"],"traits":["tr17","tr25","tr43"],"cost":5,"power":4,"hp":4,"arena":"ground","keywords":[{"k":"shielded"}]},
   "shd-035": {"id":"shd-035","type":"unit","aspects":["vigilance","villainy"],"traits":["tr25","tr46","tr41"],"cost":6,"power":4,"hp":5,"arena":"space","keywords":[{"k":"sentinel"}]},
   "shd-036": {"id":"shd-036","type":"unit","aspects":["vigilance","villainy"],"traits":["tr45","tr46","tr41"],"unique":true,"cost":7,"power":4,"hp":7,"arena":"space","keywords":[{"k":"smuggle","cost":0,"aspects":["vigilance","villainy"]},{"k":"grit"}]},
-  "shd-037": {"id":"shd-037","type":"unit","aspects":["vigilance","villainy"],"traits":["tr12","tr11","tr29"],"unique":true,"cost":8,"power":6,"hp":6,"arena":"ground"},
+  "shd-037": {"id":"shd-037","type":"unit","aspects":["vigilance","villainy"],"traits":["tr12","tr11","tr29"],"arena":"ground","cost":8,"power":6,"hp":6,"unique":true,"abilities":[{"trigger":"constant","scope":{"who":"enemy","what":"unit","nonLeader":true},"grant":{"power":-2,"hp":-2}}]},
   "shd-038": {"id":"shd-038","type":"upgrade","aspects":["vigilance","villainy"],"traits":["tr23"],"cost":2,"power":1,"hp":2},
   "shd-045": {"id":"shd-045","type":"unit","aspects":["vigilance","heroism"],"traits":["tr50"],"unique":true,"cost":4,"power":2,"hp":6,"arena":"ground","keywords":[{"k":"shielded"}]},
   "shd-046": {"id":"shd-046","type":"unit","aspects":["vigilance","heroism"],"traits":["tr12","tr50"],"unique":true,"cost":5,"power":4,"hp":7,"arena":"ground"},

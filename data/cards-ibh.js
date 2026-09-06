@@ -4,7 +4,7 @@
   'use strict';
   Object.assign(SB.cards, {
   // ---- competitive-expansion skeletons (tools/pull-sets.mjs); abilities authored by hand ----
-  "ibh-052": {"id":"ibh-052","type":"event","aspects":["cunning"],"traits":["tr14"],"cost":6},
+  "ibh-052": {"id":"ibh-052","type":"event","aspects":["cunning"],"traits":["tr14"],"cost":6,"abilities":[{"trigger":"onPlay","effects":[{"op":"pickUnit","target":{"who":"any","what":"unit","nonLeader":true,"maxCost":6},"saveTargetAs":"t"},{"op":"exhaustAll","scope":{"who":"enemy","what":"unit","sameArenaAsSaved":"t","notSavedAs":"t"}},{"op":"returnHand","useTarget":"t"}]}]},
   "ibh-001": {"id":"ibh-001","type":"leader","aspects":["command","heroism"],"traits":["tr32","tr29"],"unique":true,"deployCost":5,"leaderSide":{"abilities":[]},"deployedSide":{"arena":"ground","power":3,"hp":7}},
   "ibh-002": {"id":"ibh-002","type":"base","aspects":["cunning"],"hp":20},
   "ibh-003": {"id":"ibh-003","type":"unit","aspects":["cunning","heroism"],"traits":["tr32","tr49"],"unique":true,"cost":5,"power":3,"hp":6,"arena":"ground","keywords":[{"k":"sentinel"}]},
@@ -75,7 +75,7 @@
   "ibh-069": {"id":"ibh-069","type":"unit","aspects":["aggression","villainy"],"traits":["tr17","tr43"],"cost":3,"power":0,"hp":4,"arena":"ground","keywords":[{"k":"raid","n":4}]},
   "ibh-070": {"id":"ibh-070","type":"unit","aspects":["vigilance","villainy"],"traits":["tr17","tr46","tr47"],"cost":5,"power":5,"hp":4,"arena":"ground","keywords":[{"k":"sentinel"}]},
   "ibh-071": {"id":"ibh-071","type":"event","aspects":["aggression"],"traits":["tr39"],"cost":2},
-  "ibh-072": {"id":"ibh-072","type":"unit","aspects":["vigilance","villainy"],"traits":["tr17","tr46","tr04"],"unique":true,"cost":8,"power":8,"hp":6,"arena":"space"},
+  "ibh-072": {"id":"ibh-072","type":"unit","aspects":["vigilance","villainy"],"traits":["tr17","tr46","tr04"],"arena":"space","cost":8,"power":8,"hp":6,"unique":true,"abilities":[{"trigger":"onPlay","effects":[{"op":"damageAll","amount":1,"scope":{"who":"any","what":"unit","notSelf":true}}]}]},
   "ibh-073": {"id":"ibh-073","type":"unit","aspects":["vigilance","villainy"],"traits":["tr17","tr43"],"cost":2,"power":3,"hp":4,"arena":"ground"},
   "ibh-074": {"id":"ibh-074","type":"event","aspects":["aggression","villainy"],"traits":["tr31"],"cost":2},
   "ibh-075": {"id":"ibh-075","type":"unit","aspects":["villainy"],"traits":["tr17","tr46","tr10"],"cost":2,"power":2,"hp":2,"arena":"space"},
@@ -95,7 +95,7 @@
   "ibh-089": {"id":"ibh-089","type":"unit","aspects":["vigilance","villainy"],"traits":["tr17","tr46","tr47"],"cost":5,"power":5,"hp":4,"arena":"ground","keywords":[{"k":"sentinel"}]},
   "ibh-090": {"id":"ibh-090","type":"unit","aspects":["vigilance"],"traits":["tr17","tr46","tr41"],"cost":4,"power":2,"hp":5,"arena":"space","keywords":[{"k":"restore","n":1}]},
   "ibh-091": {"id":"ibh-091","type":"event","aspects":["vigilance"],"traits":["tr18"],"cost":1},
-  "ibh-092": {"id":"ibh-092","type":"unit","aspects":["aggression","villainy"],"traits":["tr17","tr43"],"cost":4,"power":3,"hp":4,"arena":"ground"},
+  "ibh-092": {"id":"ibh-092","type":"unit","aspects":["aggression","villainy"],"traits":["tr17","tr43"],"arena":"ground","cost":4,"power":3,"hp":4,"abilities":[{"trigger":"onPlay","effects":[{"op":"attackWith","target":{"who":"friendly","what":"unit","notSelf":true,"readyOnly":true,"optional":true},"bonusPower":2}]}]},
   "ibh-093": {"id":"ibh-093","type":"unit","aspects":["aggression","villainy"],"traits":["tr17","tr46","tr10"],"cost":2,"power":1,"hp":3,"arena":"space","keywords":[{"k":"raid","n":1}]},
   "ibh-094": {"id":"ibh-094","type":"unit","aspects":["aggression","villainy"],"traits":["tr17","tr46","tr10"],"cost":2,"power":1,"hp":3,"arena":"space","keywords":[{"k":"raid","n":1}]},
   "ibh-095": {"id":"ibh-095","type":"event","aspects":["aggression","villainy"],"traits":["tr39"],"cost":4},
