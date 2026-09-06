@@ -211,13 +211,58 @@
     T.ok(s.winner === 0 || s.winner === 1, 'winner: ' + s.winner + ' in ' + n + ' actions, round ' + s.round);
   });
 
-  T.add('ai: swings a doomed (defeat-at-regroup) unit instead of sitting on it', function () {
+  // A rental must be cashed. Not "attacks this instant" — developing the board first
+  // and swinging later in the phase is fine — but it must never reach regroup unspent.
+  T.add('ai: swings a doomed (defeat-at-regroup) unit before it expires', function () {
     let s = T.game('fixtureA', 'fixtureB', 'ai-doomed');
     s.active = 0; s.initiative = 0;
     const rental = T.putOnBoard(s, 0, 'fx-brute');   // 5/4, ready
     rental.defeatAtRegroup = true;                   // as a Sneak-Attack-style play marks it
-    const act = SB.ai.chooseAction(s, 'hard');
-    T.eq(act.type, 'attack', 'attacks rather than passing (got ' + act.type + ')');
-    T.eq(act.attacker, rental.uid, 'with the doomed unit');
+    const uid = rental.uid;
+    let swung = false, n = 0;
+    while (!SB.isTerminal(s) && s.phase === 'action' && n++ < 60) {
+      const act = SB.ai.chooseAction(s, 'hard');
+      if (act.type === 'attack' && act.attacker === uid) swung = true;
+      s = SB.apply(s, act);
+    }
+    T.ok(swung, 'attacked with the doomed unit before the phase ended');
+  });
+
+  // The evaluator side of the same rule: a doomed unit whose controller has locked
+  // themselves out of the phase can never act again, so it is already lost.
+  T.add('ai: a locked-out player owns nothing in a defeat-at-regroup unit', function () {
+    function score(mut) {
+      let s = T.game('fixtureA', 'fixtureB', 'ai-rental-eval');
+      s.locked = [false, false];
+      const u = T.putOnBoard(s, 0, 'fx-brute');
+      mut(s, u);
+      return SB.ai.evaluate(s, 0, 'hard');
+    }
+    const ready = score(function (s, u) { u.defeatAtRegroup = true; });
+    const locked = score(function (s, u) { u.defeatAtRegroup = true; s.locked[0] = true; });
+    T.ok(locked < ready - 20, 'locking out with an unspent rental forfeits its whole value');
+    // An exhausted rental has already converted into damage — it must NOT be discounted,
+    // or attacking with one reads as throwing it away (measured; see docs/ai.md).
+    const spent = score(function (s, u) { u.defeatAtRegroup = true; u.exhausted = true; });
+    T.eq(spent, ready, 'attacking with a rental costs it nothing');
+    // The lock must not touch ordinary units: they survive to next round.
+    const permLocked = score(function (s) { s.locked[0] = true; });
+    const perm = score(function () {});
+    T.eq(permLocked, perm, 'a permanent unit is unaffected by the lock');
+  });
+
+  // The reported bug, as one decision: the AI played a temporary summon and then took
+  // the initiative with it unspent, so the unit died at regroup having done nothing.
+  T.add('ai: does not claim initiative while a doomed unit still owes a swing', function () {
+    ['mid', 'hard'].forEach(function (diff) {
+      let s = T.game('fixtureA', 'fixtureB', 'ai-rental-init');
+      s.phase = 'action'; s.active = 0; s.initiative = 1;
+      s.initiativeClaimed = false; s.locked = [false, false]; s.passed = [false, false];
+      const rental = T.putOnBoard(s, 0, 'fx-brute');   // 5/4, ready, can hit the base
+      rental.defeatAtRegroup = true;
+      const act = SB.ai.chooseAction(s, diff);
+      T.ok(act.type !== 'claimInitiative',
+        diff + ': forfeited the rental for the initiative (chose ' + act.type + ')');
+    });
   });
 })(window.SB = window.SB || {});

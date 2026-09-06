@@ -112,16 +112,16 @@
       const powerWorth = P.unitPower * (blocked ? P.lockedPower : 1);
       const hpWorth = P.unitHp *
         (paysOnDeath(state, u) ? (mine ? P.deathPayoff : P.deathPayoffEnemy) : 1);
-      // A unit that dies at the start of regroup is a rental, not a body: its
-      // presence, HP and shields do not survive the phase, so the only thing worth
-      // anything is the swing it can still make. Pricing it as a permanent body let
-      // the AI bank value it never collected — it played the temporary unit, sat on
-      // it, and lost it at regroup: a pure card-down trade.
-      if (u.defeatAtRegroup) {
-        const canSwing = !u.exhausted && !blocked;
-        v += canSwing ? SB.unitPower(state, u) * P.unitPower : 0;
-        return;
-      }
+      // A unit that is defeated at the start of the regroup phase is worth nothing once
+      // its controller is LOCKED: claimInitiative locks you out of the phase for good, so
+      // the unit can never act again and is already, in effect, defeated. Without this
+      // the AI took the initiative while holding an unspent temporary summon (the sor-219
+      // "play a unit, defeat it at regroup" event) and handed over a card for free.
+      // Deliberately NOT a general discount on such units. Scoring them below a normal
+      // body was TRIED and measured backwards (docs/ai.md): it makes ATTACKING with one
+      // cost the value it was carrying, which is the opposite of the intended push.
+      // A plain pass is NOT a lock — a pass is retractable.
+      if (u.defeatAtRegroup && state.locked && state.locked[p]) return;
       v += P.unitOnBoard + SB.unitPower(state, u) * powerWorth +
         SB.unitRemainingHp(state, u) * hpWorth + u.shields * P.shield;
     });
