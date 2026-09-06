@@ -696,7 +696,16 @@
         const sub = (it.items || [])[a.index] || {};
         return 'First: ' + triggerLabel(s, sub);
       }
-      case 'massExhaust': case 'budgetExhaust': return a.uid == null ? 'Stop' : 'Exhaust: ' + unitName(s, a.uid);
+      case 'massExhaust': case 'budgetExhaust': case 'exhaustUpTo': return a.uid == null ? 'Stop' : 'Exhaust: ' + unitName(s, a.uid);
+      case 'chooseMode': {
+        const it = s.queue[0] || {};
+        const mode = (it.modes || [])[a.index];
+        if (mode && SB.describeEffects) {
+          const t = SB.describeEffects(mode.effects);
+          return t.charAt(0).toUpperCase() + t.slice(1);
+        }
+        return 'Option ' + (a.index + 1);
+      }
       case 'massAttackChoose': case 'supportChoose': return a.uid == null ? 'Stop' : 'Attack with: ' + unitName(s, a.uid);
       case 'defeatOwn': return 'Defeat: ' + unitName(s, a.uid);
       case 'swapPick': return 'Trade away: ' + unitName(s, a.uid);

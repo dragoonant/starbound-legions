@@ -115,11 +115,14 @@
   "jtl-073": {"id":"jtl-073","type":"upgrade","aspects":["vigilance"],"traits":["tr18"],"cost":1,"power":1,"hp":1},
   "jtl-074": {"id":"jtl-074","type":"event","aspects":["vigilance"],"traits":["tr39"],"cost":1},
   "jtl-075": {"id":"jtl-075","type":"event","aspects":["vigilance"],"traits":["tr38"],"cost":1},
-  "jtl-076": {"id":"jtl-076","type":"event","aspects":["vigilance"],"traits":["tr39"],"cost":2},
+  "jtl-076": {"id":"jtl-076","type":"event","aspects":["vigilance"],"traits":["tr39"],"cost":2,"abilities":[{"trigger":"onPlay","effects":[
+    {"op":"createToken","token":"tok-xwg","saveAs":"t"},
+    {"op":"shield","amount":1,"target":{"who":"any","what":"unit","optional":true,"notSavedAs":"t"}}
+  ]}]},
   "jtl-077": {"id":"jtl-077","type":"event","aspects":["vigilance"],"traits":["tr53"],"cost":2},
   "jtl-078": {"id":"jtl-078","type":"event","aspects":["vigilance"],"traits":["tr39"],"cost":4,"abilities":[{"trigger":"onPlay","effects":[{"op":"defeat","target":{"who":"any","what":"unit","nonLeader":true,"trait":"tr46"}}]}]},
   "jtl-079": {"id":"jtl-079","type":"event","aspects":["vigilance"],"traits":["tr39"],"cost":5,"abilities":[{"trigger":"onPlay","effects":[{"op":"buffTemp","power":-5,"hp":-5,"target":{"who":"any","what":"unit"}}]}]},
-  "jtl-080": {"id":"jtl-080","type":"event","aspects":["vigilance"],"traits":["tr53"],"cost":9},
+  "jtl-080": {"id":"jtl-080","type":"event","aspects":["vigilance"],"traits":["tr53"],"cost":9,"abilities":[{"trigger":"onPlay","effects":[{"op":"defeatAll","scope":{"who":"any","what":"unit","notUpgraded":true}}]}]},
   "jtl-081": {"id":"jtl-081","type":"unit","aspects":["command","villainy"],"traits":["tr11","tr46","tr10"],"cost":1,"power":2,"hp":1,"arena":"space","abilities":[{"trigger":"constant","scope":{"self":true},"grant":{"keywords":[{"k":"raid","n":1}]},"condition":{"if":"controlsTokenUnit"}}]},
   "jtl-082": {"id":"jtl-082","type":"unit","aspects":["command","villainy"],"traits":["tr11","tr46","tr10"],"cost":2,"power":1,"hp":1,"arena":"space"},
   "jtl-083": {"id":"jtl-083","type":"unit","aspects":["command","villainy"],"traits":["tr45","tr30"],"cost":2,"power":2,"hp":2,"arena":"ground"},
@@ -204,7 +207,10 @@
   "jtl-177": {"id":"jtl-177","type":"event","aspects":["aggression"],"traits":["tr39"],"cost":2},
   "jtl-178": {"id":"jtl-178","type":"event","aspects":["aggression"],"traits":["tr39"],"cost":3},
   "jtl-179": {"id":"jtl-179","type":"event","aspects":["aggression"],"traits":["tr39"],"cost":3},
-  "jtl-180": {"id":"jtl-180","type":"event","aspects":["aggression"],"traits":["tr39"],"cost":3},
+  "jtl-180": {"id":"jtl-180","type":"event","aspects":["aggression"],"traits":["tr39"],"cost":3,"abilities":[{"trigger":"onPlay","effects":[
+    {"op":"defeatShieldsOn","target":{"who":"any","what":"unit"},"saveTargetAs":"u"},
+    {"op":"damage","amount":3,"useTarget":"u"}
+  ]}]},
   "jtl-181": {"id":"jtl-181","type":"event","aspects":["aggression"],"traits":["tr39"],"cost":6,"abilities":[{"trigger":"onPlay","effects":[{"op":"indirectDamage","amount":8,"condition":{"if":"controlUnitWithTraitAny","trait":"tr04","not":true}},{"op":"indirectDamage","amount":12,"condition":{"if":"controlUnitWithTraitAny","trait":"tr04"}}]}]},
   "jtl-182": {"id":"jtl-182","type":"unit","aspects":["cunning","villainy"],"traits":["tr45","tr46","tr41"],"unique":true,"cost":2,"power":3,"hp":3,"arena":"space"},
   "jtl-186": {"id":"jtl-186","type":"unit","aspects":["cunning","villainy"],"traits":["tr45","tr46","tr41"],"unique":true,"cost":3,"power":3,"hp":4,"arena":"space"},

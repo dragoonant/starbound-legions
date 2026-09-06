@@ -203,6 +203,7 @@
   SB.extraSelector = function (state, controller, sel, ctx, u) {
     if (sel.minRemHp != null && SB.unitRemainingHp(state, u) < sel.minRemHp) return false;
     if (sel.upgraded && u.upgrades.length === 0) return false;
+    if (sel.notUpgraded && u.upgrades.length > 0) return false;
     if (sel.powerLessThanSomeFriendly) {
       const p = SB.unitPower(state, u);
       if (!SB.allUnits(state, controller).some(function (f) { return f.uid !== u.uid && SB.unitPower(state, f) > p; })) return false;
@@ -358,6 +359,32 @@
       if (u && !u.exhausted) { u.exhausted = true; SB.log(state, { type: 'exhausted', uid: u.uid }); }
     });
   };
+  // Exhaust up to N units, one at a time, player's choice of which (and whether to
+  // stop early) — sor-203's "Exhaust up to 2 units."
+  O.exhaustUpTo = function (state, item) {
+    state.queue.unshift({ step: 'exhaustUpToPick', player: item.controller,
+      remaining: item.op.amount || 1, target: item.op.target || { who: 'any', what: 'unit' }, ctx: item.ctx });
+  };
+  S.exhaustUpToPick = {
+    actions: function (state, itemStep) {
+      if (itemStep.remaining <= 0) return null;
+      const cands = SB.selectorCandidates(state, itemStep.player, itemStep.target, itemStep.ctx || {})
+        .filter(function (c) { const u = SB.findUnit(state, c.uid); return u && !u.exhausted; });
+      if (cands.length === 0) return null;
+      const acts = cands.map(function (c) { return { type: 'exhaustUpTo', player: itemStep.player, uid: c.uid }; });
+      acts.push({ type: 'exhaustUpTo', player: itemStep.player, uid: null });
+      return acts;
+    },
+    apply: function (state, itemStep, action) {
+      if (action.uid == null) return;
+      const u = SB.findUnit(state, action.uid);
+      if (u && !u.exhausted) { u.exhausted = true; SB.log(state, { type: 'exhausted', uid: u.uid }); }
+      if (itemStep.remaining - 1 > 0) {
+        state.queue.unshift({ step: 'exhaustUpToPick', player: itemStep.player,
+          remaining: itemStep.remaining - 1, target: itemStep.target, ctx: itemStep.ctx });
+      }
+    },
+  };
   // Give a temporary keyword (numeric allowed) to every unit matched by scope.
   O.giveKeywordAll = function (state, item) {
     SB.selectorCandidates(state, item.controller, item.op.scope, item.ctx || {}).forEach(function (c) {
@@ -474,6 +501,15 @@
     u.upgrades.slice().forEach(function (inst) { SB.removeUpgrade(state, u, inst, 'defeated'); });
     if (SB.findUnit(state, u.uid) && SB.unitRemainingHp(state, u) <= 0) SB.defeatUnit(state, u, item.ctx);
   };
+  // Defeat every Shield token on a chosen unit (jtl-180). Leaves the unit itself
+  // in play so a following op (via saveTargetAs/useTarget) can still act on it.
+  O.defeatShieldsOn = function (state, item, target) {
+    const u = SB.findUnit(state, target.uid);
+    if (!u || u.shields <= 0) return;
+    const n = u.shields;
+    u.shields = 0;
+    SB.log(state, { type: 'shieldsDefeated', uid: u.uid, amount: n, sound: 'shield' });
+  };
   // Return this upgrade card (just defeated) from its owner's discard pile to hand.
   O.selfUpgradeToHand = function (state, item) {
     const uid = item.ctx && item.ctx.upgradeInstUid;
@@ -546,12 +582,13 @@
   // Mill 1 and note the milled card's aspects (law-018).
   const prevMill = O.mill;
   O.mill = function (state, item) {
-    const p = state.players[item.controller];
+    const who = item.op.who === 'opponent' ? SB.other(item.controller) : item.controller;
+    const p = state.players[who];
     const before = p.discard.length;
     prevMill(state, item);
     const milled = p.discard.slice(before);
     SB.efx(state, item.ctx).milledAspects = milled.map(function (inst) { return SB.card(inst.cardId).aspects || []; });
-    milled.forEach(function (inst) { SB.noteDiscarded(state, item.controller, inst); });
+    milled.forEach(function (inst) { SB.noteDiscarded(state, who, inst); });
   };
   SB.extraConditions.milledHasChosenAspect = function (state, c, cond, ctx) {
     const st = SB.efx(state, ctx);
@@ -1491,6 +1528,14 @@
       });
     }
   };
+  // Return every unit matched by scope to its owner's hand (shd-233).
+  O.returnHandAll = function (state, item) {
+    const uids = SB.selectorCandidates(state, item.controller, item.op.scope, item.ctx || {}).map(function (c) { return c.uid; });
+    uids.forEach(function (uid) {
+      const u = SB.findUnit(state, uid);
+      if (u) O.returnHand(state, item, { kind: 'unit', uid: uid });
+    });
+  };
 
   // ---- fireTriggers: the combined ability list, pilot sides, silence --------------
   SB.fireTriggers = function (state, trigger, unit, ctx) {
@@ -1521,6 +1566,42 @@
   };
   // Aura-granted abilities must not be re-collected through auraGrants of the source
   // itself; auraGrants reads only printed constant abilities, so no cycle.
+
+  // ---- chooseTwoModes: "Choose two, in any order:" mode lists ---------------------
+  // {op:'chooseTwoModes', modes:[{effects:[...]}, ...], count:2}. The player picks one
+  // still-unpicked mode, it resolves FULLY (its own effects may themselves raise
+  // choices), then — if picks remain — the same step re-offers the modes not yet
+  // taken. A mode is always offered even when it currently has no legal effect: its
+  // effects simply fizzle through the normal no-candidate/no-saved-target paths
+  // (see SB.drainQueue), so the choice never hangs waiting for a target that can't
+  // exist.
+  O.chooseTwoModes = function (state, item) {
+    state.queue.unshift({ step: 'modeChoicePick', player: item.controller, controller: item.controller,
+      modes: item.op.modes, remaining: item.op.count || 2, picked: [], ctx: item.ctx });
+  };
+  S.modeChoicePick = {
+    actions: function (state, itemStep) {
+      if (itemStep.remaining <= 0) return null;
+      const acts = [];
+      itemStep.modes.forEach(function (m, i) {
+        if (itemStep.picked.indexOf(i) >= 0) return;
+        acts.push({ type: 'chooseMode', player: itemStep.player, index: i });
+      });
+      return acts;
+    },
+    apply: function (state, itemStep, action) {
+      const i = action.index;
+      const mode = itemStep.modes[i];
+      SB.log(state, { type: 'modeChosen', player: itemStep.controller, cardId: itemStep.ctx && itemStep.ctx.cardId });
+      const remaining = itemStep.remaining - 1;
+      const picked = itemStep.picked.concat([i]);
+      if (remaining > 0) {
+        state.queue.unshift({ step: 'modeChoicePick', player: itemStep.player, controller: itemStep.controller,
+          modes: itemStep.modes, remaining: remaining, picked: picked, ctx: itemStep.ctx });
+      }
+      SB.queueEffects(state, itemStep.controller, mode.effects, itemStep.ctx || {});
+    },
+  };
 
   // ---- useTarget: '@damaged' -------------------------------------------------------
   const prevDrain = SB.drainQueue;

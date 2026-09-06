@@ -138,6 +138,7 @@
     shield: function (l, s) { return name(l, s) + ' gained a shield.'; },
     shieldPopped: function (l, s) { return 'A shield on ' + name(l, s) + ' absorbed the hit and broke.'; },
     shieldsSabotaged: function (l, s) { return 'Shields on ' + name(l, s) + ' were sabotaged away!'; },
+    shieldsDefeated: function (l, s) { return 'Every shield on ' + name(l, s) + ' was defeated.'; },
     bountyCollected: function (l, s) { return 'A bounty on ' + name(l, s) + ' was collected.'; },
 
     // --- unit state ---
@@ -182,6 +183,7 @@
       return nameOf(l.a, s, null, l.aCardId) + ' and ' + nameOf(l.b, s, null, l.bCardId) + ' changed sides.';
     },
     binaryChosen: function (l) { return player(l.player) + ' chose an option.'; },
+    modeChosen: function (l) { return player(l.player) + ' chose an effect.'; },
 
     // --- competitive expansion (js/ops2.js) ---
     abilitiesSuppressed: function (l, s) { return name(l, s) + ' lost all its abilities.'; },

@@ -5,6 +5,7 @@
 (function (SB) {
   'use strict';
   const N = {
+    "tok-xwg": ["Kestrel Interceptor"],
     "ash-003": ["Ilyra Sconce", "The Patient Blade"],
     "ash-007": ["Marshal Odrenne", "Iron Writ of the Consul"],
     "ash-013": ["Rennik Dava", "Ember's Reckless Vow"],

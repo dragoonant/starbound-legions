@@ -81,7 +81,13 @@
   "lof-033": {"id":"lof-033","type":"unit","aspects":["vigilance","villainy"],"traits":["tr07"],"cost":3,"power":3,"hp":3,"arena":"ground"},
   "lof-034": {"id":"lof-034","type":"unit","aspects":["vigilance","villainy"],"traits":["tr11","tr46","tr10"],"cost":3,"power":3,"hp":3,"arena":"space","keywords":[{"k":"sentinel"}]},
   "lof-036": {"id":"lof-036","type":"unit","aspects":["vigilance","villainy"],"traits":["tr12","tr28"],"unique":true,"cost":5,"power":6,"hp":6,"arena":"ground","abilities":[{"trigger":"onPlay","effects":[{"op":"defeat","target":{"who":"friendly","what":"unit","trait":"tr28","notCardIs":["lof-036"],"optional":true},"saveDefeatedAs":"d"},{"op":"playFromHand","zones":["discard"],"filter":{"uidRef":"dUid"},"free":true,"optional":true}]}]},
-  "lof-037": {"id":"lof-037","type":"unit","aspects":["vigilance","villainy"],"traits":["tr12","tr17","tr35"],"unique":true,"cost":6,"power":5,"hp":6,"arena":"ground"},
+  "lof-037": {"id":"lof-037","type":"unit","aspects":["vigilance","villainy"],"traits":["tr12","tr17","tr35"],"unique":true,"cost":6,"power":5,"hp":6,"arena":"ground","abilities":[
+    {"trigger":"onPlay","effects":[
+      {"op":"shield","amount":1,"target":{"who":"friendly","what":"unit"}},
+      {"op":"shield","amount":1,"target":{"who":"enemy","what":"unit"}}
+    ]},
+    {"trigger":"onAttack","effects":[{"op":"defeat","target":{"who":"enemy","what":"unit","hasShield":true}}]}
+  ]},
   "lof-040": {"id":"lof-040","type":"upgrade","aspects":["vigilance","villainy"],"traits":["tr20","tr48","tr24"],"unique":true,"cost":2,"power":1,"hp":3},
   "lof-042": {"id":"lof-042","type":"event","aspects":["vigilance","villainy"],"traits":["tr35"],"cost":4},
   "lof-044": {"id":"lof-044","type":"unit","aspects":["vigilance","heroism"],"traits":["tr07"],"cost":2,"power":3,"hp":3,"arena":"ground","keywords":[{"k":"sentinel"}]},

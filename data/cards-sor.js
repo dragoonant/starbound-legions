@@ -159,7 +159,12 @@
   "sor-054": {"id":"sor-054","type":"upgrade","aspects":["vigilance","heroism"],"traits":["tr20","tr48","tr24"],"cost":3,"power":3,"hp":3},
   "sor-056": {"id":"sor-056","type":"unit","aspects":["vigilance","vigilance"],"traits":["tr12","tr07"],"unique":true,"cost":6,"power":4,"hp":7,"arena":"ground"},
   "sor-057": {"id":"sor-057","type":"upgrade","aspects":["vigilance","vigilance"],"traits":["tr18"],"cost":1,"power":1,"hp":1},
-  "sor-058": {"id":"sor-058","type":"event","aspects":["vigilance","vigilance"],"traits":["tr18"],"cost":4},
+  "sor-058": {"id":"sor-058","type":"event","aspects":["vigilance","vigilance"],"traits":["tr18"],"cost":4,"abilities":[{"trigger":"onPlay","effects":[{"op":"chooseTwoModes","count":2,"modes":[
+    {"effects":[{"op":"mill","who":"opponent","amount":6}]},
+    {"effects":[{"op":"heal","amount":5,"target":{"who":"any","what":"base"}}]},
+    {"effects":[{"op":"defeat","target":{"who":"any","what":"unit","maxRemHp":3}}]},
+    {"effects":[{"op":"shield","amount":1,"target":{"who":"any","what":"unit"}}]}
+  ]}]}]},
   "sor-059": {"id":"sor-059","type":"unit","aspects":["vigilance"],"traits":["tr08"],"cost":1,"power":1,"hp":3,"arena":"ground"},
   "sor-060": {"id":"sor-060","type":"unit","aspects":["vigilance"],"traits":["tr13","tr46","tr10"],"cost":2,"power":2,"hp":1,"arena":"space"},
   "sor-061": {"id":"sor-061","type":"unit","aspects":["vigilance"],"traits":["tr12","tr13"],"cost":2,"power":2,"hp":2,"arena":"ground"},
@@ -192,7 +197,12 @@
   "sor-104": {"id":"sor-104","type":"event","aspects":["command","heroism"],"traits":["tr38"],"cost":7},
   "sor-105": {"id":"sor-105","type":"unit","aspects":["command","command"],"traits":["tr12","tr21","tr33"],"unique":true,"cost":5,"power":5,"hp":4,"arena":"ground"},
   "sor-106": {"id":"sor-106","type":"event","aspects":["command","command"],"traits":["tr39"],"cost":3},
-  "sor-107": {"id":"sor-107","type":"event","aspects":["command","command"],"traits":["tr18"],"cost":4},
+  "sor-107": {"id":"sor-107","type":"event","aspects":["command","command"],"traits":["tr18"],"cost":4,"abilities":[{"trigger":"onPlay","effects":[{"op":"chooseTwoModes","count":2,"modes":[
+    {"effects":[{"op":"experience","amount":2,"target":{"who":"any","what":"unit"}}]},
+    {"effects":[{"op":"pickUnit","target":{"who":"friendly","what":"unit"},"saveTargetAs":"a1"},{"op":"damage","amountRef":"powerOf:a1","target":{"who":"enemy","what":"unit","nonUnique":true}}]},
+    {"effects":[{"op":"selfToResource"}]},
+    {"effects":[{"op":"takeFromDiscard","filter":{"type":"unit"},"optional":false}]}
+  ]}]}]},
   "sor-108": {"id":"sor-108","type":"unit","aspects":["command"],"traits":["tr43"],"cost":1,"power":1,"hp":2,"arena":"ground"},
   "sor-109": {"id":"sor-109","type":"unit","aspects":["command"],"traits":["tr17","tr29"],"unique":true,"cost":2,"power":2,"hp":3,"arena":"ground"},
   "sor-110": {"id":"sor-110","type":"unit","aspects":["command"],"traits":["tr46","tr41"],"cost":2,"power":1,"hp":3,"arena":"space"},
@@ -269,7 +279,12 @@
   "sor-200": {"id":"sor-200","type":"event","aspects":["cunning","heroism"],"traits":["tr36"],"cost":2,"abilities":[{"trigger":"onPlay","effects":[{"op":"discardFromOpponentHandChoice"}]}]},
   "sor-201": {"id":"sor-201","type":"unit","aspects":["cunning","cunning"],"traits":["tr17","tr32"],"arena":"ground","cost":3,"power":3,"hp":3,"unique":true,"abilities":[{"trigger":"onPlay","effects":[{"op":"discardFromOpponentHandChoice","filter":{"notType":"unit"}}]}]},
   "sor-202": {"id":"sor-202","type":"unit","aspects":["cunning","cunning"],"traits":["tr13"],"arena":"ground","cost":5,"power":3,"hp":5,"abilities":[{"trigger":"onPlay","effects":[{"op":"returnHand","target":{"who":"any","what":"unit","nonLeader":true,"optional":true}}]}]},
-  "sor-203": {"id":"sor-203","type":"event","aspects":["cunning","cunning"],"traits":["tr18"],"cost":4},
+  "sor-203": {"id":"sor-203","type":"event","aspects":["cunning","cunning"],"traits":["tr18"],"cost":4,"abilities":[{"trigger":"onPlay","effects":[{"op":"chooseTwoModes","count":2,"modes":[
+    {"effects":[{"op":"returnHand","target":{"who":"any","what":"unit","nonLeader":true,"maxPower":4}}]},
+    {"effects":[{"op":"buffTemp","power":4,"hp":0,"target":{"who":"any","what":"unit"}}]},
+    {"effects":[{"op":"exhaustUpTo","amount":2}]},
+    {"effects":[{"op":"discardRandom"}]}
+  ]}]}]},
   "sor-205": {"id":"sor-205","type":"unit","aspects":["cunning"],"traits":["tr13","tr59"],"cost":1,"power":2,"hp":1,"arena":"ground"},
   "sor-206": {"id":"sor-206","type":"unit","aspects":["cunning"],"traits":["tr13","tr46","tr10"],"cost":1,"power":1,"hp":2,"arena":"space"},
   "sor-208": {"id":"sor-208","type":"unit","aspects":["cunning"],"traits":["tr13","tr46","tr10"],"cost":2,"power":1,"hp":3,"arena":"space"},

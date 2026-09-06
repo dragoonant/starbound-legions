@@ -65,6 +65,7 @@
     // Keys added by js/ops2.js (SB.extraSelector).
     if (sel.minRemHp != null) s += ' with ' + sel.minRemHp + ' or more remaining HP';
     if (sel.upgraded) s += ' that has an upgrade';
+    if (sel.notUpgraded) s += ' that isn’t upgraded';
     if (sel.powerLessThanSomeFriendly) s += ' with less power than a friendly unit';
     if (sel.sameArenaAsPlayed) s += ' in the same arena as the played unit';
     if (sel.sameArenaAsSource) s += ' in this unit’s arena';
@@ -165,6 +166,7 @@
     exhaust: function (op) { return 'exhaust ' + targetText(op); },
     ready: function (op) { return 'ready ' + targetText(op); },
     returnHand: function (op) { return 'return ' + targetText(op) + ' to its owner’s hand'; },
+    returnHandAll: function (op) { return 'return each ' + scopeNoun(op.scope) + ' to its owner’s hand'; },
     damageAll: function (op) { return dealText('deal', op, 'damage', 'to each ' + scopeNoun(op.scope)); },
     buffAll: function (op) {
       const stat = statPair(op.power, op.hp);
@@ -288,11 +290,22 @@
       return (op.optional === true ? 'you may ' : '') + s;
     },
     mill: function (op) {
-      return 'discard ' + ((op.amount || 1) === 1 ? 'the top card' : 'the top ' + op.amount + ' cards') + ' of your deck';
+      const whose = op.who === 'opponent' ? 'an opponent’s deck' : 'your deck';
+      return 'discard ' + ((op.amount || 1) === 1 ? 'the top card' : 'the top ' + op.amount + ' cards') + ' of ' + whose;
     },
     binaryChoice: function (op) {
       const chooser = op.chooser === 'opponent' ? 'your opponent chooses' : 'choose';
       return chooser + ' one — ' + describeEffectList(op.a.effects) + '; or ' + describeEffectList(op.b.effects);
+    },
+    chooseTwoModes: function (op) {
+      const n = op.count || 2;
+      const label = n === 2 ? 'two' : String(n);
+      return 'choose ' + label + ', in any order: ' +
+        op.modes.map(function (m) { return describeEffectList(m.effects); }).join('; ');
+    },
+    defeatShieldsOn: function (op) { return 'defeat every Shield token on ' + targetText(op); },
+    exhaustUpTo: function (op) {
+      return 'exhaust up to ' + op.amount + ' ' + scopeNounPlural(op.target || { who: 'any', what: 'unit' });
     },
     selfToResource: function () { return 'put this card into play as a resource'; },
     healFull: function (op) { return 'heal all damage from ' + targetText(op); },
@@ -781,6 +794,10 @@
 
     const source = item.ctx && item.ctx.cardId ? SB.names.card(item.ctx.cardId) : null;
     if (item.step === 'binaryPick') return source ? source + ' — choose one option.' : 'Choose one option.';
+    if (item.step === 'modeChoicePick') return (source ? source + ' — ' : '') + 'choose an effect to resolve' +
+      (item.remaining > 1 ? ' (' + item.remaining + ' more picks left)' : '') + '.';
+    if (item.step === 'exhaustUpToPick') return (source ? source + ' — ' : '') +
+      'exhaust up to ' + item.remaining + ' more unit' + (item.remaining === 1 ? '' : 's') + ', or stop.';
     if (item.step === 'peekDecide') return 'Look at the top card of your deck — what do you do with it?';
     if (item.step === 'arrangeTop2') return 'Look at the top two cards of your deck — arrange them.';
     let ask;

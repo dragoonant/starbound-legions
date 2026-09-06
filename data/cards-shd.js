@@ -249,7 +249,7 @@
   "shd-230": {"id":"shd-230","type":"event","aspects":["cunning"],"traits":["tr39"],"cost":1},
   "shd-231": {"id":"shd-231","type":"event","aspects":["cunning"],"traits":["tr39"],"cost":2},
   "shd-232": {"id":"shd-232","type":"event","aspects":["cunning"],"traits":["tr39"],"cost":3},
-  "shd-233": {"id":"shd-233","type":"event","aspects":["cunning"],"traits":["tr22"],"cost":6},
+  "shd-233": {"id":"shd-233","type":"event","aspects":["cunning"],"traits":["tr22"],"cost":6,"abilities":[{"trigger":"onPlay","effects":[{"op":"returnHandAll","scope":{"who":"any","what":"unit","nonLeader":true}}]}]},
   "shd-235": {"id":"shd-235","type":"unit","aspects":["villainy"],"traits":["tr45","tr03"],"cost":2,"power":3,"hp":3,"arena":"ground","keywords":[{"k":"overwhelm"}]},
   "shd-237": {"id":"shd-237","type":"unit","aspects":["villainy"],"traits":["tr45","tr46","tr10"],"cost":3,"power":3,"hp":2,"arena":"space","keywords":[{"k":"sentinel"}]},
   "shd-239": {"id":"shd-239","type":"unit","aspects":["villainy"],"traits":["tr03"],"unique":true,"cost":3,"power":3,"hp":5,"arena":"ground"},

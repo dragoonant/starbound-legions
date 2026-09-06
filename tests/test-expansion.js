@@ -565,6 +565,113 @@
     T.ok(!cands.some(function (c) { return c.uid === bare.uid; }), 'the unshielded unit is filtered out');
   });
 
+  T.add('expansion: chooseTwoModes resolves two modes fully, in the order picked', function () {
+    SB.cards['fx-choose4'] = { id: 'fx-choose4', type: 'event', cost: 0, aspects: [],
+      abilities: [{ trigger: 'onPlay', effects: [{ op: 'chooseTwoModes', count: 2, modes: [
+        { effects: [{ op: 'experience', amount: 2, target: { who: 'friendly', what: 'unit' } }] },
+        { effects: [{ op: 'shield', amount: 1, target: { who: 'friendly', what: 'unit' } }] },
+        { effects: [{ op: 'draw', amount: 1 }] },
+        { effects: [{ op: 'healBase', amount: 2 }] },
+      ] }] }] };
+    try {
+      let s = T.game(); const me = 0;
+      const u = T.putOnBoard(s, me, 'fx-grunt');
+      s.players[me].base.damage = 5;
+      s = play(s, me, 'fx-choose4');
+      // Pick mode index 3 (heal base) first, then mode index 1 (shield) second — one
+      // explicit SB.apply per pick, since drive() would otherwise keep going and take
+      // the second pick for us too.
+      let acts = SB.legalActions(s);
+      s = SB.apply(s, acts.find(function (a) { return a.type === 'chooseMode' && a.index === 3; }));
+      acts = SB.legalActions(s);
+      s = SB.apply(s, acts.find(function (a) { return a.type === 'chooseMode' && a.index === 1; }));
+      s = drive(s);
+      T.eq(s.players[me].base.damage, 3, 'the heal-base mode resolved');
+      T.eq(SB.findUnit(s, u.uid).shields, 1, 'the shield mode also resolved');
+      T.eq(SB.findUnit(s, u.uid).experience, 0, 'the un-picked modes did not resolve');
+      T.eq(s.queue.length, 0, 'the whole choice settled — nothing left hanging');
+    } finally {
+      delete SB.cards['fx-choose4'];
+    }
+  });
+
+  T.add('expansion: chooseTwoModes still offers a mode with no legal target — it fizzles instead of hanging', function () {
+    SB.cards['fx-choose4b'] = { id: 'fx-choose4b', type: 'event', cost: 0, aspects: [],
+      abilities: [{ trigger: 'onPlay', effects: [{ op: 'chooseTwoModes', count: 2, modes: [
+        { effects: [{ op: 'defeat', target: { who: 'enemy', what: 'unit' } }] }, // no enemy units exist
+        { effects: [{ op: 'draw', amount: 1 }] },
+        { effects: [{ op: 'draw', amount: 1 }] },
+      ] }] }] };
+    try {
+      let s = T.game(); const me = 0;
+      const handBefore = s.players[me].hand.length;
+      s = play(s, me, 'fx-choose4b');
+      const before = s.players[me].hand.length; // after playing the card itself
+      let acts = SB.legalActions(s);
+      s = SB.apply(s, acts.find(function (a) { return a.type === 'chooseMode' && a.index === 0; }));
+      acts = SB.legalActions(s);
+      s = SB.apply(s, acts.find(function (a) { return a.type === 'chooseMode' && a.index === 1; }));
+      s = drive(s);
+      T.eq(s.queue.length, 0, 'the empty-target mode did not hang the queue');
+      T.eq(s.players[me].hand.length, before + 1, 'the drawn card from the second mode arrived');
+      T.ok(handBefore >= 0, 'sanity');
+    } finally {
+      delete SB.cards['fx-choose4b'];
+    }
+  });
+
+  T.add('expansion: defeatShieldsOn clears every shield, then a chained op can still hit the same unit (jtl-180)', function () {
+    let s = rich(T.game(), 0); const me = 0, foe = 1;
+    s.active = me;
+    const victim = T.putOnBoard(s, foe, 'fx-wall', { shields: 2 });
+    s = play(s, me, 'jtl-180');
+    s = drive(s, function (a) { return a.type === 'choose' && s.queue[0].candidates[a.index].uid === victim.uid; });
+    const u = SB.findUnit(s, victim.uid);
+    T.eq(u.shields, 0, 'both shields defeated');
+    T.eq(u.damage, 3, 'then took 3 damage on the same, now-unshielded unit');
+  });
+
+  T.add('expansion: a notUpgraded selector filter keeps only bare units (jtl-080)', function () {
+    let s = rich(T.game(), 0); const me = 0, foe = 1;
+    s.active = me;
+    const bare = T.putOnBoard(s, foe, 'fx-grunt');
+    const dressed = T.putOnBoard(s, foe, 'fx-wall');
+    dressed.upgrades.push({ uid: s.nextUid++, cardId: 'sor-072', owner: foe });
+    const mine = T.putOnBoard(s, me, 'fx-flyer');
+    s = play(s, me, 'jtl-080');
+    s = drive(s);
+    T.ok(!SB.findUnit(s, bare.uid), 'the un-upgraded enemy unit was defeated');
+    T.ok(SB.findUnit(s, dressed.uid), 'the upgraded enemy unit survived');
+    T.ok(!SB.findUnit(s, mine.uid), 'the un-upgraded friendly unit was defeated too — "each unit"');
+  });
+
+  T.add('expansion: mill with who:"opponent" discards from the opponent\'s deck, not your own', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    const myDeckBefore = s.players[me].deck.length;
+    const foeDeckBefore = s.players[foe].deck.length;
+    SB.queueEffects(s, me, [{ op: 'mill', who: 'opponent', amount: 6 }], {});
+    SB.drainQueue(s);
+    T.eq(s.players[foe].deck.length, foeDeckBefore - 6, 'six cards left the opponent\'s deck');
+    T.eq(s.players[me].deck.length, myDeckBefore, 'your own deck is untouched');
+  });
+
+  T.add('expansion: exhaustUpTo exhausts at most N units and can stop early', function () {
+    let s = T.game(); const me = 0;
+    const a = T.putOnBoard(s, me, 'fx-grunt');
+    const b = T.putOnBoard(s, me, 'fx-wall');
+    const c = T.putOnBoard(s, me, 'fx-flyer');
+    SB.queueEffects(s, me, [{ op: 'exhaustUpTo', amount: 2 }], {});
+    SB.drainQueue(s);
+    let acts = SB.legalActions(s);
+    T.ok(acts.some(function (x) { return x.type === 'exhaustUpTo' && x.uid == null; }), 'stopping is offered');
+    s = SB.apply(s, acts.find(function (x) { return x.type === 'exhaustUpTo' && x.uid === a.uid; }));
+    acts = SB.legalActions(s);
+    s = SB.apply(s, acts.find(function (x) { return x.type === 'exhaustUpTo' && x.uid === b.uid; }));
+    T.eq(s.queue.length, 0, 'after 2 picks the step ends on its own — no forced third pick');
+    T.ok(SB.findUnit(s, a.uid).exhausted && SB.findUnit(s, b.uid).exhausted, 'both chosen units exhausted');
+    T.ok(!SB.findUnit(s, c.uid).exhausted, 'the third unit was left alone');
+  });
+
   T.add('expansion: minDeckSizeDelta raises a deck’s minimum size (jtl-024)', function () {
     T.eq(SB.card('jtl-024').minDeckSizeDelta, 10, 'jtl-024 carries the +10 delta');
     SB.decks['fx-shortdeck'] = { leader: 'law-010', base: 'jtl-024', format: 'premier',
