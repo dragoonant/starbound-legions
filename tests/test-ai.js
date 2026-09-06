@@ -210,4 +210,14 @@
     }
     T.ok(s.winner === 0 || s.winner === 1, 'winner: ' + s.winner + ' in ' + n + ' actions, round ' + s.round);
   });
+
+  T.add('ai: swings a doomed (defeat-at-regroup) unit instead of sitting on it', function () {
+    let s = T.game('fixtureA', 'fixtureB', 'ai-doomed');
+    s.active = 0; s.initiative = 0;
+    const rental = T.putOnBoard(s, 0, 'fx-brute');   // 5/4, ready
+    rental.defeatAtRegroup = true;                   // as a Sneak-Attack-style play marks it
+    const act = SB.ai.chooseAction(s, 'hard');
+    T.eq(act.type, 'attack', 'attacks rather than passing (got ' + act.type + ')');
+    T.eq(act.attacker, rental.uid, 'with the doomed unit');
+  });
 })(window.SB = window.SB || {});

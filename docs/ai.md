@@ -32,6 +32,19 @@ swing (one-ply min).
   land, but must never argue against deploying at all (the predecessor's first
   version taught the AI to stop attacking).
 
+### Rentals: units with `defeatAtRegroup`
+
+A unit that is defeated at the start of the regroup phase is scored as the swing it
+can still make this phase (`unitPower` on its power, and only while it is unexhausted
+and not attack-blocked) — no `unitOnBoard`, no HP, no shields. Reason: those terms
+price permanence the unit does not have. Scored as a normal body, the AI played a
+temporary summon (e.g. the sor-219 "play a unit, defeat it at regroup" event),
+banked ~20 points of phantom board value, felt no urgency to attack, and lost the
+unit at regroup — two cards spent for nothing. Pinned by the test
+"ai: swings a doomed (defeat-at-regroup) unit instead of sitting on it".
+`returnAtRegroup` (commandeered units) is deliberately NOT covered: that card comes
+back, so the body is not lost.
+
 ## Testing policy
 
 Pin decisions, not scores (tests/test-ai.js): each test builds a position with one

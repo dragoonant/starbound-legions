@@ -112,6 +112,16 @@
       const powerWorth = P.unitPower * (blocked ? P.lockedPower : 1);
       const hpWorth = P.unitHp *
         (paysOnDeath(state, u) ? (mine ? P.deathPayoff : P.deathPayoffEnemy) : 1);
+      // A unit that dies at the start of regroup is a rental, not a body: its
+      // presence, HP and shields do not survive the phase, so the only thing worth
+      // anything is the swing it can still make. Pricing it as a permanent body let
+      // the AI bank value it never collected — it played the temporary unit, sat on
+      // it, and lost it at regroup: a pure card-down trade.
+      if (u.defeatAtRegroup) {
+        const canSwing = !u.exhausted && !blocked;
+        v += canSwing ? SB.unitPower(state, u) * P.unitPower : 0;
+        return;
+      }
       v += P.unitOnBoard + SB.unitPower(state, u) * powerWorth +
         SB.unitRemainingHp(state, u) * hpWorth + u.shields * P.shield;
     });
