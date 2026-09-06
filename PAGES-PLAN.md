@@ -1,6 +1,6 @@
 # GitHub Pages plan — the full game, real names, public repo
 
-Goal: `https://dragoonant.github.io/sundered-veil/` plays every registered deck (36 today:
+Goal: `https://dragoonant.github.io/starbound-legions/` plays every registered deck (36 today:
 16 precon halves + 20 tournament lists, 641 distinct cards) with the source material's card,
 deck and trait names, with art, sound and the end-of-match clips, served straight from `main`.
 
