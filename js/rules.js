@@ -133,6 +133,16 @@
     return sm.cost + penalty;
   };
 
+  // Is money the only thing between the player and this card? True when the card's
+  // adjusted cost exceeds their ready resources — and nothing else. A card held back
+  // by a rule (a unique already in play, an upgrade with nothing to attach to) is not
+  // "unaffordable", so the UI must confirm the engine offers no play for it before
+  // trusting this; and a discount route the engine does offer (exploit, smuggle) makes
+  // the play legal, which is what clears the mark there.
+  SB.cantAfford = function (state, playerIdx, cardId) {
+    return SB.cardCost(state, playerIdx, cardId) > SB.readyResources(state, playerIdx);
+  };
+
   SB.readyResources = function (state, playerIdx) {
     const p = state.players[playerIdx];
     return p.resources.filter(function (r2) { return !r2.exhausted; }).length + (p.credits || 0);

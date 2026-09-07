@@ -552,6 +552,16 @@
         return a.type === 'resourceCard' && a.player === UI.humanSeat && a.handIndex === i;
       });
       if (spec.plays.length || resource) markActable(cardNode);
+      // Nothing to do with this card, on my own turn, and the cost is more than I can
+      // pay: mark it, so an unlit hand reads as "I am broke" instead of "is this even
+      // playable?". Only on my action-phase turn with no prompt open — outside that
+      // nothing in hand is playable anyway, and dimming the whole hand would say
+      // nothing. The border stays slate: the mark lives on the cost pip, which is the
+      // number that is the problem.
+      else if (s.phase === 'action' && s.active === UI.humanSeat && !s.queue.length &&
+               SB.cantAfford(s, UI.humanSeat, inst.cardId)) {
+        cardNode.classList.add('is-unaffordable');
+      }
       cardNode.tabIndex = 0;
       cardNode.addEventListener('pointerdown', function (e) {
         if (e.button !== 0) return;

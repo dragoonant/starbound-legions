@@ -236,8 +236,17 @@ inline text:
 .card { transition: transform .12s, box-shadow .12s, border-color .12s; }
 .card:hover { transform: translateY(-3px); box-shadow: 0 8px 22px rgba(0,0,0,.5); }
 .is-rested  { transform: rotate(4deg); opacity: .72; }        /* hover keeps the rotation */
+.is-unaffordable { opacity: .58; }    /* hand only; hover restores to full */
 .is-attacking, .is-defending, .highlighted { box-shadow: 0 0 0 2px <tint>; }
 ```
+
+`.is-unaffordable` marks a hand card whose cost is more than the player's ready
+resources on their own turn, when the engine offers no play for it (`SB.cantAfford`
+decides the cost half; the absence of a play action decides the rest, so a card held
+back by a rule is never labeled "too expensive" and a discount route clears the mark).
+The cost pip goes to the damage red `#ff9f87` on a 18%-alpha tint of itself — the mark
+belongs on the number that is the reason — and hover restores the card to full opacity
+so it still reads and previews like any other.
 
 Four **role** colors for what the player may do, as CSS variables:
 `--role-actable #f5c34d`, `--role-selected #5b9dff`, `--role-target #ff6bcb`, `--role-picked #45c98b`.
