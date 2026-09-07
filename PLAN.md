@@ -130,8 +130,15 @@ lists, and is deployed on GitHub Pages. Test suite: 117 green
   `data/cards-*.js`, read only that entry and its op handler, add a case to
   `tests/test-expansion.js`, run the suite, commit.
 - **Text audit of the authored cards** — the structural gate (`tests/test-text.js`) runs
-  over all cards and is green; the semantic pass, comparing generated rules text against
-  the printed text in `scratch/workpackets/`, has not been done.
+  over all cards and is green. The semantic pass — printed text read against generated
+  text, to catch a clause dropped in hand transcription — is built and working:
+  `node tools/gen-source-names.mjs scratch --fetch --diff`, which writes the ranked
+  comparison to `scratch/text-diff.md` (scratch only; it carries printed text). It has
+  not been RUN against real data. It cannot run from a Claude Code web session: that
+  environment's egress policy denies both the card database and the official API, and
+  the audit is worthless without the source text. Run it locally. Note it regenerates
+  `data/names-source.js` as a side effect, which is correct from a full dump and
+  clobbering from a partial one — check `git diff` on that file before committing.
 - **AI quality on the competitive matrix** — `tools/ai-balance.mjs` over the competitive
   group, as `docs/ai.md` already uses it: A/B a weight change against the same seed and
   pairings, with random play as the control. Ongoing whenever the AI changes.
