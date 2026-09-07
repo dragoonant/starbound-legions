@@ -160,13 +160,17 @@
       u.tempKeywords = u.tempKeywords || [];
       u.tempKeywords.push('saboteur');
     }
+    if (item.op.grantKeywordForAttack) {
+      u.tempKeywords = u.tempKeywords || [];
+      u.tempKeywords.push(item.op.grantKeywordForAttack);
+    }
     if (item.op.grantTempAbility) {
       u.tempAbilities = (u.tempAbilities || []).concat([item.op.grantTempAbility]);
     }
     state.queue.unshift({ step: 'attackTargetChoice', player: item.controller, uid: u.uid,
       bonusPower: bonus, firstStrike: !!item.op.firstStrike, ready: !!item.op.ready,
       optional: !!item.op.optionalAttack, bonusVsUnitsOnly: !!item.op.bonusVsUnitsOnly,
-      unitsOnly: !!item.op.unitsOnly });
+      unitsOnly: !!item.op.unitsOnly, defenderLosesAbilitiesIfUnit: !!item.op.defenderLosesAbilitiesIfUnit });
   };
 
   // Look at the top card of your deck and decide. modes ⊆ ['leave','bottom','discard','play'].
@@ -180,12 +184,15 @@
       discount: item.op.free ? 99 : (item.op.discount || 0), entersReady: !!item.op.entersReady,
       defeatAtRegroup: !!item.op.defeatAtRegroup, optional: item.op.optional !== false,
       withAmbush: !!item.op.withAmbush, withAmbushIfCredit: !!item.op.withAmbushIfCredit,
+      discountByTrait: item.op.discountByTrait || null,
       zones: item.op.zones || ['hand'] });
   };
 
-  // Mill: discard top N cards of own deck; records their types for conditions.
+  // Mill: discard top N cards of a deck (own by default; op.who:'opponent' mills
+  // the opponent's deck instead); records their types for conditions.
   O.mill = function (state, item) {
-    const p = state.players[item.controller];
+    const who = item.op.who === 'opponent' ? SB.other(item.controller) : item.controller;
+    const p = state.players[who];
     const types = [];
     const costs = [];
     for (let i = 0; i < (item.op.amount || 1) && p.deck.length > 0; i++) {
@@ -193,7 +200,7 @@
       p.discard.push(inst);
       types.push(SB.card(inst.cardId).type);
       costs.push(SB.card(inst.cardId).cost);
-      SB.log(state, { type: 'milled', player: item.controller, cardId: inst.cardId });
+      SB.log(state, { type: 'milled', player: who, cardId: inst.cardId });
     }
     SB.efx(state, item.ctx).milledTypes = types;
     SB.efx(state, item.ctx).milledCosts = costs;
@@ -537,20 +544,43 @@
   };
 
   // Put up to N matching cards from discard on the bottom of the deck; count them.
+  // op.anyPile (sor-252): the acting player may choose EITHER discard pile, but once
+  // a card is taken from one, the rest of this choice is locked to that same pile —
+  // "Choose up to 4 cards in a discard pile" names a single pile, not a mix of both.
+  // Cards land on the bottom of THEIR OWNER's deck, shuffled together at the end so
+  // the resulting order is genuinely random rather than the order they were picked in.
   O.bottomFromDiscard = function (state, item) {
     state.queue.unshift({ step: 'bottomDiscardPick', player: item.controller,
-      filter: item.op.filter || {}, left: item.op.upTo || 1, saveCountAs: item.op.saveCountAs, count: 0, ctx: item.ctx });
+      filter: item.op.filter || {}, left: item.op.upTo || 1, saveCountAs: item.op.saveCountAs, count: 0,
+      anyPile: !!item.op.anyPile, pileOwner: null, picked: [], ctx: item.ctx });
   };
+  function finishBottomDiscard(state, itemStep) {
+    if (!itemStep.picked || !itemStep.picked.length) return;
+    const byOwner = {};
+    itemStep.picked.forEach(function (inst) { (byOwner[inst.owner] = byOwner[inst.owner] || []).push(inst.inst); });
+    Object.keys(byOwner).forEach(function (owner) {
+      const cards = byOwner[owner];
+      const rand = SB.rng(SB.stateSeed(state, 'bottomFromDiscard'));
+      for (let i = cards.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        const t = cards[i]; cards[i] = cards[j]; cards[j] = t;
+      }
+      cards.forEach(function (inst) { state.players[owner].deck.push(inst); });
+    });
+  }
   SB.queueSteps.bottomDiscardPick = {
     actions: function (state, itemStep) {
-      const p = state.players[itemStep.player];
       const acts = [{ type: 'bottomDiscard', player: itemStep.player, index: -1 }];
       if (itemStep.left > 0) {
-        p.discard.forEach(function (inst, i) {
-          const c = SB.card(inst.cardId);
-          if (itemStep.filter.trait && (c.traits || []).indexOf(itemStep.filter.trait) < 0) return;
-          if (itemStep.filter.type && c.type !== itemStep.filter.type) return;
-          acts.push({ type: 'bottomDiscard', player: itemStep.player, index: i });
+        const owners = itemStep.pileOwner != null ? [itemStep.pileOwner]
+          : (itemStep.anyPile ? [itemStep.player, SB.other(itemStep.player)] : [itemStep.player]);
+        owners.forEach(function (owner) {
+          state.players[owner].discard.forEach(function (inst, i) {
+            const c = SB.card(inst.cardId);
+            if (itemStep.filter.trait && (c.traits || []).indexOf(itemStep.filter.trait) < 0) return;
+            if (itemStep.filter.type && c.type !== itemStep.filter.type) return;
+            acts.push({ type: 'bottomDiscard', player: itemStep.player, owner: owner, index: i });
+          });
         });
       }
       return acts.length > 1 || itemStep.count > 0 ? acts : null;
@@ -558,15 +588,23 @@
     apply: function (state, itemStep, action) {
       if (action.index < 0) {
         if (itemStep.saveCountAs && itemStep.ctx) SB.efx(state, itemStep.ctx)[itemStep.saveCountAs] = itemStep.count;
+        finishBottomDiscard(state, itemStep);
         return;
       }
-      const p = state.players[itemStep.player];
+      const owner = action.owner != null ? action.owner : itemStep.player;
+      const p = state.players[owner];
       const inst = p.discard.splice(action.index, 1)[0];
-      p.deck.push(inst);
-      SB.log(state, { type: 'bottomedCard', player: itemStep.player });
+      const picked = (itemStep.picked || []).concat([{ inst: inst, owner: owner }]);
+      SB.log(state, { type: 'bottomedCard', player: owner });
+      const left = itemStep.left - 1;
+      if (left <= 0) {
+        if (itemStep.saveCountAs && itemStep.ctx) SB.efx(state, itemStep.ctx)[itemStep.saveCountAs] = itemStep.count + 1;
+        finishBottomDiscard(state, { picked: picked });
+        return;
+      }
       state.queue.unshift({ step: 'bottomDiscardPick', player: itemStep.player,
-        filter: itemStep.filter, left: itemStep.left - 1, saveCountAs: itemStep.saveCountAs,
-        count: itemStep.count + 1, ctx: itemStep.ctx });
+        filter: itemStep.filter, left: left, saveCountAs: itemStep.saveCountAs,
+        count: itemStep.count + 1, anyPile: itemStep.anyPile, pileOwner: owner, picked: picked, ctx: itemStep.ctx });
     },
   };
 
@@ -1093,15 +1131,17 @@
     },
   };
 
-  // Capture any number of enemy non-leader units with combined remaining HP <= budget.
+  // Capture any number (or, with maxCount, up to that many) enemy non-leader
+  // units with combined remaining HP <= budget.
   O.captureBudget = function (state, item, target) {
     // target = the friendly captor (chosen by target selector with saveTargetAs upstream
     // or direct target).
     state.queue.unshift({ step: 'captureBudgetPick', player: item.controller,
-      captorUid: target.uid, budget: item.op.budget });
+      captorUid: target.uid, budget: item.op.budget, maxCount: item.op.maxCount });
   };
   SB.queueSteps.captureBudgetPick = {
     actions: function (state, itemStep) {
+      if (itemStep.maxCount != null && itemStep.maxCount <= 0) return null;
       const acts = [{ type: 'captureBudget', player: itemStep.player, uid: null }];
       SB.allUnits(state).forEach(function (u) {
         if (u.owner === itemStep.player) return;
@@ -1124,8 +1164,11 @@
       captor.captured.push({ uid: victim.uid, cardId: victim.cardId, owner: victim.owner, upgrades: victim.upgrades });
       SB.log(state, { type: 'captured', uid: victim.uid, cardId: victim.cardId, by: captor.uid, sound: 'capture' });
       const rest = itemStep.budget - hp;
-      if (rest > 0) state.queue.unshift({ step: 'captureBudgetPick', player: itemStep.player,
-        captorUid: itemStep.captorUid, budget: rest });
+      const restCount = itemStep.maxCount != null ? itemStep.maxCount - 1 : null;
+      if (rest > 0 && (restCount == null || restCount > 0)) {
+        state.queue.unshift({ step: 'captureBudgetPick', player: itemStep.player,
+          captorUid: itemStep.captorUid, budget: rest, maxCount: restCount });
+      }
     },
   };
 
@@ -1685,7 +1728,14 @@
           if (lim == null || card.cost >= lim) return;
         }
         if (card.type === 'upgrade' || card.type === 'leader' || card.type === 'base') return;
-        const cost = Math.max(0, SB.cardCost(state, itemStep.player, inst.cardId) - itemStep.discount);
+        // A discount that depends on the candidate card itself (shd-094: a Force
+        // unit costs 8 less instead of the usual 6).
+        let disc = itemStep.discount;
+        if (itemStep.discountByTrait) {
+          const dbt = itemStep.discountByTrait;
+          disc = (card.traits || []).indexOf(dbt.trait) >= 0 ? dbt.amount : dbt.otherwise;
+        }
+        const cost = Math.max(0, SB.cardCost(state, itemStep.player, inst.cardId) - disc);
         if (cost > SB.readyResources(state, itemStep.player)) return;
         if (card.type === 'unit' && card.unique &&
             SB.allUnits(state, itemStep.player).some(function (u) { return u.cardId === inst.cardId; })) return;
@@ -1703,8 +1753,14 @@
       const playAction = action.zone === 'discard'
         ? { fromDiscard: action.handIndex, cardId: action.cardId }
         : { handIndex: action.handIndex, cardId: action.cardId };
+      let discount = itemStep.discount;
+      if (itemStep.discountByTrait) {
+        const dbt = itemStep.discountByTrait;
+        const traits = SB.card(action.cardId).traits || [];
+        discount = traits.indexOf(dbt.trait) >= 0 ? dbt.amount : dbt.otherwise;
+      }
       SB.playCardWithMods(state, itemStep.player, playAction,
-        { discount: itemStep.discount, entersReady: itemStep.entersReady, defeatAtRegroup: itemStep.defeatAtRegroup });
+        { discount: discount, entersReady: itemStep.entersReady, defeatAtRegroup: itemStep.defeatAtRegroup });
       const grantAmbush = itemStep.withAmbush ||
         (itemStep.withAmbushIfCredit && state.lastPaymentUsedCredit);
       if (grantAmbush) {

@@ -67,6 +67,10 @@
       youWin: 'Victory!', youLose: 'Defeat', skip: 'Skip', chooseTarget: 'Choose a target',
       decline: 'Decline', keep: 'Keep hand', mulligan: 'Mulligan', undo: 'Undo',
       newGame: 'New game', helpBtn: 'How to play',
+      // The black box: a pin dropped the moment something looks wrong, and the trace
+      // that reproduces the whole match (js/bugreport.js).
+      flagBug: 'Flag a bug', flagPrompt: 'What went wrong? (one line)',
+      flagged: 'Flagged ✓', saveReport: 'Save bug report', savedReport: 'Saved ✓',
       // The log/history drawer (collapsed at the start of a game) and its controls.
       logDrawer: 'Battle log', logOpen: 'Log', logClose: 'Close',
       muteOn: 'Sound: on', muteOff: 'Sound: off',
@@ -88,6 +92,8 @@
       // the tool and a dropdown hides nineteen of the twenty behind a scroll.
       pickDeckFor: { mine: 'Choose your deck', theirs: "Choose the opponent's deck" },
       randomDeck: 'Surprise me', deckChooserBack: 'Back', deckCount: 'cards',
+      // What a slot says while it holds a deck nobody has seen picked yet.
+      hiddenDeck: 'Random deck', rollDeck: 'Pick a random deck',
       difficulty: { easy: 'Easy', mid: 'Medium', hard: 'Hard', competition: 'Competition' },
       // Deck picker groups and the card-pool format a tournament list was built for.
       deckGroups: { precon: 'Legion decks', competitive: 'Tournament lists' },
@@ -107,7 +113,10 @@
       browseEmpty: 'Nothing here yet.',
       yourDiscard: 'Your discard pile', theirDiscard: 'Opponent discard pile',
       yourResources: 'Your resources', theirResources: 'Opponent resources',
+      yourDeck: 'Your deck', theirDeck: 'Opponent deck',
       browseNewestFirst: 'Most recent first',
+      browseDeckNote: 'Sorted by cost — the real draw order stays hidden.',
+      browseDeckOver: 'Sorted by cost; the game is over, so their deck turns up.',
       browseResourceNote: 'Face down on the board — only you may look.',
       browseResourceOver: 'Face down during play; the game is over, so they turn up.',
       // Board zone labels. The board draws these itself now (js/boardart.js); they

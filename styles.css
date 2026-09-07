@@ -474,6 +474,14 @@ button:disabled { opacity: .4; cursor: default; }
 .browse-note { font-size: 12px; color: var(--muted); }
 .browse-close { margin-left: auto; }
 .browse-empty { color: var(--muted); padding: 18px 2px; }
+.browse-cell { position: relative; display: flex; }
+.browse-count {
+  position: absolute; right: -4px; bottom: -4px;
+  min-width: 20px; padding: 1px 5px; border-radius: 10px;
+  background: var(--panel); border: 1px solid #3a4a68;
+  font-size: 12px; font-weight: 700; text-align: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,.5); pointer-events: none;
+}
 .browse-grid {
   display: flex; flex-wrap: wrap; gap: 10px; overflow-y: auto;
   align-content: flex-start; padding: 2px;
@@ -1033,6 +1041,15 @@ body.drawer-open #log-handle { opacity: 0; pointer-events: none; }
   padding: .6rem .75rem; background: rgba(255,255,255,.05); border-color: var(--line);
 }
 .title-deck-btn:hover { background: rgba(255,255,255,.1); border-color: #4b74b8; }
+/* A slot and its dice, which rerolls without naming what it rolled. */
+.title-deck-line { display: flex; gap: .4rem; align-items: stretch; }
+.title-deck-line .title-deck-btn { flex: 1; }
+.title-deck-btn.is-hidden-deck { color: var(--accent); font-style: italic; }
+.title-deck-dice {
+  flex: 0 0 auto; padding: .6rem .7rem; font-size: 1.1rem; line-height: 1;
+  background: rgba(255,255,255,.05); border-color: var(--line);
+}
+.title-deck-dice:hover { background: rgba(75,116,184,.28); border-color: #4b74b8; }
 .title-deck-btn::after { content: '…'; float: right; opacity: .5; }
 
 /* The chooser screen: every deck legible at once, which is the whole point of it. */

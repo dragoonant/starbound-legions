@@ -198,6 +198,23 @@
       if (card.type === 'unit' && card.unique &&
           SB.allUnits(state, me).some(function (u) { return u.cardId === card.id; })) return;
       if (p.deck.length === 0) return; // nothing to replace it with
+      if (card.type === 'upgrade') {
+        // Same as a normal upgrade play: one smuggle action per legal attach target.
+        SB.allUnits(state).forEach(function (u) {
+          if (card.attachTo === 'friendly' && u.owner !== me) return;
+          if (card.attachTo === 'enemy' && u.owner === me) return;
+          if (card.attachArena && SB.arenaOf(state, u) !== card.attachArena) return;
+          if (card.attachFilter) {
+            const f = card.attachFilter;
+            const traits = (SB.unitDef(u).traits || []).concat(SB.card(u.cardId).traits || []);
+            if (f.notTrait && traits.indexOf(f.notTrait) >= 0) return;
+            if (f.trait && traits.indexOf(f.trait) < 0) return;
+            if (f.nonLeader && SB.card(u.cardId).type === 'leader') return;
+          }
+          acts.push({ type: 'smuggle', player: me, resourceIndex: ri, cardId: card.id, attachTo: u.uid });
+        });
+        return;
+      }
       acts.push({ type: 'smuggle', player: me, resourceIndex: ri, cardId: card.id });
     });
 
@@ -391,6 +408,21 @@
         p.eventsThisRound = (p.eventsThisRound || 0) + 1;
         const ab = (card.abilities || []).find(function (a) { return a.trigger === 'onPlay'; });
         if (ab) SB.queueEffects(state, me, ab.effects, { cardId: inst.cardId, eventUid: inst.uid });
+      } else if (card.type === 'upgrade') {
+        const target = SB.findUnit(state, action.attachTo);
+        expect(target, action);
+        inst.owner = me;
+        target.upgrades.push(inst);
+        SB.log(state, { type: 'attached', uid: target.uid, cardId: inst.cardId, sound: 'attach' });
+        (card.abilities || []).forEach(function (ab) {
+          if (ab.trigger !== 'onPlay' && ab.trigger !== 'onSmuggle') return;
+          SB.queueEffects(state, me, ab.effects, { sourceUid: target.uid, cardId: inst.cardId,
+            upgradeCardId: inst.cardId, condition: ab.condition });
+        });
+        SB.allUnits(state, me).forEach(function (obs) {
+          SB.fireTriggers(state, 'onUpgradePlayed', obs, { sourceUid: obs.uid, upgradeCardId: inst.cardId });
+        });
+        fireLeaderTrigger(state, me, 'onUpgradePlayed', { upgradeCardId: inst.cardId });
       }
     } else if (action.type === 'deployLeaderPilot') {
       const lc = SB.card(p.leader.cardId);
@@ -863,6 +895,12 @@
     const abilities = SB.card(p.leader.cardId).leaderSide.abilities || [];
     abilities.forEach(function (ab, ai) {
       if (ab.trigger !== trigger) return;
+      // "When a friendly <trait> unit's attack ends" (law-007): filter by the
+      // attacker's trait, mirroring onFriendlyAttack's ab.attackerTrait below.
+      if (ab.attackerTrait) {
+        const au = ctx && ctx.attackEndedUid != null ? SB.findUnit(state, ctx.attackEndedUid) : null;
+        if (!au || SB.unitTraits(state, au).indexOf(ab.attackerTrait) < 0) return;
+      }
       if (ab.exhaustCost && p.leader.exhausted) return;
       const offer = { step: 'leaderTriggerOffer', player: playerIdx, abilityIndex: ai,
         exhaustCost: !!ab.exhaustCost, ctx: ctx || {} };
@@ -1080,12 +1118,16 @@
     state.phaseNamedBlocks = [];
     state.players.forEach(function (p) {
       p.playedThisPhase = []; p.eventsThisRound = 0; p.discounts = []; p.plotDiscount = 0;
-      p.discardedThisPhase = []; p.entersReadyGrants = [];
+      p.discardedThisPhase = []; p.entersReadyGrants = []; p.createdTokenThisPhase = false;
       delete p.echoNextOnPlay;
     });
     SB.log(state, { type: 'actionPhase', round: state.round });
     // A delayed "at the start of the next action phase" tax armed last phase (sec-073).
     if (SB.applyPendingEnemyTax) SB.applyPendingEnemyTax(state);
+    // A delayed "at the start of the next action phase, defeat a resource" (sor-017).
+    if (SB.applyPendingResourceDefeat) SB.applyPendingResourceDefeat(state);
+    // "When the action phase starts" observers (leader side and units) — sor-016.
+    if (SB.fireActionPhaseStartTriggers) SB.fireActionPhaseStartTriggers(state);
   }
 
   function advanceTurn(state) {

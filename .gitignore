@@ -43,3 +43,8 @@ art-test2/
 art-old-v1/
 art-v2-superseded/
 node_modules/
+
+# Superseded local name pack. The published names now live in the generated
+# data/names-source.js; this leftover holds an older, wrong mapping and must never
+# be committed — nothing loads it.
+data/source-local.js
