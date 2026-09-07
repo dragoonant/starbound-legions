@@ -78,3 +78,12 @@ missing mechanic):
   pilot. The pilot side prints no separate stats or abilities, so it is authored with the
   deployed side's power and HP; the engine already grants a leader pilot its deployed-side
   power, so the two readings agree in play.
+- **Piloting costs on 25 pulled pilots.** A pilot's piloting cost is printed as a face
+  stat, not as rules text, so it is not in the generated source-name pack and cannot be
+  checked against it. Twenty-five pilots came out of the skeleton pull with a piloting
+  cost of 0, which let them attach to a vehicle for nothing. They are priced instead by
+  a stated rule — `max(1, ceil(unit cost / 2))` — which reproduces two of the five
+  hand-authored piloting costs exactly and lands within 1 of two more (jtl-094, printed
+  above its unit cost, is an outlier no rule recovers). The five authored values are left
+  as they are. Replace these with the printed numbers if the source workpackets come
+  back; a test keeps any of them from returning to 0.

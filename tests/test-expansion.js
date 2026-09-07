@@ -1624,6 +1624,13 @@
     T.eq(zero.length, 0, 'a smuggle cost of 0 plays the card off a resource for free: ' + zero.join(', '));
   });
 
+  T.add('audit: no piloting keyword is left at a zero cost', function () {
+    const zero = Object.keys(SB.cards).filter(function (id) {
+      return (SB.cards[id].keywords || []).some(function (k) { return k.k === 'piloting' && !(k.cost > 0); });
+    });
+    T.eq(zero.length, 0, 'a piloting cost of 0 attaches the pilot to a vehicle for free: ' + zero.join(', '));
+  });
+
   T.add('audit: every leader a registered deck uses has a leader-side ability', function () {
     const seen = {};
     Object.keys(SB.decks).forEach(function (d) { seen[SB.decks[d].leader] = true; });
