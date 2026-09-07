@@ -1,4 +1,4 @@
-# The Sundered Veil
+# Starbound Legions
 
 A browser card duel against an AI opponent. Unofficial, non-commercial fan project: the
 game's mechanics follow a published trading card game; every name, rules sentence, image
