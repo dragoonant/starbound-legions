@@ -1202,7 +1202,12 @@
       const chooser = itemStep.forcedBy != null ? itemStep.forcedBy : itemStep.player;
       const acts = [];
       p.hand.forEach(function (inst, i) {
-        if (itemStep.filter && itemStep.filter.type && SB.card(inst.cardId).type !== itemStep.filter.type) return;
+        const f = itemStep.filter;
+        if (f && f.type && SB.card(inst.cardId).type !== f.type) return;
+        // A discard demanded as a price can name a floor ("a card that costs 6 or more"),
+        // which is the whole cost of the ability, not decoration.
+        if (f && f.minCost != null && (SB.card(inst.cardId).cost || 0) < f.minCost) return;
+        if (f && f.maxCost != null && (SB.card(inst.cardId).cost || 0) > f.maxCost) return;
         acts.push({ type: 'discardCard', player: chooser, targetPlayer: itemStep.player, handIndex: i });
       });
       return acts.length ? acts : null;

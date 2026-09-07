@@ -561,29 +561,6 @@
     SB.efx(state, item.ctx || {}).gaveControl = 1;
   };
 
-  // Look at the top N of the opponent's deck and discard one; the rest go back on top
-  // in the order they were in (sec-017).
-  O.peekEnemyDeckDiscard = function (state, item) {
-    state.queue.unshift({ step: 'enemyDeckPeek', player: item.controller, depth: item.op.depth || 2 });
-  };
-  SB.queueSteps.enemyDeckPeek = {
-    actions: function (state, it) {
-      const p = state.players[SB.other(it.player)];
-      const n = Math.min(it.depth, p.deck.length);
-      if (n === 0) return null; // auto-skip
-      const acts = [];
-      for (let i = 0; i < n; i++) acts.push({ type: 'peekDiscard', player: it.player, deckIndex: i });
-      return acts;
-    },
-    apply: function (state, it, action) {
-      const p = state.players[SB.other(it.player)];
-      const inst = p.deck.splice(action.deckIndex, 1)[0];
-      if (!inst) return;
-      p.discard.push(inst);
-      SB.log(state, { type: 'discarded', player: SB.other(it.player), cardId: inst.cardId, sound: 'discard' });
-    },
-  };
-
   // "Defeat any number of units you own but don't control" — the ones this player gave
   // away with giveControl — running the per-defeat effects once for each (law-002).
   O.defeatOwnedNotControlled = function (state, item) {
@@ -608,38 +585,6 @@
       SB.queueEffects(state, it.player, it.perDefeat, it.ctx || {});
       // Keep asking while any lent unit is left.
       state.queue.unshift({ step: 'defeatLentPick', player: it.player, ctx: it.ctx, perDefeat: it.perDefeat });
-    },
-  };
-
-  // "Play any number of upgrades from your discard pile on this unit, one at a time,
-  // paying their costs" (lof-001's deployed side).
-  O.playUpgradesFromDiscard = function (state, item) {
-    state.queue.unshift({ step: 'playUpgradeFromDiscard', player: item.controller, ctx: item.ctx,
-      onSelf: !!item.op.onSelf, bearerUid: item.ctx && item.ctx.sourceUid });
-  };
-  SB.queueSteps.playUpgradeFromDiscard = {
-    actions: function (state, it) {
-      const p = state.players[it.player];
-      const bearer = SB.findUnit(state, it.bearerUid);
-      if (it.onSelf && !bearer) return null;
-      const acts = [];
-      p.discard.forEach(function (inst, i) {
-        const c = SB.card(inst.cardId);
-        if (c.type !== 'upgrade') return;
-        if (SB.cardCost(state, it.player, inst.cardId) > SB.readyResources(state, it.player)) return;
-        acts.push({ type: 'playUpgradeDiscard', player: it.player, cardId: inst.cardId, index: i,
-          attachTo: bearer.uid });
-      });
-      if (!acts.length) return null;
-      acts.push({ type: 'playUpgradeDiscard', player: it.player, cardId: null, index: -1 }); // stop
-      return acts;
-    },
-    apply: function (state, it, action) {
-      if (action.index < 0) return;
-      SB.playCardWithMods(state, it.player,
-        { fromDiscard: action.index, cardId: action.cardId, attachTo: action.attachTo }, {});
-      state.queue.unshift({ step: 'playUpgradeFromDiscard', player: it.player, ctx: it.ctx,
-        onSelf: it.onSelf, bearerUid: it.bearerUid });
     },
   };
 
@@ -1569,29 +1514,36 @@
   // rest back on top (law-237: "Look at the top 3 cards ... You may discard 1 of them.
   // Put the rest back on top in any order."). Simplification per DEVIATIONS.md: the
   // kept cards return in their original relative order rather than a player-chosen one.
+  // The player who LOOKS and the deck being looked at are not always the same: one
+  // leader digs into the defending player's deck. `player` is the chooser throughout;
+  // `deckPlayer` owns the cards. `required` drops the decline option for a card that
+  // says discard rather than may discard.
   O.peekTopDiscardUpTo = function (state, item) {
-    state.queue.unshift({ step: 'peekTopDiscardUpTo', player: item.controller, depth: item.op.depth || 3 });
+    state.queue.unshift({ step: 'peekTopDiscardUpTo', player: item.controller,
+      deckPlayer: item.op.who === 'opponent' ? SB.other(item.controller) : item.controller,
+      required: !!item.op.required, depth: item.op.depth || 3 });
   };
   SB.queueSteps.peekTopDiscardUpTo = {
     actions: function (state, itemStep) {
-      const p = state.players[itemStep.player];
+      const p = state.players[itemStep.deckPlayer != null ? itemStep.deckPlayer : itemStep.player];
       const n = Math.min(itemStep.depth, p.deck.length);
       if (n === 0) return null;
-      const acts = [{ type: 'peekDiscardPick', player: itemStep.player, index: -1 }];
+      const acts = itemStep.required ? [] : [{ type: 'peekDiscardPick', player: itemStep.player, index: -1 }];
       for (let i = 0; i < n; i++) acts.push({ type: 'peekDiscardPick', player: itemStep.player, index: i });
-      return acts;
+      return acts.length ? acts : null;
     },
     apply: function (state, itemStep, action) {
-      const p = state.players[itemStep.player];
+      const owner = itemStep.deckPlayer != null ? itemStep.deckPlayer : itemStep.player;
+      const p = state.players[owner];
       const n = Math.min(itemStep.depth, p.deck.length);
       const cards = p.deck.splice(0, n);
       if (action.index >= 0) {
         const inst = cards.splice(action.index, 1)[0];
         p.discard.push(inst);
-        SB.log(state, { type: 'discarded', player: itemStep.player, cardId: inst.cardId, sound: 'discard' });
+        SB.log(state, { type: 'discarded', player: owner, cardId: inst.cardId, sound: 'discard' });
       }
       cards.slice().reverse().forEach(function (c) { p.deck.unshift(c); });
-      SB.log(state, { type: 'arrangedTop', player: itemStep.player });
+      SB.log(state, { type: 'arrangedTop', player: owner });
     },
   };
   // takeControl: returned to its owner when the source unit leaves play.

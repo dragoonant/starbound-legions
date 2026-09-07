@@ -19,6 +19,11 @@ missing mechanic):
   picks are not constrained to be distinct from each other.
 - Abilities lent to another attacker by a support-style unit last until end of
   round rather than only for that one attack.
+- Costs that are not resources or exhausting — discarding a card, returning a unit to
+  hand — are modeled as the ability's first effect rather than as a price paid to
+  activate it (sec-007, law-015). The card resolves the same way when the price can be
+  paid; the difference shows only when it cannot, where the printed card would not
+  offer the action at all and ours offers it and fizzles.
 - law-237's "Look at the top 3 cards of your deck. You may discard 1 of them. Put
   the rest back on top in any order." keeps the kept cards in their original
   relative order instead of letting the player re-arrange them.
@@ -73,17 +78,11 @@ missing mechanic):
   free-text picker over the whole pool has no counterpart in the targeting model and
   would let a player fish for information the rules never give them. The lockout and the
   cost tax themselves behave as printed once a name is chosen.
-- **jtl-015, the pilot side's stats.** The leader's epic action offers a choice between
-  deploying as a ground unit and deploying as an upgrade on a friendly vehicle without a
-  pilot. The pilot side prints no separate stats or abilities, so it is authored with the
-  deployed side's power and HP; the engine already grants a leader pilot its deployed-side
-  power, so the two readings agree in play.
-- **Piloting costs on 25 pulled pilots.** A pilot's piloting cost is printed as a face
-  stat, not as rules text, so it is not in the generated source-name pack and cannot be
-  checked against it. Twenty-five pilots came out of the skeleton pull with a piloting
-  cost of 0, which let them attach to a vehicle for nothing. They are priced instead by
-  a stated rule — `max(1, ceil(unit cost / 2))` — which reproduces two of the five
-  hand-authored piloting costs exactly and lands within 1 of two more (jtl-094, printed
-  above its unit cost, is an outlier no rule recovers). The five authored values are left
-  as they are. Replace these with the printed numbers if the source workpackets come
-  back; a test keeps any of them from returning to 0.
+- **Piloting costs.** Twenty-five pilots came out of the skeleton pull with a piloting
+  cost of 0, so they attached to a vehicle for nothing. A pilot has no separate printed
+  piloting cost: it is played as an upgrade for the card's own cost, which is why a
+  leader that discounts it says "play a card from your hand using Piloting, it costs 1
+  resource less". All twenty-five are now priced at the card's own cost, and a test keeps
+  any of them from returning to 0. Five older pilots (jtl-094, jtl-142, jtl-189, jtl-203,
+  jtl-210) still carry a piloting cost equal to the power their upgrade box grants rather
+  than their own cost; they are left as authored pending a decision.

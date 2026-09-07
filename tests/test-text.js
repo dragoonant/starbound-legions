@@ -37,6 +37,16 @@
     T.ok(/5 or more resources/.test(leaderA), 'deploy threshold stated');
   });
 
+  // A condition that names a character has to name each printing of it. Rendered
+  // naively that produced "control X or X or Y or Z": the same person twice, and a
+  // chain of ors where prose wants commas.
+  T.add('text: a condition naming several cards reads as a list, without repeats', function () {
+    const two = SB.cardText('sec-027').join(' ');
+    T.ok(!/(\b[A-Z][\w'-]+(?: [\w'-]+)*) or \1\b/.test(two), 'no card is named twice: ' + two);
+    const four = SB.cardText('sec-201').join(' ');
+    T.ok(!/ or .* or /.test(four), 'a long list uses commas, not a chain of ors: ' + four);
+  });
+
   T.add('names: no two distinct cards collide on name+subtitle (art/slug gate)', function () {
     const seen = {};
     const dupes = [];

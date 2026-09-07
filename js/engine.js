@@ -423,7 +423,7 @@
         inst.owner = me;
         target.upgrades.push(inst);
         SB.log(state, { type: 'attached', uid: target.uid, cardId: inst.cardId, sound: 'attach' });
-      SB.fireTriggers(state, 'onUpgradeAttachedSelf', target, { sourceUid: target.uid, upgradeCardId: inst.cardId });
+        SB.fireTriggers(state, 'onUpgradeAttachedSelf', target, { sourceUid: target.uid, upgradeCardId: inst.cardId });
         (card.abilities || []).forEach(function (ab) {
           if (ab.trigger !== 'onPlay' && ab.trigger !== 'onSmuggle') return;
           SB.queueEffects(state, me, ab.effects, { sourceUid: target.uid, cardId: inst.cardId,
@@ -616,6 +616,10 @@
         });
         if (gi >= 0) { p.entersReadyGrants.splice(gi, 1); unit.exhausted = false; grantedReady = true; }
       }
+      // How the unit arrived is a rules fact some cards read: one gains ambush only when
+      // played from hand, and must NOT gain it when it arrives out of the resource row
+      // for its smuggle cost. The smuggle path deliberately leaves this unset.
+      unit.playedFromHand = true;
       state[card.arena].push(unit);
       // Say it out loud, and only once the unit is on the board so the line can name it:
       // a unit that arrives ready looks identical to one the opponent exhausted a moment
@@ -626,9 +630,7 @@
       // batched with the leader's when-you-play-a-unit offers below and the player
       // chooses which of them resolves first.
       const simul = [];
-      // entersWithAmbushFromHand: ambush only on this path — the card played from hand,
-      // not the same card smuggled off a resource or plotted into play.
-      if (SB.hasKeyword(state, unit, 'ambush') || card.entersWithAmbushFromHand) {
+      if (SB.hasKeyword(state, unit, 'ambush')) {
         simul.push({ step: 'effect', controller: me, ctx: { sourceUid: unit.uid, cardId: unit.cardId },
           op: { op: 'ambushAttack', target: null } });
       }
@@ -671,6 +673,7 @@
       inst.owner = me; // upgrades on enemy units still return to their own owner
       target.upgrades.push(inst);
       SB.log(state, { type: 'attached', uid: target.uid, cardId: inst.cardId, sound: 'attach' });
+      SB.fireTriggers(state, 'onUpgradeAttachedSelf', target, { sourceUid: target.uid, upgradeCardId: inst.cardId });
       // Upgrade abilities that trigger when the upgrade itself is played resolve
       // in the context of the bearer. This is the ONLY place they fire: the upgrade
       // is already on the bearer, so SB.fireTriggers(bearer, 'onPlay') would run them
