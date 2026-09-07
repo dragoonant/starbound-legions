@@ -713,11 +713,13 @@
     // Defender-side aura: "while this unit is defending, the attacker gets X" and
     // "this unit gets +X while defending".
     let defBonus = 0;
-    (SB.unitDef(defender).abilities || []).forEach(function (ab) {
-      if (ab.trigger !== 'defenderAura') return;
-      power = Math.max(0, power + ((ab.grant || {}).attackerPower || 0));
-      defBonus += (ab.grant || {}).defenderPower || 0;
-    });
+    if (!defender.abilitiesSuppressed && !defender.abilitiesSuppressedForAttack) {
+      (SB.unitDef(defender).abilities || []).forEach(function (ab) {
+        if (ab.trigger !== 'defenderAura') return;
+        power = Math.max(0, power + ((ab.grant || {}).attackerPower || 0));
+        defBonus += (ab.grant || {}).defenderPower || 0;
+      });
+    }
     const defPower = Math.max(0, SB.unitPower(state, defender) + (item.defenderPowerDelta || 0) + defBonus);
     const overwhelm = SB.hasKeyword(state, attacker, 'overwhelm') || mods.overwhelm;
     const sab = SB.hasKeyword(state, attacker, 'saboteur');
@@ -730,20 +732,28 @@
     const alwaysFirst = (SB.unitDef(attacker).staticFlags || []).indexOf('firstStrike') >= 0 || mods.firstStrike;
     const defenderFirst = mods.defenderFirst || !!attacker.defenderFirstNext;
     delete attacker.defenderFirstNext;
+    // "All combat damage that would be dealt to this unit during this attack is
+    // dealt to the chosen unit instead" (shd-090): retaliation damage is redirected
+    // to a chosen friendly unit rather than hitting the attacker.
+    function attackerDamageTarget() {
+      const redirectUid = attacker.redirectAttackerDamageTo;
+      const r = redirectUid != null ? SB.findUnit(state, redirectUid) : null;
+      return r || attacker;
+    }
     if (defenderFirst) {
       // The attacker lets the defender strike first (law-086 style).
-      SB.damageUnit(state, attacker, defPower, { sourceUid: defender.uid, combat: true });
+      SB.damageUnit(state, attackerDamageTarget(), defPower, { sourceUid: defender.uid, combat: true });
       if (SB.findUnit(state, attacker.uid)) SB.damageUnit(state, defender, power, { sourceUid: attacker.uid, combat: true });
     } else if (item.firstStrike || alwaysFirst) {
       // Attacker deals combat damage first; defender only retaliates if it lives.
       SB.damageUnit(state, defender, power, { sourceUid: attacker.uid, combat: true });
       if (SB.findUnit(state, defender.uid)) {
-        SB.damageUnit(state, attacker, defPower, { sourceUid: defender.uid, combat: true });
+        SB.damageUnit(state, attackerDamageTarget(), defPower, { sourceUid: defender.uid, combat: true });
       }
     } else {
       // Simultaneous: compute both, then apply both.
       SB.damageUnit(state, defender, power, { sourceUid: attacker.uid, combat: true });
-      SB.damageUnit(state, attacker, defPower, { sourceUid: defender.uid, combat: true });
+      SB.damageUnit(state, attackerDamageTarget(), defPower, { sourceUid: defender.uid, combat: true });
     }
     const defeated = !SB.findUnit(state, defender.uid);
     if (overwhelm && !defShielded && power > defHpLeft) {
@@ -989,6 +999,9 @@
         // Advantage tokens expire when their carrier's attack or defense ends.
         if (atk && atk.advantage) { atk.advantage = 0; SB.log(state, { type: 'advantageExpired', uid: atk.uid }); }
         if (defUnit && defUnit.advantage) { defUnit.advantage = 0; SB.log(state, { type: 'advantageExpired', uid: defUnit.uid }); }
+        // "Loses all abilities for this attack" clears once the attack it named ends.
+        if (defUnit) { delete defUnit.abilitiesSuppressedForAttack; delete defUnit.keywordsSuppressedForAttack; }
+        if (atk) { delete atk.redirectAttackerDamageTo; }
         // "After this unit attacks" triggers, if the attacker survived.
         if (atk) SB.fireTriggers(state, 'onAttackEnds', atk, Object.assign({ sourceUid: atk.uid }, endCtx));
         // "When a friendly unit's attack ends" observers (leader + units).
@@ -1071,6 +1084,8 @@
       delete p.echoNextOnPlay;
     });
     SB.log(state, { type: 'actionPhase', round: state.round });
+    // A delayed "at the start of the next action phase" tax armed last phase (sec-073).
+    if (SB.applyPendingEnemyTax) SB.applyPendingEnemyTax(state);
   }
 
   function advanceTurn(state) {

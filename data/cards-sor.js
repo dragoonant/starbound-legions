@@ -110,7 +110,7 @@
     "abilities":[{"trigger":"onPlay","effects":[{"op":"experience","amount":2,"target":{"who":"friendly","what":"unit","trait":"tr32","notSelf":true}}]}]},
   // ---- competitive-expansion skeletons (tools/pull-sets.mjs); abilities authored by hand ----
   "sor-045": {"id":"sor-045","type":"unit","aspects":["vigilance","heroism"],"traits":["tr12","tr21"],"unique":true,"cost":3,"power":2,"hp":4,"arena":"ground","keywords":[{"k":"restore","n":2}],"abilities":[{"trigger":"whenDefeated","effects":[{"op":"binaryChoice","chooser":"self","a":{"effects":[{"op":"draw","amount":1}]},"b":{"effects":[]}},{"op":"binaryChoice","chooser":"self","a":{"effects":[{"op":"draw","who":"opponent","amount":1}]},"b":{"effects":[]}}]}]},
-  "sor-052": {"id":"sor-052","type":"unit","aspects":["vigilance","heroism"],"traits":["tr32","tr46","tr04"],"unique":true,"cost":8,"power":6,"hp":9,"arena":"space"},
+  "sor-052": {"id":"sor-052","type":"unit","aspects":["vigilance","heroism"],"traits":["tr32","tr46","tr04"],"unique":true,"cost":8,"power":6,"hp":9,"arena":"space","keywords":[{"k":"sentinel"}],"abilities":[{"trigger":"onPlay","effects":[{"op":"healBudgetThenSelfDamage","budget":8}]}]},
   "sor-093": {"id":"sor-093","type":"unit","aspects":["command","heroism"],"traits":["tr32"],"cost":1,"power":1,"hp":2,"arena":"ground","abilities":[{"trigger":"action","effects":[{"op":"playFromHand","filter":{"type":"unit"},"discount":1,"optional":true}],"cost":0}]},
   "sor-099": {"id":"sor-099","type":"unit","aspects":["command","heroism"],"traits":["tr32","tr46","tr41"],"unique":true,"cost":4,"power":2,"hp":6,"arena":"space","keywords":[{"k":"sentinel"}],"abilities":[{"trigger":"onPlay","effects":[{"op":"returnHand","target":{"who":"friendly","what":"unit","nonLeader":true,"arena":"ground","optional":true},"saveTargetAs":"r"},{"op":"draw","amount":1,"condition":{"if":"saved","name":"r"}}]}]},
   "sor-102": {"id":"sor-102","type":"unit","aspects":["command","heroism"],"traits":["tr32","tr46","tr04"],"unique":true,"cost":8,"power":7,"hp":7,"arena":"space","keywords":[{"k":"restore","n":2}],"abilities":[{"trigger":"constant","scope":{"who":"friendly","what":"unit","notSelf":true},"grant":{"keywords":[{"k":"restore","n":1}]}},{"trigger":"onPlay","effects":[{"op":"playFromHand","zones":["discard"],"filter":{"type":"unit","aspect":"heroism"},"discount":3,"optional":false}]}]},
@@ -264,7 +264,7 @@
   "sor-180": {"id":"sor-180","type":"unit","aspects":["cunning","villainy"],"traits":["tr17","tr46","tr10"],"cost":3,"power":3,"hp":2,"arena":"space"},
   "sor-181": {"id":"sor-181","type":"unit","aspects":["cunning","villainy"],"traits":["tr45","tr16"],"unique":true,"cost":4,"power":2,"hp":8,"arena":"ground"},
   "sor-182": {"id":"sor-182","type":"unit","aspects":["cunning","villainy"],"traits":["tr45","tr03"],"unique":true,"cost":5,"power":4,"hp":5,"arena":"ground"},
-  "sor-183": {"id":"sor-183","type":"unit","aspects":["cunning","villainy"],"traits":["tr45","tr03"],"cost":6,"power":4,"hp":4,"arena":"ground"},
+  "sor-183": {"id":"sor-183","type":"unit","aspects":["cunning","villainy"],"traits":["tr45","tr03"],"cost":6,"power":4,"hp":4,"arena":"ground","keywords":[{"k":"ambush"}],"abilities":[{"trigger":"onPlay","effects":[{"op":"returnEventFromDiscard","optional":true}]}]},
   "sor-185": {"id":"sor-185","type":"unit","aspects":["cunning","villainy"],"traits":["tr17","tr46","tr04"],"unique":true,"cost":8,"power":8,"hp":7,"arena":"space"},
   "sor-187": {"id":"sor-187","type":"event","aspects":["cunning","villainy"],"traits":["tr42"],"cost":7},
   "sor-188": {"id":"sor-188","type":"unit","aspects":["cunning","heroism"],"traits":["tr32","tr08","tr36"],"unique":true,"cost":1,"power":1,"hp":3,"arena":"ground"},
@@ -275,7 +275,7 @@
   "sor-195": {"id":"sor-195","type":"unit","aspects":["cunning","heroism"],"traits":["tr46","tr10"],"cost":4,"power":3,"hp":4,"arena":"space","keywords":[{"k":"ambush"}]},
   "sor-197": {"id":"sor-197","type":"unit","aspects":["cunning","heroism"],"traits":["tr13","tr29"],"unique":true,"cost":6,"power":6,"hp":5,"arena":"ground"},
   "sor-198": {"id":"sor-198","type":"unit","aspects":["cunning","heroism"],"traits":["tr45"],"unique":true,"cost":7,"power":6,"hp":6,"arena":"ground","keywords":[{"k":"ambush"}]},
-  "sor-199": {"id":"sor-199","type":"event","aspects":["cunning","heroism"],"traits":["tr42"],"cost":2},
+  "sor-199": {"id":"sor-199","type":"event","aspects":["cunning","heroism"],"traits":["tr42"],"cost":2,"abilities":[{"trigger":"onPlay","effects":[{"op":"exhaust","target":{"who":"any","what":"unit"},"saveTargetAs":"t"},{"op":"returnUpgradesToHandOn","useTarget":"t"}]}]},
   "sor-200": {"id":"sor-200","type":"event","aspects":["cunning","heroism"],"traits":["tr36"],"cost":2,"abilities":[{"trigger":"onPlay","effects":[{"op":"discardFromOpponentHandChoice"}]}]},
   "sor-201": {"id":"sor-201","type":"unit","aspects":["cunning","cunning"],"traits":["tr17","tr32"],"arena":"ground","cost":3,"power":3,"hp":3,"unique":true,"abilities":[{"trigger":"onPlay","effects":[{"op":"discardFromOpponentHandChoice","filter":{"notType":"unit"}}]}]},
   "sor-202": {"id":"sor-202","type":"unit","aspects":["cunning","cunning"],"traits":["tr13"],"arena":"ground","cost":5,"power":3,"hp":5,"abilities":[{"trigger":"onPlay","effects":[{"op":"returnHand","target":{"who":"any","what":"unit","nonLeader":true,"optional":true}}]}]},
@@ -316,7 +316,7 @@
   "sor-249": {"id":"sor-249","type":"unit","aspects":[],"traits":["tr46","tr47"],"cost":4,"power":3,"hp":5,"arena":"ground"},
   "sor-250": {"id":"sor-250","type":"unit","aspects":[],"traits":["tr46","tr41"],"cost":5,"power":4,"hp":4,"arena":"space"},
   "sor-251": {"id":"sor-251","type":"event","aspects":[],"traits":["tr22"],"cost":1,"abilities":[{"trigger":"onPlay","effects":[{"op":"defeatUpgrade"}]}]},
-  "sor-252": {"id":"sor-252","type":"event","aspects":[],"traits":["tr38"],"cost":1},
+  "sor-252": {"id":"sor-252","type":"event","aspects":[],"traits":["tr38"],"cost":1,"abilities":[{"trigger":"onPlay","effects":[{"op":"bottomFromDiscard","filter":{},"upTo":4,"anyPile":true}]}]},
 
   });
 })(window.SB = window.SB || {});

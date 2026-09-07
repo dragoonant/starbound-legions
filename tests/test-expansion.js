@@ -1074,4 +1074,146 @@
     T.ok(!SB.findUnit(s, cheap.uid), 'the cheap unit left play');
     T.ok(s.players[foe].hand.some(function (inst) { return inst.cardId === 'fx-grunt'; }), 'it went back to its owner\'s hand');
   });
+
+  // ---- cluster-c5 expansion ----------------------------------------------
+
+  T.add('cluster-c5: shd-094 discounts a Force unit 8, any other unit only 6', function () {
+    let s = T.game(); const me = 0;
+    // Fund exactly the event's real cost (aspect penalties may raise it above the
+    // printed 6) plus 1 resource left over, to tell the two discount branches apart.
+    fund(s, me, SB.cardCost(s, me, 'shd-094') + 1);
+    s.players[me].discard.push({ uid: s.nextUid++, cardId: 'law-149' }); // Force (tr12), cost 8, no aspect penalty here
+    s.players[me].discard.push({ uid: s.nextUid++, cardId: 'ash-179' }); // not Force, cost 8, no aspect penalty here
+    s = play(s, me, 'shd-094');
+    const acts = SB.legalActions(s);
+    T.ok(acts.some(function (a) { return a.type === 'playHandCard' && a.cardId === 'law-149'; }),
+      'the Force unit is playable at 1 resource left (8 off)');
+    T.ok(!acts.some(function (a) { return a.type === 'playHandCard' && a.cardId === 'ash-179'; }),
+      'the non-Force unit is not playable at 1 resource left (only 6 off)');
+  });
+
+  T.add('cluster-c5: sor-183 may return an event from either discard pile to its owner\'s hand', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    s.players[foe].discard.push({ uid: s.nextUid++, cardId: 'fx-bolt' }); // opponent's event
+    s = play(s, me, 'sor-183');
+    s = T.act(s, { type: 'returnEventCard', owner: foe, index: 0 });
+    T.ok(s.players[foe].hand.some(function (inst) { return inst.cardId === 'fx-bolt'; }), 'the event returned to its owner\'s hand, not the caster\'s');
+  });
+
+  T.add('cluster-c5: shd-207 returns a unit then its owner may replay it for free', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const g = T.putOnBoard(s, foe, 'fx-grunt'); // cost 1, qualifies (<=6)
+    const before = SB.readyResources(s, foe);
+    s = play(s, me, 'shd-207');
+    // The only legal target auto-resolves (a mandatory return with one candidate) —
+    // the queue head is already the owner's "play it free?" choice.
+    s = T.act(s, { type: 'returnReplay', play: true });
+    const reborn = unitsOf(s, foe, 'fx-grunt')[0];
+    T.ok(reborn, 'the unit came back under its owner\'s control');
+    T.eq(SB.readyResources(s, foe), before, 'replayed for free — no resources spent');
+  });
+
+  T.add('cluster-c5: law-093 returns a cheap unit, replays it free, and it gains Shielded for the phase', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const g = T.putOnBoard(s, foe, 'fx-grunt'); // cost 1 (<=3)
+    s = play(s, me, 'law-093');
+    // The choose step picks the unit (only candidate); the drive then falls through
+    // to the "play it free?" step and takes its first offered action, which is play:true.
+    s = drive(s, function (a) {
+      return a.type === 'choose' && s.queue[0].candidates && s.queue[0].candidates[a.index] && s.queue[0].candidates[a.index].uid === g.uid;
+    }, 2);
+    const reborn = unitsOf(s, foe, 'fx-grunt')[0];
+    T.ok(SB.hasKeyword(s, reborn, 'shielded'), 'the replayed unit gained Shielded for this phase');
+  });
+
+  T.add('cluster-c5: law-096 lets each player pull a unit before defeating everything left', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const mine = T.putOnBoard(s, me, 'fx-grunt');
+    const theirs = T.putOnBoard(s, foe, 'fx-wall');
+    const spared = T.putOnBoard(s, foe, 'fx-flyer');
+    s = play(s, me, 'law-096');
+    // Active player returns `theirs` (an enemy unit is a legal choice), opponent returns `spared`.
+    s = T.act(s, { type: 'mutualReturn', uid: theirs.uid });
+    s = T.act(s, { type: 'mutualReturn', uid: spared.uid });
+    T.ok(s.players[foe].hand.some(function (inst) { return inst.cardId === 'fx-wall'; }), 'the returned enemy unit went to its own owner\'s hand');
+    T.ok(s.players[foe].hand.some(function (inst) { return inst.cardId === 'fx-flyer'; }), 'the second returned unit also went home');
+    T.ok(!SB.findUnit(s, mine.uid), 'every remaining non-leader unit was defeated, including the caster\'s own');
+  });
+
+  T.add('cluster-c5: sor-052 heals a budget spread across units/bases then hits itself for the total', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    const dmg1 = T.putOnBoard(s, me, 'fx-wall', { damage: 3 });
+    s.players[me].base.damage = 4;
+    s = play(s, me, 'sor-052');
+    s = drive(s, function (a) { return a.type === 'healBudgetPoint' && a.kind === 'unit' && a.uid === dmg1.uid; }, 3);
+    s = drive(s, function (a) { return a.type === 'healBudgetPoint' && a.kind === 'base'; }, 4);
+    s = T.act(s, { type: 'healBudgetPoint', kind: 'stop' });
+    const src = unitsOf(s, me, 'sor-052')[0];
+    T.eq(SB.findUnit(s, dmg1.uid).damage, 0, 'the wall was fully healed');
+    T.eq(s.players[me].base.damage, 0, 'the base was fully healed');
+    T.eq(src.damage, 7, 'sor-052 took damage equal to the 7 total it healed');
+  });
+
+  T.add('cluster-c5: sec-073 taxes each enemy unit at the start of the next action phase', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const enemy = T.putOnBoard(s, foe, 'fx-grunt');
+    s = play(s, me, 'sec-073');
+    s = T.act(s, { type: 'pass' }); s = T.act(s, { type: 'pass' });
+    // Walk the regroup phase (both players decline to resource) up to, but not past,
+    // the tax choice the next action phase arms.
+    let guard = 0;
+    while (s.queue.length > 0 && s.queue[0].step !== 'payOrExhaustPick' && guard++ < 10) {
+      s = T.act(s, { type: 'resourceCard', handIndex: -1 });
+    }
+    const acts = SB.legalActions(s);
+    T.ok(acts.some(function (a) { return a.type === 'payOrExhaust' && a.uid === enemy.uid; }), 'the enemy unit must now pay or exhaust');
+    s = T.act(s, { type: 'payOrExhaust', uid: enemy.uid, pay: false });
+    T.ok(SB.findUnit(s, enemy.uid).exhausted, 'declining payment exhausts the unit');
+  });
+
+  T.add('cluster-c5: shd-090 redirects this attack\'s retaliation damage to a chosen friendly Underworld unit', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    const atk = T.putOnBoard(s, me, 'shd-090'); atk.exhausted = false;
+    const guard = T.putOnBoard(s, me, 'sor-183'); // another friendly Underworld (tr45) unit
+    const defender = T.putOnBoard(s, foe, 'fx-wall'); // power 1
+    s = T.act(s, { type: 'attack', attacker: atk.uid, target: { kind: 'unit', uid: defender.uid } });
+    s = drive(s, function (a) { return a.type === 'choose' && a.index >= 0; });
+    T.eq(SB.findUnit(s, atk.uid).damage, 0, 'the attacker took no damage');
+    T.eq(SB.findUnit(s, guard.uid).damage, 1, 'the chosen friendly unit took the retaliation damage instead');
+  });
+
+  T.add('cluster-c5: sec-157 buffs an attack, grants Overwhelm, and strips the defender\'s abilities for it', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const atk = T.putOnBoard(s, me, 'fx-grunt'); atk.exhausted = false; // power 2
+    // twi-083 normally creates a token when attacked; with abilities suppressed for
+    // this attack, that "whenAttacked" ability must not fire.
+    const defender = T.putOnBoard(s, foe, 'twi-083'); // power 4, hp 4
+    s = play(s, me, 'sec-157');
+    s = T.act(s, { type: 'effectAttack', target: { kind: 'unit', uid: defender.uid } });
+    T.eq(SB.allUnits(s, foe).filter(function (u) { return u.cardId === 'tok-gv1'; }).length, 0,
+      'the defender\'s whenAttacked ability was suppressed — no token created');
+    const survivor = SB.findUnit(s, defender.uid);
+    T.ok(survivor && !survivor.abilitiesSuppressedForAttack, 'the suppression clears once the attack it named is over');
+  });
+
+  T.add('cluster-c5: sor-252 bottoms up to 4 chosen cards from a single discard pile', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    const before = s.players[me].deck.length;
+    s.players[me].discard.push({ uid: s.nextUid++, cardId: 'fx-bolt' }, { uid: s.nextUid++, cardId: 'fx-supply' });
+    s = play(s, me, 'sor-252');
+    s = T.act(s, { type: 'bottomDiscard', owner: me, index: 0 });
+    s = T.act(s, { type: 'bottomDiscard', owner: me, index: 0 });
+    s = T.act(s, { type: 'bottomDiscard', index: -1 });
+    T.eq(s.players[me].deck.length, before + 2, 'both chosen cards landed on the bottom of the deck');
+    T.eq(s.players[me].discard.filter(function (i) { return i.cardId === 'fx-bolt' || i.cardId === 'fx-supply'; }).length, 0, 'they left the discard pile');
+  });
+
+  T.add('cluster-c5: jtl-164 may resource the top card only while an opponent controls more resources', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    fund(s, me, 4); fund(s, foe, 6); // opponent now clearly controls more resources
+    const deckTop = s.players[me].deck[0].cardId;
+    s = play(s, me, 'jtl-164');
+    s = drive(s, function (a) { return a.type === 'binary' && a.pick === 'a'; });
+    T.ok(s.players[me].resources.some(function (r) { return r.instance.cardId === deckTop; }), 'the top card became a resource');
+  });
 })(window.SB = window.SB || {});

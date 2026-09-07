@@ -48,7 +48,7 @@
   SB.unitAllAbilities = function (state, unit) {
     const out = [];
     const def = SB.unitDef(unit);
-    if (unit.abilitiesSuppressed || SB.nameSilenced(state, unit.owner, unit.cardId)) return out;
+    if (unit.abilitiesSuppressed || unit.abilitiesSuppressedForAttack || SB.nameSilenced(state, unit.owner, unit.cardId)) return out;
     (def.abilities || []).forEach(function (ab) { if (!ab.asPilotOnly) out.push(ab); });
     unit.upgrades.forEach(function (inst) {
       const c = SB.card(inst.cardId);
@@ -104,7 +104,7 @@
   };
   const prevHasKeyword = SB.hasKeyword;
   SB.hasKeyword = function (state, unit, k) {
-    if (unit.abilitiesSuppressed) return false;
+    if (unit.abilitiesSuppressed || unit.abilitiesSuppressedForAttack) return false;
     let lost = false;
     SB.auraGrants(state, unit).forEach(function (g) {
       if (g.loseKeywords && g.loseKeywords.indexOf(k) >= 0) lost = true;
@@ -552,6 +552,22 @@
     const u = SB.findUnit(state, target.uid);
     if (!u) return;
     u.upgrades.slice().forEach(function (inst) { SB.removeUpgrade(state, u, inst, 'defeated'); });
+    if (SB.findUnit(state, u.uid) && SB.unitRemainingHp(state, u) <= 0) SB.defeatUnit(state, u, item.ctx);
+  };
+  // Return every upgrade on a chosen unit to its owner's HAND. Deliberately not
+  // SB.removeUpgrade: that path discards the upgrade and fires its "When Defeated",
+  // and a card that hands the upgrade back does neither.
+  O.returnUpgradesToHandOn = function (state, item, target) {
+    const u = SB.findUnit(state, target.uid);
+    if (!u) return;
+    u.upgrades.slice().forEach(function (inst) {
+      const i = u.upgrades.indexOf(inst);
+      if (i < 0) return;
+      u.upgrades.splice(i, 1);
+      const owner = SB.upgradeOwner(u, inst);
+      if (!SB.card(inst.cardId).token) state.players[owner].hand.push(inst);
+      SB.log(state, { type: 'returnedToHand', player: owner, cardId: inst.cardId });
+    });
     if (SB.findUnit(state, u.uid) && SB.unitRemainingHp(state, u) <= 0) SB.defeatUnit(state, u, item.ctx);
   };
   // Defeat every Shield token on a chosen unit (jtl-180). Leaves the unit itself
@@ -1255,10 +1271,10 @@
       const base = prevBottomPick.actions(state, it);
       if (!base) return null;
       const f = it.filter || {};
-      const p = state.players[it.player];
       const acts = base.filter(function (a) {
         if (a.index < 0) return true;
-        const c = SB.card(p.discard[a.index].cardId);
+        const pile = state.players[a.owner != null ? a.owner : it.player];
+        const c = SB.card(pile.discard[a.index].cardId);
         if (f.maxCost != null && (c.cost || 0) > f.maxCost) return false;
         if (f.aspect && (c.aspects || []).indexOf(f.aspect) < 0) return false;
         return true;
@@ -1913,5 +1929,227 @@
       captor.captured.push({ uid: victim.uid, cardId: victim.cardId, owner: victim.owner, upgrades: victim.upgrades });
       SB.log(state, { type: 'captured', uid: victim.uid, cardId: victim.cardId, by: captor.uid, sound: 'capture' });
     },
+  };
+  // ---- cluster-c5 expansion --------------------------------------------------
+  // Twelve tournament cards that needed a handful of new, narrowly-scoped ops.
+
+  // Return an event from a discard pile (either player's) to its owner's hand (sor-183).
+  O.returnEventFromDiscard = function (state, item) {
+    state.queue.unshift({ step: 'returnEventPick', player: item.controller, ctx: item.ctx,
+      optional: item.op.optional !== false });
+  };
+  S.returnEventPick = {
+    actions: function (state, it) {
+      const acts = [];
+      [it.player, SB.other(it.player)].forEach(function (owner) {
+        state.players[owner].discard.forEach(function (inst, i) {
+          if (SB.card(inst.cardId).type !== 'event') return;
+          acts.push({ type: 'returnEventCard', player: it.player, owner: owner, index: i });
+        });
+      });
+      if (!acts.length) return null;
+      if (it.optional) acts.push({ type: 'returnEventCard', player: it.player, owner: null, index: -1 });
+      return acts;
+    },
+    apply: function (state, it, action) {
+      if (action.index < 0) return;
+      const p = state.players[action.owner];
+      const inst = p.discard.splice(action.index, 1)[0];
+      p.hand.push(inst);
+      SB.log(state, { type: 'tookFromDiscard', player: action.owner, cardId: inst.cardId, sound: 'draw' });
+    },
+  };
+
+  // Return a chosen unit to its owner's hand, then its owner may play it for free
+  // (shd-207, law-093). `grantKeyword` (law-093: Shielded) is granted to the unit for
+  // this phase if it's replayed.
+  O.returnThenReplay = function (state, item, target) {
+    const u = SB.findUnit(state, target.uid);
+    if (!u) return;
+    const owner = u.owner;
+    const uid = u.uid;
+    const cardId = u.cardId;
+    O.returnHand(state, item, target);
+    if (SB.findUnit(state, uid)) return; // returnHand fizzled (e.g. immune)
+    state.queue.unshift({ step: 'returnReplayPick', player: owner, ctx: item.ctx, uid: uid,
+      cardId: cardId, grantKeyword: item.op.grantKeyword || null });
+  };
+  S.returnReplayPick = {
+    actions: function (state, it) {
+      const p = state.players[it.player];
+      const idx = p.hand.findIndex(function (inst) { return inst.uid === it.uid; });
+      if (idx < 0) return null;
+      return [
+        { type: 'returnReplay', player: it.player, play: true, handIndex: idx, cardId: it.cardId },
+        { type: 'returnReplay', player: it.player, play: false },
+      ];
+    },
+    apply: function (state, it, action) {
+      if (!action.play) return;
+      SB.playCardWithMods(state, it.player, { handIndex: action.handIndex, cardId: it.cardId }, { discount: 99 });
+      if (it.grantKeyword) {
+        const u = SB.findUnit(state, it.uid);
+        if (u) {
+          u.tempKeywords = (u.tempKeywords || []).concat([it.grantKeyword]);
+          SB.log(state, { type: 'gainedKeyword', uid: u.uid, k: it.grantKeyword, sound: 'buff' });
+        }
+      }
+    },
+  };
+
+  // Each player may return one non-leader unit to hand, then defeat every remaining
+  // non-leader unit (law-096).
+  O.eachPlayerReturnThenDefeatAll = function (state, item) {
+    state.queue.unshift({ step: 'mutualReturnPick', player: item.controller, ctx: item.ctx, done: [] });
+  };
+  S.mutualReturnPick = {
+    actions: function (state, it) {
+      const acts = [{ type: 'mutualReturn', player: it.player, uid: null }];
+      SB.allUnits(state).forEach(function (u) {
+        if (SB.card(u.cardId).type === 'leader') return;
+        acts.push({ type: 'mutualReturn', player: it.player, uid: u.uid });
+      });
+      return acts;
+    },
+    apply: function (state, it, action) {
+      if (action.uid != null) {
+        const u = SB.findUnit(state, action.uid);
+        if (u) O.returnHand(state, { controller: it.player, ctx: it.ctx }, { kind: 'unit', uid: u.uid });
+      }
+      const done = it.done.concat([it.player]);
+      const other = SB.other(it.player);
+      if (done.indexOf(other) < 0) {
+        state.queue.unshift({ step: 'mutualReturnPick', player: other, ctx: it.ctx, done: done });
+        return;
+      }
+      // Both players have decided: defeat everything non-leader that's left.
+      SB.allUnits(state).slice().forEach(function (u) {
+        if (SB.card(u.cardId).type === 'leader') return;
+        if (SB.findUnit(state, u.uid)) SB.defeatUnit(state, u, it.ctx || {});
+      });
+    },
+  };
+
+  // Heal up to `budget` total damage split across any number of units/bases, then
+  // deal that much damage to the source unit itself (sor-052).
+  O.healBudgetThenSelfDamage = function (state, item) {
+    state.queue.unshift({ step: 'healBudgetPick', player: item.controller, ctx: item.ctx,
+      budget: item.op.budget || 0, healed: 0, sourceUid: item.ctx && item.ctx.sourceUid });
+  };
+  S.healBudgetPick = {
+    actions: function (state, it) {
+      if (it.budget <= 0) return null;
+      const acts = [{ type: 'healBudgetPoint', player: it.player, kind: 'stop' }];
+      SB.allUnits(state).forEach(function (u) {
+        if (u.damage > 0) acts.push({ type: 'healBudgetPoint', player: it.player, kind: 'unit', uid: u.uid });
+      });
+      [0, 1].forEach(function (pi) {
+        if (state.players[pi].base.damage > 0) acts.push({ type: 'healBudgetPoint', player: it.player, kind: 'base', pi: pi });
+      });
+      return acts;
+    },
+    apply: function (state, it, action) {
+      if (action.kind === 'stop') {
+        finishHealBudget(state, it);
+        return;
+      }
+      let healed = 0;
+      if (action.kind === 'unit') {
+        const u = SB.findUnit(state, action.uid);
+        if (u && u.damage > 0) { u.damage -= 1; healed = 1; SB.log(state, { type: 'unitHeal', uid: u.uid, amount: 1, sound: 'heal' }); }
+      } else {
+        const b = state.players[action.pi].base;
+        if (b.damage > 0) { b.damage -= 1; healed = 1; SB.log(state, { type: 'baseHeal', player: action.pi, amount: 1, sound: 'heal' }); }
+      }
+      const left = it.budget - healed;
+      if (left > 0 && healed > 0) {
+        state.queue.unshift({ step: 'healBudgetPick', player: it.player, ctx: it.ctx, budget: left,
+          healed: it.healed + healed, sourceUid: it.sourceUid });
+      } else {
+        finishHealBudget(state, Object.assign({}, it, { healed: it.healed + healed }));
+      }
+    },
+  };
+  function finishHealBudget(state, it) {
+    const total = it.healed || 0;
+    if (total > 0) {
+      const u = it.sourceUid != null ? SB.findUnit(state, it.sourceUid) : null;
+      if (u) SB.damageUnit(state, u, total, { sourceUid: u.uid });
+    }
+  }
+
+  // Alternate cost: discard a card with the given aspect instead of paying an
+  // event's resource cost (sor-199 needs this, but hooking the hand-play cost path
+  // safely — while another pass edits engine.js concurrently — is out of scope for
+  // this expansion; sor-199 is left vanilla, see the cluster-c5 report).
+
+  // Delayed tax: at the start of the next action phase, each enemy unit's controller
+  // must pay 1 resource or exhaust it (sec-073).
+  O.taxEnemyNextPhase = function (state, item) {
+    state.pendingEnemyTax = state.pendingEnemyTax || [];
+    state.pendingEnemyTax.push({ controller: item.controller, amount: item.op.amount || 1 });
+    SB.log(state, { type: 'enemyTaxArmed', player: item.controller, amount: item.op.amount || 1, sound: 'buff' });
+  };
+  SB.applyPendingEnemyTax = function (state) {
+    const pending = state.pendingEnemyTax;
+    if (!pending || !pending.length) return;
+    state.pendingEnemyTax = [];
+    pending.forEach(function (p) {
+      SB.allUnits(state, SB.other(p.controller)).forEach(function (u) {
+        state.queue.push({ step: 'payOrExhaustPick', player: u.owner, uid: u.uid, amount: p.amount });
+      });
+    });
+  };
+  S.payOrExhaustPick = {
+    actions: function (state, it) {
+      const u = SB.findUnit(state, it.uid);
+      if (!u) return null;
+      const acts = [];
+      if (SB.readyResources(state, it.player) >= it.amount) acts.push({ type: 'payOrExhaust', player: it.player, uid: it.uid, pay: true });
+      if (!u.exhausted) acts.push({ type: 'payOrExhaust', player: it.player, uid: it.uid, pay: false });
+      return acts.length ? acts : null;
+    },
+    apply: function (state, it, action) {
+      const u = SB.findUnit(state, it.uid);
+      if (!u) return;
+      if (action.pay) {
+        const res = state.players[it.player].resources;
+        let left = it.amount;
+        for (let i = 0; i < res.length && left > 0; i++) { if (!res[i].exhausted) { res[i].exhausted = true; left--; } }
+        SB.log(state, { type: 'resourcesExhausted', player: it.player, amount: it.amount - left });
+      } else {
+        u.exhausted = true;
+        SB.log(state, { type: 'exhausted', uid: u.uid });
+      }
+    },
+  };
+
+  // On Attack: redirect all combat damage that would be dealt to the attacker this
+  // attack to a chosen friendly Underworld unit instead (shd-090).
+  O.redirectAttackerDamage = function (state, item, target) {
+    const atk = SB.findUnit(state, item.ctx && item.ctx.sourceUid);
+    if (!atk || !target) return;
+    atk.redirectAttackerDamageTo = target.uid;
+    SB.log(state, { type: 'attackModified', uid: atk.uid, sound: 'ability' });
+  };
+
+  // attackTargetChoice: also suppress the defender's abilities for this attack when
+  // the attacking effect says so and the target is a unit (sec-157).
+  const prevAttackTargetChoice = S.attackTargetChoice;
+  S.attackTargetChoice = {
+    actions: prevAttackTargetChoice.actions,
+    apply: function (state, itemStep, action) {
+      if (action.target && action.target.kind === 'unit' && itemStep.defenderLosesAbilitiesIfUnit) {
+        const def = SB.findUnit(state, action.target.uid);
+        if (def) { def.abilitiesSuppressedForAttack = true; def.keywordsSuppressedForAttack = true;
+          SB.log(state, { type: 'abilitiesSuppressed', uid: def.uid, sound: 'ability' }); }
+      }
+      prevAttackTargetChoice.apply(state, itemStep, action);
+    },
+  };
+
+  // "If an opponent controls more resources than you" (jtl-164).
+  SB.extraConditions.opponentMoreResources = function (state, controller) {
+    return state.players[SB.other(controller)].resources.length > state.players[controller].resources.length;
   };
 })(window.SB = window.SB || {});

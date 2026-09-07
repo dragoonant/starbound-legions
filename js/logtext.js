@@ -234,6 +234,11 @@
         default: return who + ' had no effect.';
       }
     },
+
+    // --- cluster-c5 expansion ---
+    enemyTaxArmed: function (l) {
+      return possessive(l.player) + ' opponent must pay ' + n(l.amount, 'resource') + ' or exhaust each unit at the start of the next action phase.';
+    },
   };
 
   function statDelta(power, hp) {

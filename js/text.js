@@ -263,6 +263,7 @@
       if (op.bonusIfOddCostsDiffer) perks.push('if the revealed card and that unit have different odd costs, it gets +' + op.bonusIfOddCostsDiffer + '/+0');
       if (op.bonusIfTrait) perks.push(an((SB.names.traits[op.bonusIfTrait.trait] || op.bonusIfTrait.trait) + ' unit') + ' gets +' + op.bonusIfTrait.amount + '/+0 for this attack');
       if (op.grantSaboteurForAttack) perks.push('it gains Saboteur for this round');
+      if (op.grantKeywordForAttack) perks.push('it gains ' + (SB.names.keywords[op.grantKeywordForAttack] || op.grantKeywordForAttack) + ' for this attack');
       if (op.grantTempAbility) perks.push('for this round it gains: ' + JSON.stringify(describeAbilityLate(op.grantTempAbility)));
       if (op.bonusPowerRef) perks.push('it gets +1/+0 for this attack ' + amountText({ amountRef: op.bonusPowerRef }).replace(/^1 /, ''));
       if (op.abilitiesFromDiscarded) perks.push('for this round it gains the discarded card’s abilities');
@@ -270,6 +271,7 @@
       if (op.bonusIfCond) {
         perks.push(conditionClause(op.bonusIfCond.cond) + ', it gets ' + statPair(op.bonusIfCond.power, op.bonusIfCond.hp) + ' for this attack');
       }
+      if (op.defenderLosesAbilitiesIfUnit) perks.push('if it attacks a unit, the defender loses all abilities for this attack');
       if (perks.length) s += ' — ' + perks.join(' and ');
       return s;
     },
@@ -294,6 +296,10 @@
       if (op.free) s += ' for free';
       const perks = [];
       if (!op.free && op.discount) perks.push('it costs ' + op.discount + ' less');
+      if (op.discountByTrait) {
+        const dbt = op.discountByTrait;
+        perks.push('it costs ' + dbt.otherwise + ' less, or ' + dbt.amount + ' less if it’s ' + an((SB.names.traits[dbt.trait] || dbt.trait) + ' unit'));
+      }
       if (op.entersReady) perks.push('it enters play ready');
       if (op.withHidden) perks.push('it gains Hidden for this round');
       if (op.withAmbush) perks.push('it gains Ambush for this round');
@@ -398,8 +404,9 @@
     exhaustBudget: function (op) { return 'exhaust any number of units with combined cost ' + op.budget + ' or less'; },
     payForExperience: function (op) { return 'pay up to ' + op.max + ' resources — this unit gains an experience token for each'; },
     bottomFromDiscard: function (op) {
-      if ((op.upTo || 1) === 1) return 'you may put ' + filterNoun(op.filter) + ' from your discard pile on the bottom of your deck';
-      return 'put up to ' + op.upTo + ' ' + filterNoun(op.filter).replace(/^an? /, '') + 's from your discard pile on the bottom of your deck';
+      const pile = op.anyPile ? 'a discard pile' : 'your discard pile';
+      if ((op.upTo || 1) === 1) return 'you may put ' + filterNoun(op.filter) + ' from ' + pile + ' on the bottom of its owner’s deck';
+      return 'choose up to ' + op.upTo + ' cards in ' + pile + ' — put them on the bottom of their owner’s deck in a random order';
     },
     echoNextOnPlay: function () { return 'the next time you use a when-played ability this round, use it again'; },
     discloseReveal: function (op) {
@@ -470,7 +477,8 @@
     useWhenDefeatedOf: function (op) { return 'use the last-words ability of ' + targetText(op) + ' without defeating it'; },
     reuseAbility: function () { return 'use that last-words ability again'; },
     purgeCopies: function () { return 'its controller discards every copy of that card from their hand and deck'; },
-    defeatAllUpgradesOn: function (op) { return 'defeat every upgrade on ' + targetText(op); },
+    defeatAllUpgradesOn: function (op) { return 'defeat every upgrade on ' + targetText(op); },
+    returnUpgradesToHandOn: function (op) { return 'return each upgrade on ' + targetText(op) + ' to its owner’s hand'; },
     selfUpgradeToHand: function () { return 'return this upgrade from your discard pile to your hand'; },
     dividedAdvantage: function (op) {
       const among = ' among ' + scopeNounPlural(op.scope || { who: 'friendly', what: 'unit' });
@@ -506,6 +514,25 @@
     defeatCredit: function () { return 'defeat an enemy Credit token'; },
     captureOrReady: function () { return 'an opponent may choose a non-leader unit they control — if they do, this unit captures that unit; if they don’t, ready this unit'; },
     rescueChoice: function () { return 'the defending player may rescue a card they own guarded by this unit — if they do, draw 2 cards'; },
+    // ---- cluster-c5 expansion ----
+    returnEventFromDiscard: function (op) { return (op.optional === false ? '' : 'you may ') + 'return an event from a discard pile to its owner’s hand'; },
+    returnThenReplay: function (op) {
+      let s = 'return ' + targetText(op) + ' to its owner’s hand — then its owner may play it for free';
+      if (op.grantKeyword) s += ', and it gains ' + (SB.names.keywords[op.grantKeyword] || op.grantKeyword) + ' for this phase';
+      return s;
+    },
+    eachPlayerReturnThenDefeatAll: function () {
+      return 'each player may return a non-leader unit to its owner’s hand — then defeat all non-leader units';
+    },
+    healBudgetThenSelfDamage: function (op) {
+      return 'heal up to ' + op.budget + ' total damage from any number of units and/or bases — deal that much damage to this unit';
+    },
+    taxEnemyNextPhase: function (op) {
+      return 'at the start of the next action phase, for each enemy unit, its controller must pay ' + (op.amount || 1) + ' resource' + ((op.amount || 1) === 1 ? '' : 's') + ' or exhaust that unit';
+    },
+    redirectAttackerDamage: function (op) {
+      return 'you may choose ' + describeTarget(op.target) + ' — if you do, all combat damage that would be dealt to this unit during this attack is dealt to the chosen unit instead';
+    },
   };
   // Late-bound alias so grantAbilityTemp can render nested abilities.
   function describeAbilityPublic(ab) { return describeAbility(ab); }
@@ -706,6 +733,7 @@
     defeatedWasHighestCostEnemy: function () { return 'if that unit had the highest cost among enemy units'; },
     bearerWasFriendlyWithTrait: function (c) { return 'if this upgrade was on a friendly ' + (SB.names.traits[c.trait] || c.trait) + ' unit'; },
     fewerResourcesThanOpponent: function () { return 'if you control fewer resources than an opponent'; },
+    opponentMoreResources: function () { return 'if an opponent controls more resources than you'; },
     opponentControlsNoGroundUnits: function () { return 'if an opponent controls no ground units'; },
     selfPowerWasAtLeast: function (c) { return 'if this unit had ' + c.n + ' or more power'; },
     controlsTraitCardAnywhere: function (c) { return 'while you control another ' + (SB.names.traits[c.trait] || c.trait) + ' card (unit, upgrade, or leader)'; },

@@ -783,7 +783,7 @@
       case 'readyTax': return a.pay ? 'Pay to stay ready' : 'Stay exhausted';
       case 'payXp': return a.pay ? 'Pay 1 (gain a token)' : 'Stop paying';
       case 'bottomCard': return 'Bottom: ' + cardName(s.players[a.player].hand[a.handIndex].cardId);
-      case 'bottomDiscard': return a.index === -1 ? 'Done' : 'Bottom: ' + cardName(s.players[a.player].discard[a.index].cardId);
+      case 'bottomDiscard': return a.index === -1 ? 'Done' : 'Bottom: ' + cardName(s.players[a.owner != null ? a.owner : a.player].discard[a.index].cardId);
       case 'bottomUnit': return 'Bottom: ' + cardName(s.players[a.player].discard[a.index].cardId);
       case 'arrange2': return {
         keep: 'Keep both, same order', swap: 'Keep both, swapped',
@@ -811,6 +811,14 @@
       // cluster-c4 expansion
       case 'captureOrReady': return a.uid == null ? SB.names.ui.decline : 'Give up: ' + unitName(s, a.uid);
       case 'rescuePick': return a.uid == null ? SB.names.ui.decline : 'Rescue: ' + cardName(a.cardId);
+      // cluster-c5 expansion
+      case 'returnEventCard': return a.index === -1 ? SB.names.ui.decline : 'Return: ' + cardName(s.players[a.owner].discard[a.index].cardId);
+      case 'returnReplay': return a.play ? 'Play: ' + cardName(a.cardId) : SB.names.ui.decline;
+      case 'mutualReturn': return a.uid == null ? SB.names.ui.decline : 'Return: ' + unitName(s, a.uid);
+      case 'healBudgetPoint': return a.kind === 'stop' ? 'Stop'
+        : a.kind === 'base' ? 'Heal 1 on ' + (a.pi === UI.humanSeat ? 'your base' : 'their base')
+        : 'Heal 1 on ' + unitName(s, a.uid);
+      case 'payOrExhaust': return a.pay ? 'Pay ' + '1 resource' : 'Exhaust: ' + unitName(s, a.uid);
       default: return a.type;
     }
   }
@@ -867,11 +875,16 @@
     switch (a.type) {
       case 'searchTake': return a.deckIndex >= 0 ? p.deck[a.deckIndex].cardId : null;
       case 'takeFromDiscard': return a.index >= 0 ? p.discard[a.index].cardId : null;
-      case 'bottomDiscard': case 'bottomUnit': return a.index >= 0 ? p.discard[a.index].cardId : null;
+      case 'bottomDiscard': case 'bottomUnit': {
+        const pile = a.owner != null ? s.players[a.owner] : p;
+        return a.index >= 0 ? pile.discard[a.index].cardId : null;
+      }
       case 'playHandCard': return a.handIndex === -1 ? null : (a.cardId || null);
       case 'peekAct': return a.mode === 'play' ? a.cardId : null;
       case 'plotPlay': return a.resourceIndex === -1 ? null : (a.cardId || null);
       case 'bottomCard': return p.hand[a.handIndex].cardId;
+      case 'returnEventCard': return a.index >= 0 ? s.players[a.owner].discard[a.index].cardId : null;
+      case 'returnReplay': return a.play ? a.cardId : null;
       case 'discardCard':
         return s.players[a.targetPlayer != null ? a.targetPlayer : a.player].hand[a.handIndex].cardId;
       default: return null;

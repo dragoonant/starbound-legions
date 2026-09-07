@@ -192,7 +192,7 @@
   "jtl-161": {"id":"jtl-161","type":"unit","aspects":["aggression"],"traits":["tr33","tr29"],"unique":true,"cost":3,"power":2,"hp":5,"arena":"ground"},
   "jtl-162": {"id":"jtl-162","type":"unit","aspects":["aggression"],"traits":["tr34","tr08","tr46","tr41"],"cost":3,"power":4,"hp":2,"arena":"space","abilities":[{"trigger":"whenDefeated","effects":[{"op":"indirectDamage","amount":3}]}]},
   "jtl-163": {"id":"jtl-163","type":"unit","aspects":["aggression"],"traits":["tr17","tr46","tr47"],"cost":4,"power":3,"hp":4,"arena":"ground","keywords":[{"k":"overwhelm"}]},
-  "jtl-164": {"id":"jtl-164","type":"unit","aspects":["aggression"],"traits":["tr32","tr44"],"unique":true,"cost":4,"power":5,"hp":4,"arena":"ground"},
+  "jtl-164": {"id":"jtl-164","type":"unit","aspects":["aggression"],"traits":["tr32","tr44"],"unique":true,"cost":4,"power":5,"hp":4,"arena":"ground","abilities":[{"trigger":"onPlay","condition":{"if":"opponentMoreResources"},"effects":[{"op":"binaryChoice","chooser":"self","a":{"effects":[{"op":"resourceTopDeck"}]},"b":{"effects":[]}}]}]},
   "jtl-166": {"id":"jtl-166","type":"unit","aspects":["aggression"],"traits":["tr46","tr10"],"cost":4,"power":4,"hp":4,"arena":"space","keywords":[{"k":"saboteur"}]},
   "jtl-167": {"id":"jtl-167","type":"unit","aspects":["aggression"],"traits":["tr17","tr46","tr40"],"cost":5,"power":5,"hp":4,"arena":"ground","keywords":[{"k":"grit"}]},
   "jtl-168": {"id":"jtl-168","type":"unit","aspects":["aggression"],"traits":["tr32","tr43"],"cost":6,"power":6,"hp":5,"arena":"ground","keywords":[{"k":"saboteur"}]},

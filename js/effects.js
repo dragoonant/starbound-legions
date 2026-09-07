@@ -266,6 +266,7 @@
 
   // Queue an ability's effects (in order) for a trigger on a unit.
   SB.fireTriggers = function (state, trigger, unit, ctx) {
+    if (unit.abilitiesSuppressed || unit.abilitiesSuppressedForAttack) return;
     const def = SB.unitDef(unit);
     const sources = [def].concat(unit.upgrades.map(function (i) { return SB.card(i.cardId); }));
     if (unit.tempAbilities) sources.push({ abilities: unit.tempAbilities });
