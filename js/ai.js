@@ -41,6 +41,11 @@
     wastedPlay: 60,        // resolved into nothing — LARGE on purpose: passing gives
                            // the opponent nothing, so wasting a card must never look
                            // cheaper than passing (horizon effect; measured in MRW).
+    // Declining to act while a card in hand is affordable. The exchange search is
+    // pessimistic by construction — it takes the opponent's BEST reply — so against a
+    // control deck every play looks losing and passing looks free, and both sides
+    // stall. 0 keeps the measured behaviour; raise it only on a gauntlet result.
+    idlePass: 0,
     wastedTrigger: 3,      // incidental trigger fizzled — SMALL on purpose: reorders
                            // plays but must never argue against deploying at all.
   };
@@ -225,12 +230,17 @@
     // the numbers instead of guessed at. It must never change what is chosen: the
     // scoring below is untouched and the rng is consumed in the same order either way.
     const trace = AI.trace ? [] : null;
+    // Whether holding is actually a choice: a pass with nothing playable is not idling.
+    const hasAffordablePlay = P.idlePass ? acts.some(function (x) { return x.type === 'playCard'; }) : false;
     acts.forEach(function (a) {
       let after = SB.apply(state, a);
       after = settle(after);
       const base = AI.evaluate(after, me);
       const wasted = wastedPlayPenalty(state, after, a);
       let v = base - wasted;
+      if (P.idlePass && (a.type === 'pass' || a.type === 'claimInitiative') && hasAffordablePlay) {
+        v -= P.idlePass;
+      }
       let swing = 0;
       if (P.exchangeWidth > 0) {
         // Replaces the one-reply swing penalty below: the exchange prices the reply AND
