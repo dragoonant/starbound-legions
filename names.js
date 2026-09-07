@@ -78,7 +78,7 @@
       animFull: 'Animations: full', animQuick: 'Animations: quick', animOff: 'Animations: off',
       animSkip: 'Click to skip', animShield: 'shield',
       // The card-names button (shown only when data/names-source.js is loaded).
-      namesSource: 'Names: printed cards', namesOriginal: 'Names: Sundered Veil',
+      namesSource: 'Names: printed cards', namesOriginal: 'Names: Starbound Legions',
       // The title screen and its deck picker.
       gameTitle: 'Starbound Legions',
       gameTagline: 'Two fleets. One war. Only one base left standing.',

@@ -105,7 +105,7 @@ reworkable step, so it waits until names and card pool are stable.
   for the few logged digital-model simplifications).
 - DONE Phase 4–5: playable click UI with generic choice bar for every queue step; AI
   with three difficulties (docs/ai.md).
-- DONE Phase 6 naming: "The Sundered Veil" theme (THEME.md), 414 original names.
+- DONE Phase 6 naming: "Starbound Legions" theme (THEME.md), 414 original names.
 - Art: pipeline live (tools/gen-art.mjs, HF router → FLUX.1-schnell); prompts in
   tools/art-prompts.json; delivery WebPs in art/ are committed and served by GitHub
   Pages (PAGES-PLAN.md); masters and PNG intermediates stay gitignored.
