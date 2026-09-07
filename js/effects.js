@@ -54,6 +54,12 @@
           const su = t && t.kind === 'unit' ? SB.findUnit(state, t.uid) : null;
           if (!su || SB.arenaOf(state, u) !== SB.arenaOf(state, su)) return;
         }
+        // The counterpart of the existing sameArenaAsSource: a unit anywhere BUT the
+        // arena the ability is speaking from.
+        if (sel.otherArenaFromSource) {
+          const src = SB.findUnit(state, ctx.sourceUid);
+          if (!src || SB.arenaOf(state, u) === SB.arenaOf(state, src)) return;
+        }
         if (sel.costLtSaved) {
           const t = SB.efx(state, ctx)[sel.costLtSaved];
           const su = t && t.kind === 'unit' ? SB.findUnit(state, t.uid) : null;

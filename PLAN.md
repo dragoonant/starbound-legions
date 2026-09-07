@@ -135,12 +135,6 @@ lists, and is deployed on GitHub Pages. Test suite: 117 green
   by a test; the flags that remain are our own vocabulary and paraphrase. Re-run it
   after authoring cards — presence of a keyword is not evidence the card is right,
   which is what it found over and over.
-- **Six pilot leaders cannot deploy as an upgrade** (jtl-001, jtl-003, jtl-008,
-  jtl-011, jtl-015, jtl-018). The mechanic works — the engine offers
-  `deployLeaderPilot` and four of the ten carry a `pilotSide` — these six just have
-  no pilotSide authored, so their epic action offers only the plain deploy. The
-  pilot-side power and HP are not in the repo (the committed pack carries printed
-  rules text, not that box), so authoring them needs the card dump.
 - **AI quality on the competitive matrix** — `tools/ai-balance.mjs` over the competitive
   group, as `docs/ai.md` already uses it: A/B a weight change against the same seed and
   pairings, with random play as the control. Ongoing whenever the AI changes.

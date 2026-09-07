@@ -41,7 +41,9 @@
     // stack for numeric ones (raid, restore) and are redundant for boolean ones.
     let kws = (SB.unitDef(unit).keywords || []).slice();
     upgradeDefs(unit).forEach(function (u) {
-      kws = kws.concat(u.grantKeywords || []);
+      // A leader aboard a ship grants from its pilot box, not from the card's root.
+      const from = u.type === 'leader' && u.pilotSide ? u.pilotSide : u;
+      kws = kws.concat(from.grantKeywords || []);
     });
     return kws;
   };
@@ -56,9 +58,14 @@
     }, 0);
   };
 
-  // An upgrade's stat contribution: leader-pilot upgrades use their deployedSide.
+  // An upgrade's stat contribution. A leader aboard a ship is its PILOT box, which is
+  // printed with its own smaller numbers — using the deployed unit side instead handed
+  // the ship the body of a leader standing on the ground, several HP too many.
   function upgradeStats(card) {
-    if (card.type === 'leader') return { power: card.deployedSide.power, hp: card.deployedSide.hp };
+    if (card.type === 'leader') {
+      const side = card.pilotSide || card.deployedSide;
+      return { power: side.power || 0, hp: side.hp || 0 };
+    }
     return { power: card.power || 0, hp: card.hp || 0 };
   }
 

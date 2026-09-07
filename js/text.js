@@ -67,6 +67,7 @@
     if (sel.damagedBaseThisPhase) s += ' that dealt damage to a base this phase';
     if (sel.sharesTraitWithFriendlyLeader) s += ' that shares a kind with a friendly leader';
     if (sel.sameArenaAsSaved) s += ' in the same arena as the chosen unit';
+    if (sel.otherArenaFromSource) s += ' in the other arena';
     if (sel.costLtSaved) s += ' that costs less than the chosen unit';
     if (sel.powerLteSaved) s += ' with power no greater than the chosen unit’s';
     if (sel.costGtLastDiscarded) s += ' that costs more than the discarded card';

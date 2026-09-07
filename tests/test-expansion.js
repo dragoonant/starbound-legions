@@ -1481,6 +1481,39 @@
       'a cheap hand offers no legal discard');
   });
 
+  // A leader flown as a pilot contributes its PILOT box, which is printed smaller than
+  // the body it would have standing on the ground. The engine read the deployed unit
+  // side instead, so every pilot leader handed its ship several HP too many — and the
+  // four pilot sides that existed had been authored to match that, duplicating the
+  // unit side rather than the printed pilot numbers.
+  T.add('pilot leaders lend the ship their pilot box, not their unit side', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].leader = { cardId: 'jtl-009', deployed: false, exhausted: false };
+    T.giveResources(s, me, 12);
+    s.active = me;
+    const ship = T.putOnBoard(s, me, 'sor-044');   // a plain 2/3 vehicle
+    const bareP = SB.unitPower(s, ship), bareH = SB.unitMaxHp(s, ship);
+    const act = SB.legalActions(s).find(function (a) { return a.type === 'deployLeaderPilot'; });
+    T.ok(!!act, 'the ship is a legal berth');
+    s = T.act(s, act);
+    const flown = SB.findUnit(s, ship.uid);
+    const pilot = SB.card('jtl-009').pilotSide;
+    T.eq(SB.unitPower(s, flown) - bareP, pilot.power, 'power comes from the pilot box');
+    T.eq(SB.unitMaxHp(s, flown) - bareH, pilot.hp, 'and so does HP');
+    T.ok(pilot.hp !== SB.card('jtl-009').deployedSide.hp,
+      'which is a different number from the unit side — the bug this pins');
+  });
+
+  T.add('jtl-015 as a pilot hands the ship saboteur', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].leader = { cardId: 'jtl-015', deployed: false, exhausted: false };
+    T.giveResources(s, me, 12); s.active = me;
+    const ship = T.putOnBoard(s, me, 'sor-044');
+    T.ok(!SB.hasKeyword(s, ship, 'saboteur'), 'not before it is flown');
+    s = T.act(s, SB.legalActions(s).find(function (a) { return a.type === 'deployLeaderPilot'; }));
+    T.ok(SB.hasKeyword(s, SB.findUnit(s, ship.uid), 'saboteur'), 'the pilot grants it');
+  });
+
   // jtl-198 lost the upkeep that balances its cheap body.
   T.add('jtl-198: takes 1 damage when the regroup phase starts', function () {
     let s = T.game(); const me = 0;
