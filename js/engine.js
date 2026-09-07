@@ -612,10 +612,12 @@
         SB.queueEffects(state, me, ab.effects, { sourceUid: target.uid, cardId: inst.cardId,
           upgradeCardId: inst.cardId, condition: ab.condition });
       });
+      // bearerUid names the unit the upgrade landed on: "if the upgrade was played on
+      // this unit" (isBearer) compares it against the observer, and was dead without it.
       SB.allUnits(state, me).forEach(function (obs) {
-        SB.fireTriggers(state, 'onUpgradePlayed', obs, { sourceUid: obs.uid, upgradeCardId: inst.cardId });
+        SB.fireTriggers(state, 'onUpgradePlayed', obs, { sourceUid: obs.uid, upgradeCardId: inst.cardId, bearerUid: target.uid });
       });
-      fireLeaderTrigger(state, me, 'onUpgradePlayed', { upgradeCardId: inst.cardId });
+      fireLeaderTrigger(state, me, 'onUpgradePlayed', { upgradeCardId: inst.cardId, bearerUid: target.uid });
     }
   }
 

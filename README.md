@@ -27,6 +27,19 @@ node tools/run-tests.mjs --quiet
 
 `tests.html` runs the same suite in a browser. Run the headless suite before any commit.
 
+The suite checks every card's text statically and fuzzes whole games, but it does not
+assert that each card's abilities actually fired. For that there is a separate, slower
+audit that plays many random games with a recorder on the op dispatcher:
+
+```
+node tools/coverage.mjs --games 20     # ~30s; --deck <id>, --top K, --all, --out file
+```
+
+It prints the cards never played and the ops never resolved (full report in the
+gitignored `scratch/coverage.json`). Entries marked PLAYED are the suspects: the card
+reached the board and the ability still never fired. Treat the list as a work queue
+for deterministic scenario tests, not a verdict — a rare trigger can be fine.
+
 ## Deploying
 
 GitHub Pages serves `main` at the repo root, so the live site is whatever is committed.
