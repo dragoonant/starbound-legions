@@ -17,6 +17,8 @@
   'use strict';
 
   const cache = {};
+  const sfxBuffers = {};        // name -> decoded AudioBuffer (Web Audio path)
+  const sfxLoading = {};        // name -> in-flight decode promise
   let lastLogLen = 0;
   let muted = false;
 
@@ -33,6 +35,58 @@
     return cache[name];
   }
 
+  // Fire a clip on the shared graph. The buffer is decoded on first use; the very
+  // first hit of a clip falls back to an <audio> element so nothing is swallowed
+  // while it decodes, and every later hit is pure Web Audio.
+  function playSfx(name) {
+    const ctx = actx();
+    if (!ctx) return playSfxElement(name);
+    const buf = sfxBuffers[name];
+    if (buf) {
+      try {
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        const g = ctx.createGain();
+        g.gain.value = 0.5;
+        src.connect(g).connect(ctx.destination);
+        src.start();
+      } catch (e) { /* context torn down */ }
+      return;
+    }
+    loadSfx(ctx, name);   // missing clip: the element path stays the fallback
+    playSfxElement(name);
+  }
+
+  // Decode the battle clips up front so the element fallback above stays unused
+  // in practice — one clip through an <audio> element is enough to disturb the
+  // audio session on iPadOS.
+  const PREWARM = ['laser', 'laserHit', 'slash', 'lunge', 'shield', 'baseHit',
+    'defeat', 'deploy', 'play', 'draw', 'discard', 'ability', 'buff', 'heal',
+    'capture', 'claim'];
+  function prewarmSfx() {
+    const ctx = actx();
+    if (!ctx) return;
+    PREWARM.forEach(function (name) { loadSfx(ctx, name); });
+  }
+
+  function loadSfx(ctx, name) {
+    if (sfxBuffers[name] || sfxLoading[name]) return sfxLoading[name];
+    sfxLoading[name] = fetch('sfx/' + name + '.mp3')
+      .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.arrayBuffer(); })
+      .then(function (ab) { return ctx.decodeAudioData(ab); })
+      .then(function (b) { sfxBuffers[name] = b; })
+      .catch(function () {});
+    return sfxLoading[name];
+  }
+
+  function playSfxElement(name) {
+    try {
+      const a = clip(name).cloneNode();
+      a.volume = 0.5;
+      a.play().catch(function () { /* pre-interaction / missing file */ });
+    } catch (e) { /* no audio support */ }
+  }
+
   // ======================= adaptive music =======================
   const Music = {
     ctx: null, buffers: {}, tierRates: [1, 1, 1], sharedFallback: false,
@@ -46,13 +100,39 @@
   const TIER_GAIN = [0.13, 0.20, 0.27];
   const TIER_TONE = [1500, 4500, 14000];   // lowpass cutoff, Hz
 
+  // iOS/iPadOS parks the AudioContext in 'suspended' — and, on newer WebKit,
+  // 'interrupted' — whenever the page's audio session is taken away (another app,
+  // a lock, a tab switch, or an HTMLMediaElement starting and stopping). A parked
+  // context produces no sound while still happily accepting scheduled nodes, which
+  // is what made the score go silent between clips. Resume on every state change
+  // and on any user gesture, and keep polling the state, so it never stays parked.
+  function wake() {
+    const ctx = Music.ctx;
+    if (!ctx) return;
+    if (ctx.state !== 'running') { try { ctx.resume(); } catch (e) {} }
+  }
+
+  function watchCtx(ctx) {
+    ctx.onstatechange = wake;
+    ['pointerdown', 'touchend', 'keydown', 'click'].forEach(function (ev) {
+      document.addEventListener(ev, wake, true);
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) wake();
+    });
+    window.addEventListener('focus', wake);
+    window.addEventListener('pageshow', wake);
+    setInterval(wake, 1000);
+  }
+
   function actx() {
     if (!Music.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return null;
       Music.ctx = new AC();
+      watchCtx(Music.ctx);
     }
-    if (Music.ctx.state === 'suspended') Music.ctx.resume();
+    wake();
     return Music.ctx;
   }
 
@@ -269,13 +349,13 @@
       return muted;
     },
     // One clip, now. js/anim.js calls this at the moment a shot lands.
+    // Clips go through the SAME AudioContext as the score. An <audio> element
+    // playing alongside Web Audio is what broke the music on iPadOS: each element
+    // reconfigured the page's audio session, so the score was only audible for as
+    // long as a clip was playing. One graph, one session, no cutouts.
     sfx: function (name) {
       if (muted) return;
-      try {
-        const a = clip(name).cloneNode();
-        a.volume = 0.5;
-        a.play().catch(function () { /* pre-interaction / missing file */ });
-      } catch (e) { /* no audio support */ }
+      playSfx(name);
     },
     // Called by the UI after every apply: SFX for new log entries + music tier.
     // `animated` = js/anim.js is about to draw this apply and will voice the battle
@@ -329,6 +409,7 @@
     },
     startAmbience: function () {
       Music.started = true;
+      prewarmSfx();
       loadMusic().then(function () {
         if (!muted && !Music.ended && SB.ui && SB.ui.state && !SB.isTerminal(SB.ui.state)) {
           playTier(tierFor(SB.ui.state));
