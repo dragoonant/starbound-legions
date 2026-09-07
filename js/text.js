@@ -178,7 +178,14 @@
   const opText = {
     damage: function (op) { return dealText('deal', op, 'damage', 'to ' + targetText(op)); },
     heal: function (op) { return dealText('heal', op, 'damage', 'from ' + targetText(op)); },
-    draw: function (op) { return 'draw ' + ((op.amount || 1) === 1 ? 'a card' : op.amount + ' cards'); },
+    // The engine draws for whoever `who` names; saying "draw a card" for all of them
+    // made a card that hands the OPPONENT a card read as if you drew it twice.
+    draw: function (op) {
+      const cards = (op.amount || 1) === 1 ? 'a card' : op.amount + ' cards';
+      if (op.who === 'opponent') return 'the opponent draws ' + cards;
+      if (op.who === 'targetOwner') return 'its controller draws ' + cards;
+      return 'draw ' + cards;
+    },
     drawRef: function (op) { return 'draw a card for each ' + (op.amountRef === 'friendlyMinRemHpCount' ?
       'friendly unit with ' + op.minRemHp + ' or more remaining HP' : 'matching thing'); },
     shield: function (op) { return 'give a shield to ' + targetText(op); },

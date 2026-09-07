@@ -217,7 +217,7 @@
   "ash-205": {"id":"ash-205","type":"unit","aspects":["cunning","heroism"],"traits":["tr50","tr43"],"cost":3,"power":3,"hp":3,"arena":"ground"},
   "ash-206": {"id":"ash-206","type":"unit","aspects":["cunning","heroism"],"traits":["tr12","tr21"],"unique":true,"cost":4,"power":3,"hp":5,"arena":"ground","keywords":[{"k":"ambush"}]},
   "ash-207": {"id":"ash-207","type":"unit","aspects":["cunning","heroism"],"traits":["tr07"],"cost":5,"power":3,"hp":6,"arena":"space","keywords":[{"k":"ambush"}]},
-  "ash-208": {"id":"ash-208","type":"unit","aspects":["cunning","heroism"],"traits":["tr21","tr25","tr36"],"unique":true,"cost":5,"power":4,"hp":5,"arena":"ground","keywords":[{"k":"shielded"}]},
+  "ash-208": {"id":"ash-208","type":"unit","aspects":["cunning","heroism"],"traits":["tr21","tr25","tr36"],"unique":true,"cost":5,"power":4,"hp":5,"arena":"ground","keywords":[{"k":"shielded"}],"abilities":[{"trigger":"onUpgradePlayed","condition":{"if":"isBearer"},"effects":[{"op":"exhaust","target":{"who":"any","what":"unit","arena":"ground","optional":true}}]}]},
   "ash-209": {"id":"ash-209","type":"unit","aspects":["cunning","heroism"],"traits":["tr12","tr21","tr36"],"unique":true,"cost":6,"power":6,"hp":6,"arena":"ground","keywords":[{"k":"support"}]},
   "ash-210": {"id":"ash-210","type":"upgrade","aspects":["cunning","heroism"],"traits":["tr20","tr48"],"cost":1,"power":1,"hp":0},
   "ash-211": {"id":"ash-211","type":"event","aspects":["cunning","heroism"],"traits":["tr18"],"cost":2},

@@ -1375,6 +1375,28 @@
     T.eq(SB.findUnit(s, g.uid).temp.power, 0, 'neither ground unit is "the only unit in its arena" — no buff landed');
     T.eq(SB.findUnit(s, w.uid).temp.power, 0, 'same for the other one');
   });
+  // jtl-198 lost the upkeep that balances its cheap body.
+  T.add('jtl-198: takes 1 damage when the regroup phase starts', function () {
+    let s = T.game(); const me = 0;
+    const u = T.putOnBoard(s, me, 'jtl-198');
+    T.eq(u.damage, 0, 'undamaged on arrival');
+    // Both seats pass: that ends the action phase and starts regroup, with nothing
+    // else happening in between that could touch the unit.
+    s = T.act(s, { type: 'pass' });
+    s = T.act(s, { type: 'pass' });
+    T.eq(SB.findUnit(s, u.uid).damage, 1, 'one regroup, one damage');
+  });
+
+  // ash-208 had the keyword and none of the ability the keyword feeds.
+  T.add('ash-208: attaching an upgrade to it offers an exhaust', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    const bearer = T.putOnBoard(s, me, 'ash-208');
+    T.putOnBoard(s, 1, 'fx-grunt');
+    s = play(s, me, 'fx-blade', { attachTo: bearer.uid });
+    T.ok(SB.legalActions(s).some(function (a) { return a.type === 'choose'; }),
+      'the attach opens a choice');
+  });
+
   // sec-201 granted the wrong keyword outright: grit where the card grants raid 2.
   // Both are conditional keyword grants, so the shape looked right and only the
   // meaning was wrong — invisible to every check except reading the card.

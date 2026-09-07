@@ -19,6 +19,10 @@ missing mechanic):
   picks are not constrained to be distinct from each other.
 - Abilities lent to another attacker by a support-style unit last until end of
   round rather than only for that one attack.
+- Shield tokens are a counter on the unit rather than an attached upgrade, so an
+  ability that fires when an upgrade attaches (ash-208) does not fire for the shield
+  the unit's own shielded keyword gives it on arrival. Every other way an upgrade
+  reaches it does fire.
 - law-237's "Look at the top 3 cards of your deck. You may discard 1 of them. Put
   the rest back on top in any order." keeps the kept cards in their original
   relative order instead of letting the player re-arrange them.
