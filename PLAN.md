@@ -137,6 +137,12 @@ lists, and is deployed on GitHub Pages. Test suite: 117 green
   correct. The real findings are recorded in the audit report (scratch only, it carries
   printed text) and fall into two groups: leaders still missing their leader-side action,
   and units missing a keyword or a whole clause. Fixing them is the open work.
+- **Six pilot leaders cannot deploy as an upgrade** (jtl-001, jtl-003, jtl-008,
+  jtl-011, jtl-015, jtl-018). The mechanic works — the engine offers
+  `deployLeaderPilot` and four of the ten carry a `pilotSide` — these six just have
+  no pilotSide authored, so their epic action offers only the plain deploy. The
+  pilot-side power and HP are not in the repo (the committed pack carries printed
+  rules text, not that box), so authoring them needs the card dump.
 - **AI quality on the competitive matrix** — `tools/ai-balance.mjs` over the competitive
   group, as `docs/ai.md` already uses it: A/B a weight change against the same seed and
   pairings, with random play as the control. Ongoing whenever the AI changes.

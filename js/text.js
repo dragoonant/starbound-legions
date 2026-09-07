@@ -217,7 +217,9 @@
     discard: function (op) {
       const who = op.who === 'self' ? 'you discard' : 'your opponent discards';
       const f = op.filter || {};
-      const what = f.type ? an(f.type) : f.notType ? 'a non-' + f.notType + ' card' : 'a card';
+      let what = f.type ? an(f.type) : f.notType ? 'a non-' + f.notType + ' card' : 'a card';
+      if (f.minCost != null) what += ' that costs ' + f.minCost + ' or more';
+      if (f.maxCost != null) what += ' that costs ' + f.maxCost + ' or less';
       const whose = op.who === 'self' ? ' from your hand' : ' from their hand';
       return who + ' ' + ((op.amount || 1) === 1 ? what : (op.amount + ' cards')) + whose;
     },
@@ -336,6 +338,9 @@
       if (op.entersReady) perks.push('it enters play ready');
       if (op.withHidden) perks.push('it gains Hidden for this round');
       if (op.withAmbush) perks.push('it gains Ambush for this round');
+      // The engine honours this; leaving it out of the text made a leader look like it
+      // merely played a unit, hiding the payoff for spending a credit on the cost.
+      if (op.withAmbushIfCredit) perks.push('if a credit token was defeated paying for it, it gains Ambush for this round');
       if (op.defeatAtRegroup) perks.push('defeat it at the start of the regroup phase');
       if (op.returnAtRegroup) perks.push('return it to hand at the start of the regroup phase');
       if (perks.length) s += ' — ' + perks.join(', ');

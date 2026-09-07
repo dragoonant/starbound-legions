@@ -1454,6 +1454,33 @@
       'the action is offered at all');
   });
 
+  T.add('lof-007: the leader banks the token its unit side pays off', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].leader.cardId = 'lof-007'; s.active = me;
+    T.ok(!s.players[me].force, 'no token to begin with');
+    s = drive(T.act(s, { type: 'leaderAction' }));
+    T.ok(s.players[me].force, 'the action banks one');
+
+    let t = T.game();
+    const u = deployed(t, me, 'lof-007');
+    const bare = SB.unitPower(t, u);
+    t.players[me].force = true;
+    T.eq(SB.unitPower(t, u) - bare, 4, 'holding it is worth +4 power');
+    T.ok(SB.hasKeyword(t, u, 'overwhelm'), 'and overwhelm');
+  });
+
+  // sec-007 pays with a discard, and the floor on that discard is the cost of the
+  // ability: without an expensive enough card in hand there is nothing to pay with.
+  T.add('sec-007 leader side: the discard it demands has a cost floor', function () {
+    let s = rich(T.game(), 0); const me = 0;
+    s.players[me].leader.cardId = 'sec-007'; s.active = me;
+    s.players[me].hand = [];
+    T.putInHand(s, me, 'fx-grunt');            // cheap: cannot pay
+    s = T.act(s, { type: 'leaderAction' });
+    T.ok(!SB.legalActions(s).some(function (a) { return a.type === 'discardCard'; }),
+      'a cheap hand offers no legal discard');
+  });
+
   // jtl-198 lost the upkeep that balances its cheap body.
   T.add('jtl-198: takes 1 damage when the regroup phase starts', function () {
     let s = T.game(); const me = 0;
