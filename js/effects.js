@@ -500,6 +500,10 @@
         const has = SB.efx(state, ctx)[cond.name] != null;
         return cond.not ? !has : has;
       }
+      case 'playedFromHand': {
+        const self = SB.findUnit(state, ctx.sourceUid);
+        return !!self && !!self.playedFromHand;
+      }
       case 'selfReady': {
         const self = SB.findUnit(state, ctx.sourceUid);
         return !!self && !self.exhausted;

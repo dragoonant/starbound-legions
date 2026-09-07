@@ -1375,4 +1375,37 @@
     T.eq(SB.findUnit(s, g.uid).temp.power, 0, 'neither ground unit is "the only unit in its arena" — no buff landed');
     T.eq(SB.findUnit(s, w.uid).temp.power, 0, 'same for the other one');
   });
+  // shd-204 gains ambush only when it comes out of the hand. Smuggling it out of the
+  // resource row is the cheaper line precisely because it does NOT come swinging, so
+  // granting ambush on both paths would hand the discount a free attack.
+  T.add('shd-204: ambush when played from hand, none when smuggled', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    s.space.push(SB.makeUnit(s, 'fx-grunt', 1));   // something for an ambush to hit
+    s = play(s, me, 'shd-204');
+    const fromHand = unitsOf(s, me, 'shd-204')[0];
+    T.ok(SB.hasKeyword(s, fromHand, 'ambush'), 'played from hand, it has ambush');
+
+    let t = rich(T.game(), 0); t.active = 0;
+    t.space.push(SB.makeUnit(t, 'fx-grunt', 1));
+    t.players[me].resources.push({ instance: { uid: t.nextUid++, cardId: 'shd-204' }, exhausted: false });
+    t = T.act(t, { type: 'smuggle', cardId: 'shd-204' });
+    const smuggled = unitsOf(t, me, 'shd-204')[0];
+    T.ok(!!smuggled, 'it smuggles into play');
+    T.ok(!SB.hasKeyword(t, smuggled, 'ambush'), 'smuggled, it does not');
+  });
+
+  // A smuggle cost of 0 lets a card be played out of the resource row for nothing. The
+  // importer left 19 cards that way — every one of them free — and nothing failed,
+  // because the keyword was present and only its number was wrong. Presence is not
+  // correctness: assert the number.
+  T.add('content: no card smuggles for free', function () {
+    const free = [];
+    Object.keys(SB.cards).forEach(function (id) {
+      (SB.cards[id].keywords || []).forEach(function (k) {
+        if (k.k === 'smuggle' && !(k.cost > 0)) free.push(id);
+      });
+    });
+    T.eq(free.join(' '), '', 'cards with a zero smuggle cost');
+  });
+
 })(window.SB = window.SB || {});

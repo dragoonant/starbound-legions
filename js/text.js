@@ -706,6 +706,7 @@
       return 'if you control ' + an(c.aspects.map(function (a) { return SB.names.aspects[a] || a; }).join(' or ') + ' unit');
     },
     canPay: function (c) { return 'if you can pay ' + c.n + ' resource' + (c.n === 1 ? '' : 's'); },
+    playedFromHand: function () { return 'if you played this unit from your hand'; },
     selfReady: function () { return 'while this unit is ready'; },
     selfRemHpAtLeast: function (c) { return 'if this unit has ' + c.n + ' or more remaining HP'; },
     controlArenaUnit: function (c) { return 'while you control a ' + c.arena + ' unit'; },
