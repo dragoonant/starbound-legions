@@ -1680,9 +1680,16 @@
     SB.auraGrants(state, unit).forEach(function (g) {
       (g.abilities || []).forEach(function (ab) { if (ab.trigger === 'whenDefeated') auraWd.push(ab); });
     });
+    // shd-001's aura: "gains: When Defeated: return an upgrade that was attached to
+    // this unit to its owner's hand" — snapshot which upgrades were on it, since
+    // they are already discarded by the time the aura-lent ability resolves.
+    const formerUpgrades = unit.upgrades.filter(function (inst) {
+      return !inst.leaderPilot && !SB.card(inst.cardId).token;
+    }).map(function (inst) { return { uid: inst.uid, owner: SB.upgradeOwner(unit, inst) }; });
     prevDefeatUnit(state, unit, ctx);
     auraWd.forEach(function (ab) {
-      SB.queueEffects(state, owner, ab.effects, { sourceUid: unit.uid, cardId: unit.cardId, condition: ab.condition, defeatedPower: ctx.defeatedPower });
+      SB.queueEffects(state, owner, ab.effects, { sourceUid: unit.uid, cardId: unit.cardId, condition: ab.condition,
+        defeatedPower: ctx.defeatedPower, formerUpgrades: formerUpgrades });
     });
     ups.forEach(function (inst) {
       if (inst.leaderPilot) return;
@@ -1827,6 +1834,11 @@
       if (ab.playedUnique && (!ctx || !ctx.playedCardId || !SB.card(ctx.playedCardId).unique)) return;
       if (ab.playedType && (!ctx || !ctx.playedCardId || SB.card(ctx.playedCardId).type !== ab.playedType)) return;
       if (ab.notCreated && ctx && ctx.created) return;
+      // "When a friendly <trait> unit's attack ends" (law-007's unit side).
+      if (ab.attackerTrait) {
+        const au = ctx && ctx.attackEndedUid != null ? SB.findUnit(state, ctx.attackEndedUid) : null;
+        if (!au || SB.unitTraits(state, au).indexOf(ab.attackerTrait) < 0) return;
+      }
       const effectCtx = {
         viaTrigger: true,   // see js/effects.js fireTriggers
         sourceUid: unit.uid, cardId: unit.cardId, condition: ab.condition,
@@ -1838,7 +1850,7 @@
         defeatedUid: ctx && ctx.defeatedUid, playedUid: ctx && ctx.playedUid,
         combat: ctx && ctx.combat, defenderDamagedNonLeader: ctx && ctx.defenderDamagedNonLeader,
         defeatedPower: ctx && ctx.defeatedPower, playedCardCost: ctx && ctx.playedCardCost,
-        controller: unit.owner,
+        controller: unit.owner, formerUpgrades: ctx && ctx.formerUpgrades,
       };
       if (ab.oncePerRoundTrigger) {
         if (unit.triggerUsedRound === state.round) return;
@@ -2394,5 +2406,273 @@
   // "If an opponent controls more resources than you" (jtl-164).
   SB.extraConditions.opponentMoreResources = function (state, controller) {
     return state.players[SB.other(controller)].resources.length > state.players[controller].resources.length;
+  };
+
+  // ==== leader competitive-expansion pass (15 leaders missing their printed sides) ====
+
+  // ---- selectors --------------------------------------------------------------
+  const prevExtraSelector2 = SB.extraSelector;
+  SB.extraSelector = function (state, controller, sel, ctx, u) {
+    if (!prevExtraSelector2(state, controller, sel, ctx, u)) return false;
+    // "if it's the only [non-leader] unit you control in its arena" (ash-003).
+    if (sel.onlyFriendlyUnitInArena) {
+      const arena = SB.arenaOf(state, u);
+      const excludeLeader = sel.onlyFriendlyUnitInArena === 'nonLeader';
+      const cnt = state[arena].filter(function (x) {
+        if (x.owner !== controller) return false;
+        if (excludeLeader && SB.card(x.cardId).type === 'leader') return false;
+        return true;
+      }).length;
+      if (cnt !== 1) return false;
+    }
+    // "a unit that costs less than the amount of combat damage dealt to a base this
+    // attack" (ash-016) — strictly less than, unlike maxCostRefRevealed below.
+    if (sel.costLtBaseDamage) {
+      const bd = (ctx && ctx.baseDamageDealt) || 0;
+      if (SB.costOf(u.cardId) >= bd) return false;
+    }
+    // "a different unit" meaning not the unit whose attack just ended (ash-013).
+    if (sel.notAttackEnded && ctx && ctx.attackEndedUid === u.uid) return false;
+    // "a unit that costs the same as or less than the revealed card" (sor-016).
+    if (sel.maxCostRefRevealed) {
+      const rc = SB.efx(state, ctx).revealedCost;
+      if (rc == null || SB.costOf(u.cardId) > rc) return false;
+    }
+    // "a unit without an experience token on it" (lof-008).
+    if (sel.noExperience && u.experience > 0) return false;
+    // "a unit that doesn't share an aspect with the disclosed card" (sec-004).
+    if (sel.notAspectRef) {
+      const a = SB.efx(state, ctx)[sel.notAspectRef];
+      if (a && (SB.card(u.cardId).aspects || []).indexOf(a) >= 0) return false;
+    }
+    return true;
+  };
+
+  // ---- conditions ---------------------------------------------------------------
+  // "If it/this attack dealt N or more combat damage to a base" (ash-013, ash-016).
+  SB.extraConditions.attackBaseDamageAtLeast = function (state, c, cond, ctx) {
+    return ((ctx && ctx.baseDamageDealt) || 0) >= cond.n;
+  };
+  // "If you created a token this phase" (law-016) — tracked by wrapping SB.log
+  // below for every token-creating op (Credit/Shield/Experience/Advantage tokens
+  // and token units), reset each action phase in js/engine.js startActionPhase.
+  SB.extraConditions.createdTokenThisPhase = function (state, c) {
+    return !!state.players[c].createdTokenThisPhase;
+  };
+  const TOKEN_LOG_TYPES = { experience: 1, advantage: 1, shield: 1, creditsGained: 1, tokenCreated: 1 };
+  const prevLog2 = SB.log;
+  SB.log = function (state, entry) {
+    const r = prevLog2(state, entry);
+    if (TOKEN_LOG_TYPES[entry.type] && state.players) {
+      let owner = entry.player;
+      if (owner == null && entry.uid != null) {
+        const u = SB.findUnit(state, entry.uid);
+        if (u) owner = u.owner;
+      }
+      if (owner != null && state.players[owner]) state.players[owner].createdTokenThisPhase = true;
+    }
+    return r;
+  };
+
+  // ---- chooseAspect: restrict the offered list (sec-004 excludes villainy) ------
+  O.chooseAspect = function (state, item) {
+    state.queue.unshift({ step: 'aspectPick', player: item.controller, saveAs: item.op.saveAs || 'aspect',
+      options: item.op.options, ctx: item.ctx });
+  };
+  S.aspectPick = {
+    actions: function (state, it) {
+      return (it.options || ['vigilance', 'command', 'aggression', 'cunning', 'heroism', 'villainy']).map(function (a) {
+        return { type: 'pickAspect', player: it.player, aspect: a };
+      });
+    },
+    apply: function (state, it, action) {
+      SB.efx(state, it.ctx || {})[it.saveAs] = action.aspect;
+      SB.log(state, { type: 'aspectChosen', player: it.player, aspect: action.aspect });
+    },
+  };
+
+  // ---- discloseReveal: aspectRef variant (a chosen aspect, not a literal list) --
+  const prevDiscloseReveal = O.discloseReveal;
+  O.discloseReveal = function (state, item) {
+    if (item.op.aspectRef) {
+      const a = SB.efx(state, item.ctx)[item.op.aspectRef];
+      SB.log(state, { type: 'disclosed', player: item.controller, aspects: a ? [a] : [], notice: true });
+      if (SB.fireLeaderTrigger) SB.fireLeaderTrigger(state, item.controller, 'onRevealOrDiscard', {});
+      SB.allUnits(state, item.controller).forEach(function (u) {
+        SB.fireTriggers(state, 'onRevealOrDiscard', u, { sourceUid: u.uid });
+      });
+      return;
+    }
+    prevDiscloseReveal(state, item);
+  };
+
+  // ---- extraAction: "take an extra action after this one" (jtl-018) -------------
+  // advanceTurn() has already run by the time queued effects resolve (it fires
+  // synchronously right after the action is applied — js/engine.js), so simply
+  // restoring `active` to the controller undoes it, granting another action.
+  O.extraAction = function (state, item) {
+    state.active = item.controller;
+    SB.log(state, { type: 'extraAction', player: item.controller, sound: 'buff' });
+  };
+
+  // ---- suppressUpTo: "choose any number of friendly units. They lose all
+  // abilities for this round" (jtl-018's unit side) — unbounded exhaustUpTo-style
+  // repeat-until-stop picker.
+  // Note: the field is named `scope`, not `target` — an op with a top-level `target`
+  // is intercepted by effects.js's generic single-candidate selector before this
+  // handler ever runs (see exhaustAll / giveKeywordAll for the same reason).
+  O.suppressUpTo = function (state, item) {
+    state.queue.unshift({ step: 'suppressUpToPick', player: item.controller,
+      target: item.op.scope || { who: 'friendly', what: 'unit' }, ctx: item.ctx });
+  };
+  S.suppressUpToPick = {
+    actions: function (state, itemStep) {
+      const cands = SB.selectorCandidates(state, itemStep.player, itemStep.target, itemStep.ctx || {})
+        .filter(function (c) { const u = SB.findUnit(state, c.uid); return u && !u.abilitiesSuppressed; });
+      if (cands.length === 0) return null;
+      const acts = cands.map(function (c) { return { type: 'suppressUpTo', player: itemStep.player, uid: c.uid }; });
+      acts.push({ type: 'suppressUpTo', player: itemStep.player, uid: null });
+      return acts;
+    },
+    apply: function (state, itemStep, action) {
+      if (action.uid == null) return;
+      const u = SB.findUnit(state, action.uid);
+      if (u) {
+        u.abilitiesSuppressed = true;
+        u.keywordsSuppressed = true;
+        SB.log(state, { type: 'abilitiesSuppressed', uid: u.uid, sound: 'ability' });
+      }
+      state.queue.unshift({ step: 'suppressUpToPick', player: itemStep.player, target: itemStep.target, ctx: itemStep.ctx });
+    },
+  };
+
+  // ---- defeatResource: "defeat a friendly resource" / "defeat a resource you
+  // control", as a cost-like effect (law-013) or an optional one (law-013's unit
+  // side, sor-017's delayed one). {optional?, saveAs?}
+  O.defeatResource = function (state, item) {
+    const p = state.players[item.controller];
+    if (!p.resources.length) { SB.log(state, { type: 'fizzle', why: 'noResources', fizzled: true }); return; }
+    state.queue.unshift({ step: 'defeatResourcePick', player: item.controller, ctx: item.ctx,
+      optional: !!item.op.optional, saveAs: item.op.saveAs });
+  };
+  S.defeatResourcePick = {
+    actions: function (state, it) {
+      const p = state.players[it.player];
+      const acts = p.resources.map(function (r, i) { return { type: 'defeatResource', player: it.player, index: i }; });
+      if (it.optional) acts.push({ type: 'defeatResource', player: it.player, index: -1 });
+      return acts;
+    },
+    apply: function (state, it, action) {
+      if (action.index === -1) return;
+      const p = state.players[it.player];
+      const r = p.resources.splice(action.index, 1)[0];
+      if (!r) return;
+      p.discard.push(r.instance);
+      if (it.saveAs) SB.efx(state, it.ctx || {})[it.saveAs] = true;
+      SB.log(state, { type: 'resourceDefeated', player: it.player, sound: 'destroy' });
+    },
+  };
+
+  // ---- defeatResourceNextPhase: "At the start of the next action phase, defeat a
+  // resource you control" (sor-017) — same delayed-arm shape as taxEnemyNextPhase.
+  O.defeatResourceNextPhase = function (state, item) {
+    state.pendingResourceDefeat = state.pendingResourceDefeat || [];
+    state.pendingResourceDefeat.push({ controller: item.controller });
+    SB.log(state, { type: 'resourceDefeatArmed', player: item.controller, sound: 'buff' });
+  };
+  SB.applyPendingResourceDefeat = function (state) {
+    const pending = state.pendingResourceDefeat;
+    if (!pending || !pending.length) return;
+    state.pendingResourceDefeat = [];
+    pending.forEach(function (p) {
+      if (state.players[p.controller].resources.length) {
+        state.queue.push({ step: 'defeatResourcePick', player: p.controller, ctx: {}, optional: false });
+      }
+    });
+  };
+
+  // ---- resourceFromHand: "put a card from your hand into play as a resource [and
+  // ready it]" (sor-017's leader side) — a mid-game version of setup resourcing.
+  O.resourceFromHand = function (state, item) {
+    const p = state.players[item.controller];
+    if (p.hand.length === 0) { SB.log(state, { type: 'fizzle', why: 'emptyHand', fizzled: true }); return; }
+    state.queue.unshift({ step: 'resourceFromHandPick', player: item.controller,
+      exhausted: item.op.exhausted !== false, ctx: item.ctx });
+  };
+  S.resourceFromHandPick = {
+    actions: function (state, it) {
+      const p = state.players[it.player];
+      return p.hand.map(function (_, i) { return { type: 'resourceFromHand', player: it.player, index: i }; });
+    },
+    apply: function (state, it, action) {
+      const p = state.players[it.player];
+      const inst = p.hand.splice(action.index, 1)[0];
+      if (!inst) return;
+      p.resources.push({ instance: inst, exhausted: it.exhausted });
+      SB.log(state, { type: 'resourced', player: it.player });
+    },
+  };
+
+  // ---- revealTopOf: "reveal the top card of any player's deck" (sor-016) — takes
+  // {who:'self'|'opponent'}, wrapped in a binaryChoice for the "any player" pick.
+  O.revealTopOf = function (state, item) {
+    const pIdx = item.op.who === 'opponent' ? SB.other(item.controller) : item.controller;
+    const p = state.players[pIdx];
+    if (p.deck.length === 0) return;
+    SB.efx(state, item.ctx).revealedCost = SB.card(p.deck[0].cardId).cost;
+    SB.log(state, { type: 'revealedTop', player: pIdx, cardId: p.deck[0].cardId, notice: true });
+  };
+
+  // ---- lookTopBothDecks: "look at the top card of each player's deck" (sor-016)
+  // — public information only, no state change beyond the log line.
+  O.lookTopBothDecks = function (state, item) {
+    const a = state.players[0].deck[0], b = state.players[1].deck[0];
+    SB.log(state, { type: 'lookedTopBoth', p0CardId: a ? a.cardId : null, p1CardId: b ? b.cardId : null, notice: true });
+  };
+  SB.fireActionPhaseStartTriggers = function (state) {
+    [0, 1].forEach(function (pl) {
+      if (SB.fireLeaderTrigger) SB.fireLeaderTrigger(state, pl, 'onActionPhaseStart', {});
+      SB.allUnits(state, pl).forEach(function (u) {
+        SB.fireTriggers(state, 'onActionPhaseStart', u, { sourceUid: u.uid });
+      });
+    });
+  };
+
+  // ---- giveKeywordN: give a single chosen unit a numbered keyword for this round
+  // (law-012's "gains Raid 1") — giveKeywordAll applies to a whole scope, not a
+  // single picked target, so this reuses its grantTempKeyword helper instead.
+  O.giveKeywordN = function (state, item, target) {
+    const u = SB.findUnit(state, target.uid);
+    if (!u) return;
+    grantTempKeyword(u, item.op.k, item.op.n);
+    SB.log(state, { type: 'gainedKeyword', uid: u.uid, k: item.op.k, sound: 'buff' });
+  };
+
+  // ---- returnFormerUpgrade: "you may return an upgrade that was attached to this
+  // unit to its owner's hand" (shd-001's aura), reading the formerUpgrades snapshot
+  // taken by SB.defeatUnit above before upgrades were moved to discard.
+  O.returnFormerUpgrade = function (state, item) {
+    const list = (item.ctx && item.ctx.formerUpgrades) || [];
+    if (!list.length) return;
+    state.queue.unshift({ step: 'returnFormerUpgradePick', player: item.controller, list: list });
+  };
+  S.returnFormerUpgradePick = {
+    actions: function (state, it) {
+      const cands = it.list.filter(function (e) {
+        return state.players[e.owner].discard.some(function (inst) { return inst.uid === e.uid; });
+      });
+      if (!cands.length) return null;
+      const acts = cands.map(function (e) { return { type: 'returnFormerUpgrade', player: it.player, uid: e.uid, owner: e.owner }; });
+      acts.push({ type: 'returnFormerUpgrade', player: it.player, uid: null });
+      return acts;
+    },
+    apply: function (state, it, action) {
+      if (action.uid == null) return;
+      const p = state.players[action.owner];
+      const i = p.discard.findIndex(function (inst) { return inst.uid === action.uid; });
+      if (i < 0) return;
+      p.hand.push(p.discard.splice(i, 1)[0]);
+      SB.log(state, { type: 'tookFromDiscard', player: action.owner, sound: 'draw' });
+    },
   };
 })(window.SB = window.SB || {});

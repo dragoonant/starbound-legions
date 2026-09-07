@@ -60,7 +60,7 @@
   "jtl-014": {"id":"jtl-014","type":"leader","aspects":["cunning","villainy"],"traits":["tr34","tr29"],"unique":true,"deployCost":6,"leaderSide":{"abilities":[]},"deployedSide":{"arena":"ground","power":4,"hp":5}},
   "jtl-015": {"id":"jtl-015","type":"leader","aspects":["cunning","villainy"],"traits":["tr45","tr30"],"unique":true,"deployCost":5,"leaderSide":{"abilities":[]},"deployedSide":{"arena":"ground","power":3,"hp":5,"keywords":[{"k":"saboteur"}]}},
   "jtl-016": {"id":"jtl-016","type":"leader","aspects":["cunning","heroism"],"traits":["tr32","tr29"],"unique":true,"deployCost":6,"leaderSide":{"abilities":[]},"deployedSide":{"arena":"ground","power":3,"hp":8}},
-  "jtl-018": {"id":"jtl-018","type":"leader","aspects":["cunning","heroism"],"traits":["tr50","tr30"],"unique":true,"deployCost":4,"leaderSide":{"abilities":[]},"deployedSide":{"arena":"ground","power":2,"hp":5}},
+  "jtl-018": {"id":"jtl-018","type":"leader","aspects":["cunning","heroism"],"traits":["tr50","tr30"],"unique":true,"deployCost":4,"leaderSide":{"abilities":[{"trigger":"action","cost":0,"effects":[{"op":"suppressAbilities","target":{"who":"friendly","what":"unit"}},{"op":"extraAction"}]}]},"deployedSide":{"arena":"ground","power":2,"hp":5,"abilities":[{"trigger":"onAttack","effects":[{"op":"suppressUpTo","scope":{"who":"friendly","what":"unit"}}]}]}},
   "jtl-019": {"id":"jtl-019","type":"base","aspects":["vigilance"],"hp":30},
   "jtl-020": {"id":"jtl-020","type":"base","aspects":["vigilance"],"hp":30},
   "jtl-021": {"id":"jtl-021","type":"base","aspects":["vigilance"],"hp":35,"startingHandDelta":-1},

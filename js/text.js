@@ -84,6 +84,13 @@
       s += ' that costs ' + sel.costOrExhaustedCost.max + ' or less, or an exhausted ' + head +
         ' that costs ' + sel.costOrExhaustedCost.exhaustedMax + ' or less';
     }
+    // Keys added by the leader competitive-expansion pass (js/ops2.js).
+    if (sel.onlyFriendlyUnitInArena) s += ' if it’s the only ' + (sel.onlyFriendlyUnitInArena === 'nonLeader' ? 'non-leader unit' : 'unit') + ' you control in its arena';
+    if (sel.costLtBaseDamage) s += ' that costs less than the combat damage dealt to a base this attack';
+    if (sel.notAttackEnded) s += ' (not the attacking unit)';
+    if (sel.maxCostRefRevealed) s += ' that costs the same as or less than the revealed card';
+    if (sel.notAspectRef) s += ' that doesn’t share an aspect with the disclosed card';
+    if (sel.noExperience) s += ' without an experience token on it';
     return s;
   }
 
@@ -249,7 +256,9 @@
       const who = op.who === 'self' ? 'your' : 'your opponent’s';
       return 'exhaust ' + (op.amount || 1) + ' of ' + who + ' resources';
     },
-    resourceTopDeck: function () { return 'put the top card of your deck into play as a resource'; },
+    resourceTopDeck: function (op) {
+      return 'put the top card of your deck into play as a resource' + (op.exhausted === false ? ' and ready it' : '');
+    },
     pickUnit: function (op) { return 'choose ' + describeTarget(op.target); },
     dividedDamage: function (op) {
       const among = ' divided as you choose among ' + scopeNounPlural(op.scope || { who: 'enemy', what: 'unit' });
@@ -421,6 +430,7 @@
     },
     echoNextOnPlay: function () { return 'the next time you use a when-played ability this round, use it again'; },
     discloseReveal: function (op) {
+      if (op.aspectRef) return 'reveal a card from your hand showing the chosen aspect icon';
       return (op.who === 'opponent' ? 'the opponent reveals cards from their hand showing these icons: ' : 'reveal cards from your hand showing these icons: ') +
         (op.aspects || []).map(function (a) { return SB.names.aspects[a] || a; }).join(', ');
     },
@@ -499,7 +509,10 @@
       if (op.amountRef != null) return 'distribute advantage tokens equal to ' + countPhrase(op.amountRef, op) + among;
       return 'distribute ' + (op.optional ? 'up to ' : '') + op.amount + ' advantage tokens' + among;
     },
-    chooseAspect: function () { return 'choose an aspect'; },
+    chooseAspect: function (op) {
+      if (!op.options) return 'choose an aspect';
+      return 'choose ' + op.options.map(function (a) { return SB.names.aspects[a] || a; }).join(', ');
+    },
     chooseArena: function () { return 'choose an arena'; },
     handToDeckTopOrBottom: function () { return 'put a card from your hand on the top or bottom of your deck'; },
     selfBaseDamageForDiscount: function (op) {
@@ -548,6 +561,22 @@
     redirectAttackerDamage: function (op) {
       return 'you may choose ' + describeTarget(op.target) + ' — if you do, all combat damage that would be dealt to this unit during this attack is dealt to the chosen unit instead';
     },
+    // ---- leader competitive-expansion pass ----
+    extraAction: function () { return 'take an extra action after this one'; },
+    suppressUpTo: function (op) {
+      return 'choose any number of ' + scopeNounPlural(op.scope || { who: 'friendly', what: 'unit' }) + ' — they lose all abilities for this round';
+    },
+    defeatResource: function (op) { return (op.optional ? 'you may defeat a resource you control' : 'defeat a resource you control'); },
+    defeatResourceNextPhase: function () { return 'at the start of the next action phase, defeat a resource you control'; },
+    resourceFromHand: function (op) {
+      return 'put a card from your hand into play as a resource' + (op.exhausted === false ? ' and ready it' : '');
+    },
+    revealTopOf: function (op) { return 'reveal the top card of ' + (op.who === 'opponent' ? 'the opponent’s deck' : 'your deck'); },
+    lookTopBothDecks: function () { return 'look at the top card of each player’s deck'; },
+    giveKeywordN: function (op) {
+      return 'give ' + targetText(op) + ' ' + (SB.names.keywords[op.k] || op.k) + (op.n != null ? ' ' + op.n : '') + ' for this round';
+    },
+    returnFormerUpgrade: function () { return 'you may return an upgrade that was attached to this unit to its owner’s hand'; },
   };
   // Late-bound alias so grantAbilityTemp can render nested abilities.
   function describeAbilityPublic(ab) { return describeAbility(ab); }
@@ -657,6 +686,8 @@
     onDeckDiscard: 'When you discard a card from your deck',
     onBaseDamaged: 'When your base is dealt damage',
     onPilotAttached: 'When a pilot attaches to this unit',
+    // leader competitive-expansion pass
+    onActionPhaseStart: 'When the action phase starts',
   };
 
   const conditionText = {
@@ -684,6 +715,7 @@
     defenderDamagedNonLeader: function () { return 'if the defender survived with damage'; },
     defenderDefeated: function () { return 'if the defending unit was defeated'; },
     canDisclose: function (c) {
+      if (c.aspectRef) return 'if you can reveal a card showing the chosen aspect icon';
       return 'if you can reveal the required icons: ' +
         (c.aspects || []).map(function (a) { return SB.names.aspects[a] || a; }).join(', ');
     },
@@ -759,6 +791,9 @@
     selfPowerWasAtLeast: function (c) { return 'if this unit had ' + c.n + ' or more power'; },
     controlsTraitCardAnywhere: function (c) { return 'while you control another ' + (SB.names.traits[c.trait] || c.trait) + ' card (unit, upgrade, or leader)'; },
     opponentControlsUnitWithTrait: function (c) { return 'while an opponent controls ' + an((SB.names.traits[c.trait] || c.trait) + ' unit'); },
+    // leader competitive-expansion pass
+    attackBaseDamageAtLeast: function (c) { return 'if it dealt ' + c.n + ' or more combat damage to a base'; },
+    createdTokenThisPhase: function () { return 'if you created a token this round'; },
   };
 
   function describeAbility(ab) {
@@ -848,10 +883,19 @@
       if (ab.oncePerRound) s += ' Use this only once each round.';
       return s;
     }
-    if (ab.exhaustCost) {
-      return triggerText[ab.trigger] + ': You may exhaust this leader. If you do, ' + body + '.';
+    // "When a friendly <trait> unit's attack ends" (law-007) — attackerTrait narrows
+    // the generic onFriendlyAttackEnds header to the printed kind of attacker.
+    function triggerHeader() {
+      let t = triggerText[ab.trigger];
+      if (ab.attackerTrait && ab.trigger === 'onFriendlyAttackEnds') {
+        t = t.replace('a friendly unit', 'a friendly ' + (SB.names.traits[ab.attackerTrait] || ab.attackerTrait) + ' unit');
+      }
+      return t;
     }
-    let s = side + triggerText[ab.trigger] + ': ' + cap(body) + '.';
+    if (ab.exhaustCost) {
+      return triggerHeader() + ': You may exhaust this leader. If you do, ' + body + '.';
+    }
+    let s = side + triggerHeader() + ': ' + cap(body) + '.';
     if (ab.oncePerRoundTrigger) s += ' Use this only once each round.';
     if (ab.notCreated) s = s.replace('When you play another unit', 'When you play a unit from hand');
     if (ab.trigger === 'onUnitPlayed') s = s.replace('When you play another unit', 'When you play or create another unit');

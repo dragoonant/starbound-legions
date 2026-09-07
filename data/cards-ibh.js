@@ -56,7 +56,7 @@
   "ibh-049": {"id":"ibh-049","type":"unit","aspects":["cunning","heroism"],"traits":["tr32","tr08"],"unique":true,"cost":2,"power":1,"hp":4,"arena":"ground"},
   "ibh-050": {"id":"ibh-050","type":"unit","aspects":["command","heroism"],"traits":["tr32","tr43"],"cost":3,"power":3,"hp":4,"arena":"ground"},
   "ibh-051": {"id":"ibh-051","type":"unit","aspects":["command"],"traits":["tr07"],"cost":2,"power":2,"hp":2,"arena":"ground"},
-  "ibh-053": {"id":"ibh-053","type":"leader","aspects":["aggression","villainy"],"traits":["tr12","tr17","tr35"],"unique":true,"deployCost":6,"leaderSide":{"abilities":[]},"deployedSide":{"arena":"ground","power":3,"hp":8}},
+  "ibh-053": {"id":"ibh-053","type":"leader","aspects":["aggression","villainy"],"traits":["tr12","tr17","tr35"],"unique":true,"deployCost":6,"leaderSide":{"abilities":[{"trigger":"action","cost":1,"effects":[{"op":"damage","amount":1,"target":{"who":"enemy","what":"base"}}]}]},"deployedSide":{"arena":"ground","power":3,"hp":8,"abilities":[{"trigger":"onAttack","effects":[{"op":"damage","amount":2,"target":{"who":"enemy","what":"base"}}]}]}},
   "ibh-054": {"id":"ibh-054","type":"base","aspects":["vigilance"],"hp":20},
   "ibh-055": {"id":"ibh-055","type":"unit","aspects":["vigilance","villainy"],"traits":["tr17","tr43"],"cost":2,"power":3,"hp":4,"arena":"ground"},
   "ibh-056": {"id":"ibh-056","type":"unit","aspects":["aggression","villainy"],"traits":["tr17","tr46","tr47"],"cost":6,"power":5,"hp":7,"arena":"ground"},

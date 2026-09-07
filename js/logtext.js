@@ -96,6 +96,12 @@
     peeked: function (l) { return player(l.player) + ' looked at the top of the deck.'; },
     peekBottomed: function (l) { return player(l.player) + ' buried the card that was peeked at.'; },
     revealedTop: function (l) { return possessive(l.player) + ' top card is ' + cardName(l.cardId) + '.'; },
+    lookedTopBoth: function (l) {
+      return 'Top cards: ' + (l.p0CardId ? cardName(l.p0CardId) : '(empty)') + ' and ' + (l.p1CardId ? cardName(l.p1CardId) : '(empty)') + '.';
+    },
+    resourceDefeated: function (l) { return possessive(l.player) + ' resource was defeated.'; },
+    resourceDefeatArmed: function (l) { return 'At the start of the next action phase, ' + player(l.player) + ' must defeat a resource.'; },
+    extraAction: function (l) { return player(l.player) + ' takes an extra action.'; },
     searched: function (l) { return player(l.player) + ' searched the deck.'; },
     tookFromDiscard: function (l) { return player(l.player) + ' recovered a card from the discard pile.'; },
     handRevealed: function (l) { return possessive(l.player) + ' hand was revealed.'; },

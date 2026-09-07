@@ -1295,4 +1295,84 @@
     T.eq(s.players[me].deck[0].cardId, 'fx-grunt', 'the first kept card is back on top');
     T.eq(s.players[me].deck[1].cardId, 'fx-wall', 'the second kept card follows it');
   });
+
+  // ---- leader competitive-expansion pass: new vocabulary added for 15 leaders ----
+
+  T.add('jtl-018 leader side: extraAction lets the same player act again', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].leader.cardId = 'jtl-018';
+    s.active = me;
+    T.putOnBoard(s, me, 'fx-grunt', { exhausted: false });
+    s = T.act(s, { type: 'leaderAction' });
+    s = drive(s); // resolve the (single-candidate) suppress target
+    T.eq(s.active, me, 'the extra action keeps the same player active instead of passing the turn');
+    T.ok(s.players[me].leader.exhausted, 'the leader action still exhausted the leader');
+  });
+
+  T.add('jtl-018 unit side: suppressUpTo can suppress more than one unit, then stop', function () {
+    let s = deployed_(0);
+    const me = 0;
+    const a = T.putOnBoard(s, me, 'fx-grunt', { exhausted: false });
+    const b = T.putOnBoard(s, me, 'fx-wall', { exhausted: false });
+    s = T.act(s, { type: 'attack', attacker: s.ground.find(function (u) { return u.cardId === 'jtl-018'; }).uid,
+      target: { kind: 'base', player: 1 } });
+    s = T.act(s, { type: 'suppressUpTo', uid: a.uid });
+    s = T.act(s, { type: 'suppressUpTo', uid: b.uid });
+    s = T.act(s, { type: 'suppressUpTo', uid: null });
+    T.ok(SB.findUnit(s, a.uid).abilitiesSuppressed, 'the first chosen unit lost its abilities');
+    T.ok(SB.findUnit(s, b.uid).abilitiesSuppressed, 'the second chosen unit lost its abilities too');
+  });
+  function deployed_(who) {
+    let s = T.game(); s.active = who; s.initiative = who;
+    const u = deployed(s, who, 'jtl-018');
+    return s;
+  }
+
+  T.add('law-013 leader side: the activation cost defeats one of your own resources', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    s.players[me].leader.cardId = 'law-013';
+    s.active = me;
+    T.giveResources(s, me, 1);
+    const before = s.players[me].resources.length;
+    T.putOnBoard(s, foe, 'fx-grunt', { exhausted: false });
+    s = T.act(s, { type: 'leaderAction' });
+    s = drive(s, function (a) { return a.type === 'choose'; });
+    T.eq(s.players[me].resources.length, before - 1, 'one resource was defeated as part of activating the action');
+    T.eq(s.players[me].credits || 0, 1, 'and a credit token was created');
+  });
+
+  T.add('law-016: the leader action is gated on having created a token this phase', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    s.players[me].leader.cardId = 'law-016';
+    s.active = me;
+    T.putOnBoard(s, foe, 'fx-grunt', { exhausted: false });
+    T.ok(!SB.legalActions(s).some(function (a) { return a.type === 'leaderAction'; }),
+      'no token created yet — the action is not offered');
+    s.players[me].createdTokenThisPhase = true;
+    T.ok(SB.legalActions(s).some(function (a) { return a.type === 'leaderAction'; }),
+      'once a token was created this phase, the action becomes available');
+  });
+
+  T.add('ash-003 leader side: the buff target must be the only unit you control in its arena', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].leader.cardId = 'ash-003';
+    s.active = me;
+    T.giveResources(s, me, 1);
+    const solo = T.putOnBoard(s, me, 'fx-grunt', { exhausted: false });
+    s = T.act(s, { type: 'leaderAction' });
+    s = drive(s);
+    T.eq(SB.findUnit(s, solo.uid).temp.power, 2, 'the lone ground unit was buffed');
+  });
+
+  T.add('ash-003 leader side: fizzles once a second unit shares the arena', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].leader.cardId = 'ash-003';
+    s.active = me;
+    T.giveResources(s, me, 1);
+    const g = T.putOnBoard(s, me, 'fx-grunt', { exhausted: false });
+    const w = T.putOnBoard(s, me, 'fx-wall', { exhausted: false });
+    s = T.act(s, { type: 'leaderAction' });
+    T.eq(SB.findUnit(s, g.uid).temp.power, 0, 'neither ground unit is "the only unit in its arena" — no buff landed');
+    T.eq(SB.findUnit(s, w.uid).temp.power, 0, 'same for the other one');
+  });
 })(window.SB = window.SB || {});

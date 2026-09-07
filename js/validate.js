@@ -18,7 +18,9 @@
     'onFriendlyUpgradeDefeated', 'onFriendlyDealsDamageToEnemyUnit', 'onOpponentPlaysCard',
     'onOwnBaseCombatDamaged', 'onUseForce',
     // cluster-c3 expansion
-    'onOwnDraw', 'onDeckDiscard', 'onBaseDamaged', 'onPilotAttached'];
+    'onOwnDraw', 'onDeckDiscard', 'onBaseDamaged', 'onPilotAttached',
+    // leader competitive-expansion pass
+    'onActionPhaseStart'];
   const ASPECTS = ['command', 'aggression', 'cunning', 'vigilance', 'heroism', 'villainy'];
 
   function fail(id, msg) { throw new Error('content error [' + id + ']: ' + msg); }
