@@ -244,14 +244,6 @@ button:disabled { opacity: .4; cursor: default; }
 .card-preview { width: var(--card-preview-w); min-height: 26rem; } /* NO aspect-ratio: text must grow */
 .card:hover { transform: translateY(-3px); box-shadow: 0 8px 22px rgba(0,0,0,.5); }
 
-/* faction color coding: border only, never a body tint */
-.color-vigilance  { border-color: #35548a; }
-.color-command    { border-color: #2f6b4a; }
-.color-aggression { border-color: #8c3a35; }
-.color-cunning    { border-color: #a5822f; }
-.color-heroism    { border-color: #7d8595; }
-.color-villainy   { border-color: #60449a; }
-
 /* art layer: fills the face; crop biased upward for generative headroom */
 .card-art { position: absolute; inset: 0; z-index: 0; }
 .card-art .art { width: 100%; height: 100%; display: block; }

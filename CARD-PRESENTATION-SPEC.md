@@ -210,10 +210,13 @@ Stats: attack `#ff9f87`, health `#8ee0ac`, damaged health `#ffcf6b`. `.card-deta
 `.card-stats` each get `border-top: 1px solid rgba(255,255,255,.1)` — a hairline is enough
 separation on top of art; a solid rule looks heavy.
 
-**Faction/color coding is border-only** — `border-color` per faction, e.g. blue `#35548a`,
-green `#2f6b4a`, red `#8c3a35`, white `#7d8595`, purple `#60449a`. Do not tint the card body; the
-art already carries the color. Feed the same palette into the procedural art generator so
-fallbacks match their faction.
+**The border carries no faction/aspect color.** Every card keeps the default slate
+`#33415e`; aspect is carried by the corner pips and by the colored aspect words in the
+rules text. An earlier per-aspect `border-color` was dropped: the border is where the
+interaction/state treatments below live (and cunning's yellow was all but
+`--role-actable`), so a colored edge read as "this card is playable" rather than as a
+faction. Do not tint the card body either; the art already carries the color. The aspect
+palette still feeds the procedural art generator so fallbacks match their aspect.
 
 **Chips vs inline.** Keyword names and trigger names are chips; their explanations are plain
 inline text:
