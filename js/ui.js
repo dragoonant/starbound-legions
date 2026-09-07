@@ -760,6 +760,7 @@
       }
       case 'effectAttack': return a.target ? (a.target.kind === 'base' ? 'Attack the base' : 'Attack ' + unitName(s, a.target.uid)) : SB.names.ui.decline;
       case 'exploitUnit': return 'Sacrifice: ' + unitName(s, a.uid);
+      case 'peekDiscard': return 'Discard card ' + (a.deckIndex + 1);
       case 'peekAct': return a.mode === 'play' ? 'Play: ' + cardName(a.cardId)
         : { bottom: 'Put it on the bottom of the deck', leave: 'Leave it on top',
             discard: 'Discard it' }[a.mode] || ('Top card: ' + a.mode);
@@ -871,6 +872,12 @@
     switch (it.step) {
       case 'peekDecide':
         return deck && deck[0] ? [{ cardId: deck[0].cardId, label: 'Top card' }] : [];
+      case 'enemyDeckPeek': {
+        const opp = it.player != null ? s.players[1 - it.player].deck : null;
+        const seen = [];
+        for (let i = 0; opp && i < Math.min(it.depth, opp.length); i++) seen.push({ cardId: opp[i].cardId, label: i === 0 ? 'Their top card' : 'Card ' + (i + 1) });
+        return seen;
+      }
       case 'arrangeTop2': {
         const out = [];
         if (deck && deck[0]) out.push({ cardId: deck[0].cardId, label: 'First (top)' });

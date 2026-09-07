@@ -547,6 +547,102 @@
     const u = SB.findUnit(state, item.ctx && item.ctx.sourceUid);
     if (u) { u.defenderFirstNext = true; SB.log(state, { type: 'attackModified', uid: u.uid }); }
   };
+  // Hand a unit you control to the opponent (law-002's leader action).
+  O.giveControl = function (state, item, target) {
+    const u = SB.findUnit(state, target.uid);
+    if (!u) return;
+    if ((SB.unitDef(u).staticFlags || []).indexOf('noControlChange') >= 0) {
+      SB.log(state, { type: 'fizzle', why: 'immune', fizzled: true }); return;
+    }
+    // trueOwner remembers who handed it over: "units you own but don't control".
+    if (u.trueOwner == null) u.trueOwner = item.controller;
+    u.owner = SB.other(item.controller);
+    SB.log(state, { type: 'controlTaken', uid: u.uid, by: u.owner, sound: 'claim', notice: true });
+    SB.efx(state, item.ctx || {}).gaveControl = 1;
+  };
+
+  // Look at the top N of the opponent's deck and discard one; the rest go back on top
+  // in the order they were in (sec-017).
+  O.peekEnemyDeckDiscard = function (state, item) {
+    state.queue.unshift({ step: 'enemyDeckPeek', player: item.controller, depth: item.op.depth || 2 });
+  };
+  SB.queueSteps.enemyDeckPeek = {
+    actions: function (state, it) {
+      const p = state.players[SB.other(it.player)];
+      const n = Math.min(it.depth, p.deck.length);
+      if (n === 0) return null; // auto-skip
+      const acts = [];
+      for (let i = 0; i < n; i++) acts.push({ type: 'peekDiscard', player: it.player, deckIndex: i });
+      return acts;
+    },
+    apply: function (state, it, action) {
+      const p = state.players[SB.other(it.player)];
+      const inst = p.deck.splice(action.deckIndex, 1)[0];
+      if (!inst) return;
+      p.discard.push(inst);
+      SB.log(state, { type: 'discarded', player: SB.other(it.player), cardId: inst.cardId, sound: 'discard' });
+    },
+  };
+
+  // "Defeat any number of units you own but don't control" — the ones this player gave
+  // away with giveControl — running the per-defeat effects once for each (law-002).
+  O.defeatOwnedNotControlled = function (state, item) {
+    state.queue.unshift({ step: 'defeatLentPick', player: item.controller, ctx: item.ctx, perDefeat: item.op.perDefeat || [] });
+  };
+  SB.queueSteps.defeatLentPick = {
+    actions: function (state, it) {
+      const acts = [];
+      SB.allUnits(state, SB.other(it.player)).forEach(function (u) {
+        if (u.trueOwner !== it.player) return;
+        acts.push({ type: 'defeatOwn', player: it.player, uid: u.uid });
+      });
+      if (!acts.length) return null;
+      acts.push({ type: 'defeatOwn', player: it.player, uid: -1 }); // stop
+      return acts;
+    },
+    apply: function (state, it, action) {
+      if (action.uid === -1) return;
+      const u = SB.findUnit(state, action.uid);
+      if (!u) return;
+      SB.defeatUnit(state, u, it.ctx || {});
+      SB.queueEffects(state, it.player, it.perDefeat, it.ctx || {});
+      // Keep asking while any lent unit is left.
+      state.queue.unshift({ step: 'defeatLentPick', player: it.player, ctx: it.ctx, perDefeat: it.perDefeat });
+    },
+  };
+
+  // "Play any number of upgrades from your discard pile on this unit, one at a time,
+  // paying their costs" (lof-001's deployed side).
+  O.playUpgradesFromDiscard = function (state, item) {
+    state.queue.unshift({ step: 'playUpgradeFromDiscard', player: item.controller, ctx: item.ctx,
+      onSelf: !!item.op.onSelf, bearerUid: item.ctx && item.ctx.sourceUid });
+  };
+  SB.queueSteps.playUpgradeFromDiscard = {
+    actions: function (state, it) {
+      const p = state.players[it.player];
+      const bearer = SB.findUnit(state, it.bearerUid);
+      if (it.onSelf && !bearer) return null;
+      const acts = [];
+      p.discard.forEach(function (inst, i) {
+        const c = SB.card(inst.cardId);
+        if (c.type !== 'upgrade') return;
+        if (SB.cardCost(state, it.player, inst.cardId) > SB.readyResources(state, it.player)) return;
+        acts.push({ type: 'playUpgradeDiscard', player: it.player, cardId: inst.cardId, index: i,
+          attachTo: bearer.uid });
+      });
+      if (!acts.length) return null;
+      acts.push({ type: 'playUpgradeDiscard', player: it.player, cardId: null, index: -1 }); // stop
+      return acts;
+    },
+    apply: function (state, it, action) {
+      if (action.index < 0) return;
+      SB.playCardWithMods(state, it.player,
+        { fromDiscard: action.index, cardId: action.cardId, attachTo: action.attachTo }, {});
+      state.queue.unshift({ step: 'playUpgradeFromDiscard', player: it.player, ctx: it.ctx,
+        onSelf: it.onSelf, bearerUid: it.bearerUid });
+    },
+  };
+
   // A unit loses all abilities (and keywords) for this round.
   O.suppressAbilities = function (state, item, target) {
     const u = SB.findUnit(state, target.uid);
@@ -916,7 +1012,7 @@
     apply: function (state, it, action) {
       const from = SB.findUnit(state, it.fromUid), to = SB.findUnit(state, action.uid);
       if (!from || !to) return;
-      if (it.kind === 'shield' && from.shields > 0) { from.shields--; to.shields++; SB.log(state, { type: 'shield', uid: to.uid, sound: 'shield' }); }
+      if (it.kind === 'shield' && from.shields > 0) { from.shields--; SB.giveShield(state, to, 1); }
       if (it.kind === 'experience' && from.experience > 0) {
         from.experience--; to.experience++;
         SB.log(state, { type: 'experience', uid: to.uid, amount: 1, sound: 'buff' });
@@ -1324,6 +1420,7 @@
         const p = state.players[it.player];
         acts = acts.filter(function (a) { return (SB.card(p.hand[a.handIndex].cardId).aspects || []).some(function (x) { return asp.indexOf(x) >= 0; }); });
       }
+      if (f.minCost != null) { const p = state.players[it.player]; acts = acts.filter(function (a) { return (SB.card(p.hand[a.handIndex].cardId).cost || 0) >= f.minCost; }); }
       if (f.notType) { const p = state.players[it.player]; acts = acts.filter(function (a) { return SB.card(p.hand[a.handIndex].cardId).type !== f.notType; }); }
       if (!acts.length) return null;
       if (it.optional) acts.push({ type: 'discardCard', player: it.forcedBy != null ? it.forcedBy : it.player, targetPlayer: it.player, handIndex: -1 });
@@ -1611,6 +1708,15 @@
     if (SB.unitRemainingHp(state, u) <= 0) SB.defeatUnit(state, u, {});
   };
 
+  // shd-187 style: a unit enemy card abilities cannot capture, damage or defeat. The
+  // dealer is whoever the effect belongs to, so a controller's own abilities still work.
+  SB.wardedFrom = function (state, unit, ctx) {
+    if ((SB.unitDef(unit).staticFlags || []).indexOf('wardEnemyAbilities') < 0) return false;
+    const src = ctx && ctx.sourceUid != null ? SB.findUnit(state, ctx.sourceUid) : null;
+    const dealer = ctx && ctx.dealer != null ? ctx.dealer : (src ? src.owner : (ctx ? ctx.controller : null));
+    return dealer != null && dealer !== unit.owner;
+  };
+
   // ---- damage hooks ------------------------------------------------------------------
   // Replacement effects on damage (see DEVIATIONS.md for the auto-choice rules):
   //  - shieldRedirect: another friendly unit with the static pops one of its shields to
@@ -1623,6 +1729,12 @@
   SB.damageUnit = function (state, unit, amount, ctx) {
     if (amount <= 0) return;
     ctx = ctx || {};
+    // "Can't be damaged by enemy card abilities": combat damage still lands, and so
+    // does anything its own controller aims at it.
+    if (!ctx.combat && SB.wardedFrom(state, unit, ctx)) {
+      SB.log(state, { type: 'fizzle', why: 'immune', fizzled: true });
+      return;
+    }
     const lethal = amount >= SB.unitRemainingHp(state, unit);
     if (lethal) {
       const guard = SB.allUnits(state, unit.owner).find(function (f) {

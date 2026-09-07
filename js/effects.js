@@ -88,6 +88,15 @@
         if (sel.minCost != null && SB.costOf(u.cardId) < sel.minCost) return;
         if (sel.minPower != null && SB.unitPower(state, u) < sel.minPower) return;
         if (sel.maxPower != null && SB.unitPower(state, u) > sel.maxPower) return;
+        if (sel.costEqRefPlayed) {
+          const pc0 = ctx.playedCardId ? SB.card(ctx.playedCardId).cost : null;
+          if (pc0 == null || SB.card(u.cardId).cost !== pc0) return;
+        }
+        if (sel.costLtSaved) {
+          const t0 = SB.efx(state, ctx)[sel.costLtSaved];
+          const ref = t0 && t0.uid != null ? SB.findUnit(state, t0.uid) : null;
+          if (!ref || SB.costOf(u.cardId) >= SB.costOf(ref.cardId)) return;
+        }
         if (sel.maxCostRefPlayed) {
           const pc = ctx.playedCardId ? SB.card(ctx.playedCardId).cost : null;
           if (pc == null || SB.card(u.cardId).cost > pc) return;
@@ -463,6 +472,15 @@
 
   // --- conditions ----------------------------------------------------------
 
+  // A shield is an upgrade in the printed rules, so anything that watches for an
+  // upgrade landing on a unit has to see one arrive. Every place that hands out a
+  // shield goes through here so the log line and that trigger stay together.
+  SB.giveShield = function (state, unit, n) {
+    unit.shields += (n == null ? 1 : n);
+    SB.log(state, { type: 'shield', uid: unit.uid, sound: 'shield' });
+    SB.fireTriggers(state, 'onUpgradeAttachedSelf', unit, { sourceUid: unit.uid, fromShield: true });
+  };
+
   SB.checkCondition = function (state, controller, cond, ctx) {
     if (!cond) return true;
     // Generic negation: {if:'x', not:true} — except 'saved', which handles its own.
@@ -591,6 +609,12 @@
         return state.space.filter(function (u) { return u.owner === controller && u.uid !== ctx.sourceUid; }).length > 0;
       case 'discardedUnit':
         return SB.efx(state, ctx).lastDiscardedType === 'unit';
+      case 'discardedType':
+        return SB.efx(state, ctx).lastDiscardedType === cond.t;
+      case 'canDiscardCost':
+        return state.players[controller].hand.some(function (i2) { return (SB.card(i2.cardId).cost || 0) >= cond.minCost; });
+      case 'enemyDefeatedThisPhase':
+        return (state.defeatedThisPhase || []).some(function (d) { return d.owner !== controller; });
       case 'enemyUnitDamaged':
         return SB.allUnits(state, SB.other(controller)).some(function (u) { return u.damage > 0; });
       case 'opponentMoreSpaceUnits': {
@@ -711,7 +735,7 @@
     },
     shield: function (state, item, target) {
       const u = SB.findUnit(state, target.uid);
-      if (u) { u.shields += (item.op.amount || 1); SB.log(state, { type: 'shield', uid: u.uid, sound: 'shield' }); }
+      if (u) SB.giveShield(state, u, item.op.amount || 1);
     },
     experience: function (state, item, target) {
       const u = SB.findUnit(state, target.uid);
@@ -734,7 +758,8 @@
       const u = SB.findUnit(state, target.uid);
       if (!u) return;
       if (u.owner !== item.controller &&
-          (SB.unitDef(u).staticFlags || []).indexOf('noEnemyDefeatReturn') >= 0) {
+          ((SB.unitDef(u).staticFlags || []).indexOf('noEnemyDefeatReturn') >= 0 ||
+           (SB.unitDef(u).staticFlags || []).indexOf('wardEnemyAbilities') >= 0)) {
         SB.log(state, { type: 'fizzle', why: 'immune', fizzled: true });
         return;
       }

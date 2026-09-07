@@ -236,7 +236,8 @@
   O.discard = function (state, item) {
     const who = item.op.who === 'self' ? item.controller : SB.other(item.controller);
     for (let i = 0; i < (item.op.amount || 1); i++) {
-      state.queue.unshift({ step: 'discardChoice', player: who, ctx: item.ctx, filter: item.op.filter });
+      state.queue.unshift({ step: 'discardChoice', player: who, ctx: item.ctx, filter: item.op.filter,
+        optional: !!item.op.optional, saveAs: item.op.saveAs });
     }
   };
 
@@ -280,6 +281,11 @@
     }
     const captor = SB.findUnit(state, captorRef);
     if (!victim || !captor) return;
+    if (victim.owner !== captor.owner &&
+        (SB.unitDef(victim).staticFlags || []).indexOf('wardEnemyAbilities') >= 0) {
+      SB.log(state, { type: 'fizzle', why: 'immune', fizzled: true });
+      return;
+    }
     SB.collectBounties(state, victim);
     const arena = SB.arenaOf(state, victim);
     state[arena].splice(state[arena].indexOf(victim), 1);
@@ -464,6 +470,7 @@
     const p = state.players[item.controller];
     if (!p.force) { SB.log(state, { type: 'fizzle', why: 'noForce', fizzled: true }); return; }
     p.force = false;
+    p.forceUsesThisPhase = (p.forceUsesThisPhase || 0) + 1;
     SB.log(state, { type: 'forceUsed', player: item.controller, sound: 'ability' });
   };
 
@@ -1055,7 +1062,7 @@
         const unit = SB.makeUnit(state, inst.cardId, itemStep.player);
         unit.uid = inst.uid;
         state[card.arena].push(unit);
-        if (SB.hasKeyword(state, unit, 'shielded')) { unit.shields += 1; SB.log(state, { type: 'shield', uid: unit.uid, sound: 'shield' }); }
+        if (SB.hasKeyword(state, unit, 'shielded')) SB.giveShield(state, unit, 1);
         if (SB.hasKeyword(state, unit, 'ambush')) {
           state.queue.push({ step: 'effect', controller: itemStep.player, ctx: { sourceUid: unit.uid, cardId: unit.cardId },
             op: { op: 'ambushAttack', target: null } });
