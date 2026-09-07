@@ -6,7 +6,7 @@ and sound here is original or generated for this project (see NOTICE.md). Not af
 with, endorsed by, or connected to Fantasy Flight Games, Lucasfilm Ltd., or The Walt Disney
 Company.
 
-**Play:** https://dragoonant.github.io/sundered-veil/
+**Play:** https://dragoonant.github.io/starbound-legions/
 
 Pick your deck, the opponent's deck and a difficulty on the title screen. Every deck is a
 registered list from `data/decks.js`.
