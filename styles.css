@@ -244,14 +244,6 @@ button:disabled { opacity: .4; cursor: default; }
 .card-preview { width: var(--card-preview-w); min-height: 26rem; } /* NO aspect-ratio: text must grow */
 .card:hover { transform: translateY(-3px); box-shadow: 0 8px 22px rgba(0,0,0,.5); }
 
-/* faction color coding: border only, never a body tint */
-.color-vigilance  { border-color: #35548a; }
-.color-command    { border-color: #2f6b4a; }
-.color-aggression { border-color: #8c3a35; }
-.color-cunning    { border-color: #a5822f; }
-.color-heroism    { border-color: #7d8595; }
-.color-villainy   { border-color: #60449a; }
-
 /* art layer: fills the face; crop biased upward for generative headroom */
 .card-art { position: absolute; inset: 0; z-index: 0; }
 .card-art .art { width: 100%; height: 100%; display: block; }
@@ -354,6 +346,16 @@ button:disabled { opacity: .4; cursor: default; }
            font-weight: 700; padding: .05rem .32rem; border-radius: 3px; margin-right: .3rem; }
 
 /* state + badges */
+/* A hand card you cannot pay for. Dimmed, with the cost pip in the damage red, so the
+   eye lands on the number that is the reason. No grayscale or blur — state treatments
+   never hide the art (SPEC §6) — and hover restores it to full, so an unaffordable card
+   still reads and previews like any other. */
+#hand .card.is-unaffordable { opacity: .58; }
+#hand .card.is-unaffordable:hover, #hand .card.is-unaffordable:focus { opacity: 1; }
+#hand .card.is-unaffordable .pip.cost {
+  color: #ff9f87; background: rgba(255,159,135,.18);
+  box-shadow: inset 0 0 0 1px rgba(255,159,135,.55);
+}
 .is-rested { transform: rotate(4deg); opacity: .72; }
 .is-rested:hover { transform: rotate(4deg) translateY(-3px); }
 /* Face-down cards carry the shared back art, cropped to fill whatever size the card
