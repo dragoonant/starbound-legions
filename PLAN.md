@@ -87,8 +87,13 @@ prebuilt 50-card decks. Grow after the loop is fun.
 - Audio: ElevenLabs SFX for structured-log events (ambience, not music).
 - Key precedence: flag → env var → gitignored file.
 
-### Phase 7 — Polish & balance
-- Deck-matrix win rates as a crude balance readout; expand the set once the loop is fun.
+### Phase 7 — Polish
+- Originally: deck-matrix win rates as a balance readout, to tune our own cards. That
+  premise died when the scope changed. The pool is now a faithful reproduction of published
+  cards, so there is no balance knob to turn — a deck that underperforms is the meta, not a
+  bug, and changing a cost or a stat to even it out would be exactly the deviation this
+  project refuses. Deck win rates measure the AI and the engine's fidelity, nothing else.
+- What is left here is polish: play bugs, and AI strength measured per `docs/ai.md`.
 
 ## Order of play
 Phases 0–3 land together as the foundation (engine + tests before any UI). Then UI with
@@ -127,8 +132,9 @@ lists, and is deployed on GitHub Pages. Test suite: 117 green
 - **Text audit of the authored cards** — the structural gate (`tests/test-text.js`) runs
   over all cards and is green; the semantic pass, comparing generated rules text against
   the printed text in `scratch/workpackets/`, has not been done.
-- **Phase 7 balance** — the deck matrix runs as a test, but its win rates have not yet been
-  used to tune anything.
+- **AI quality on the competitive matrix** — `tools/ai-balance.mjs` over the competitive
+  group, as `docs/ai.md` already uses it: A/B a weight change against the same seed and
+  pairings, with random play as the control. Ongoing whenever the AI changes.
 
 ### Not planned
 
