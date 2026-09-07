@@ -40,6 +40,25 @@ gitignored `scratch/coverage.json`). Entries marked PLAYED are the suspects: the
 reached the board and the ability still never fired. Treat the list as a work queue
 for deterministic scenario tests, not a verdict — a rare trigger can be fine.
 
+## Reporting and replaying a bug
+
+Every match records itself (`js/bugreport.js`): the seed, both deck ids, and every action
+either seat applied, with the log entries each produced. The engine is deterministic in
+exactly those inputs, so a report is a replayable match rather than a screenshot.
+
+**Flag a bug** in the log drawer takes what you saw and writes the trace into `traces/`
+(via the dev server; from `file://` or the deployed site the browser downloads it
+instead). Then:
+
+```
+node tools/replay-report.mjs traces/<report>.json     # notes, trouble, context
+node tools/replay-report.mjs --selftest               # prove replay still reproduces
+```
+
+Replay re-runs the match against the real engine and calls out ILLEGAL actions the UI
+offered, applies that THREW, and logs that DIVERGED from what the browser produced. See
+`traces/README.md`.
+
 ## Deploying
 
 GitHub Pages serves `main` at the repo root, so the live site is whatever is committed.

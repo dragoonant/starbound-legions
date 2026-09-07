@@ -193,18 +193,17 @@
     if (!flag || !save) return;
     if (!SB.bugreport) { flag.hidden = true; save.hidden = true; return; }
     flag.textContent = SB.names.ui.flagBug;
-    flag.onclick = function () {
-      // Asked for at the pin, not at export: by the time a player goes looking for the
-      // save button they have already forgotten which of four things looked wrong.
-      const what = window.prompt(SB.names.ui.flagPrompt, '');
-      if (what == null) return;
-      SB.bugreport.note(what);
-      flash(flag, SB.names.ui.flagged, SB.names.ui.flagBug);
-    };
+    // Asked for at the pin, not at export: by the time a player goes looking for the
+    // save button they have already forgotten which of four things looked wrong. The
+    // dialog (js/bugreport.js) takes the sentence and can file the whole report with
+    // it, so pressing this produces something the player can see.
+    flag.onclick = function () { SB.bugreport.openDialog(); };
     save.textContent = SB.names.ui.saveReport;
     save.onclick = function () {
-      if (!SB.bugreport.download()) return;
-      flash(save, SB.names.ui.savedReport, SB.names.ui.saveReport);
+      SB.bugreport.save(function (how) {
+        flash(save, how === 'failed' ? SB.names.ui.saveFailed : SB.names.ui.savedReport,
+          SB.names.ui.saveReport);
+      });
     };
   }
 

@@ -161,6 +161,26 @@
       return 'sb-bug-' + (trace ? trace.setup.seed : 'x') + '-' + stamp + '.json';
     },
 
+    // Where a report should end up: traces/, next to the code that has to fix it.
+    // The dev server (tools/serve.mjs) takes it over POST /__trace/<name> and writes it
+    // there. Played from file:// or from the deployed site there is no server to take
+    // it, so fall back to the download-and-clipboard path below.
+    //
+    // done(how, name) gets 'server' | 'download' | 'failed'.
+    save: function (done) {
+      if (!trace) { if (done) done('failed', null); return false; }
+      const name = API.filename();
+      const finish = function (how) { if (done) done(how, name); };
+      if (typeof fetch !== 'function' || typeof location === 'undefined' || location.protocol === 'file:') {
+        finish(API.download() ? 'download' : 'failed');
+        return true;
+      }
+      fetch('/__trace/' + encodeURIComponent(name), { method: 'POST', body: API.text() })
+        .then(function (res) { finish(res.ok ? 'server' : (API.download() ? 'download' : 'failed')); })
+        .catch(function () { finish(API.download() ? 'download' : 'failed'); });
+      return true;
+    },
+
     // Download AND clipboard: the file is the thing to attach, the clipboard is for
     // pasting straight into a chat. Whichever the player reaches for, they have it.
     download: function () {
@@ -180,6 +200,92 @@
       return true;
     },
   };
+
+  // ---- the dialog ----------------------------------------------------------
+  // window.prompt() was the placeholder: one line, no room to say what you expected,
+  // and on the browsers that suppress it the button looks dead. This is the same ask
+  // in the game's own chrome, and it can do the other half of the job — pin the moment
+  // AND put the trace in traces/ — which is what makes pressing it visibly worth it.
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  API.openDialog = function () {
+    if (document.getElementById('bug-overlay')) return;
+    const B = SB.names.bug;
+    const overlay = el('div'); overlay.id = 'bug-overlay';
+    const box = el('div'); box.id = 'bug-box';
+
+    box.appendChild(el('h2', 'bug-title', B.title));
+    box.appendChild(el('p', 'bug-blurb', B.blurb));
+
+    const ta = document.createElement('textarea');
+    ta.id = 'bug-note';
+    ta.rows = 5;
+    ta.placeholder = B.placeholder;
+    box.appendChild(ta);
+
+    // What is about to be written down, said plainly: nobody should have to guess what
+    // a bug report is sending on their behalf.
+    const s = SB.ui && SB.ui.state;
+    if (s) {
+      box.appendChild(el('div', 'bug-what', B.attaches
+        .replace('{round}', String(s.round)).replace('{actions}', String(API.count()))));
+    }
+
+    const status = el('div', 'bug-status');
+    const btns = el('div', 'bug-buttons');
+
+    const send = el('button', 'action-btn', B.send);
+    send.onclick = function () {
+      if (!trace) { status.textContent = B.noGame; return; }
+      API.note(ta.value);
+      send.disabled = true;
+      status.textContent = B.sending;
+      API.save(function (how, name) {
+        if (how === 'failed') { send.disabled = false; status.textContent = B.failed; return; }
+        status.textContent = (how === 'server' ? B.savedServer : B.savedDownload).replace('{file}', name);
+        cancel.textContent = B.close;
+      });
+    };
+
+    // Pinning without saving: the moment is what only the player can supply, and a
+    // match often produces three of them before anyone wants a file.
+    const pin = el('button', 'action-btn', B.pinOnly);
+    pin.onclick = function () {
+      if (!trace) { status.textContent = B.noGame; return; }
+      API.note(ta.value);
+      status.textContent = B.pinned;
+      ta.value = '';
+    };
+
+    const cancel = el('button', 'action-btn', B.cancel);
+    cancel.onclick = API.closeDialog;
+
+    btns.appendChild(send);
+    btns.appendChild(pin);
+    btns.appendChild(cancel);
+    box.appendChild(btns);
+    box.appendChild(status);
+
+    overlay.appendChild(box);
+    overlay.onclick = function (e) { if (e.target === overlay) API.closeDialog(); };
+    document.body.appendChild(overlay);
+    document.addEventListener('keydown', escClose);
+    ta.focus();
+  };
+
+  API.closeDialog = function () {
+    const o = document.getElementById('bug-overlay');
+    if (o) o.remove();
+    document.removeEventListener('keydown', escClose);
+  };
+
+  function escClose(e) { if (e.key === 'Escape') API.closeDialog(); }
 
   // Uncaught errors anywhere in the app land in the trace with their position in the
   // game, which is the context a console screenshot always loses.

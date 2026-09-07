@@ -13,7 +13,10 @@
 //   node tools/replay-report.mjs <report.json>            notes, trouble, and context
 //   node tools/replay-report.mjs <report.json> --verbose  the whole transcript
 //   node tools/replay-report.mjs <report.json> --stop 42  stop after action 42
-import { readFileSync } from 'node:fs';
+//   node tools/replay-report.mjs --selftest               prove replay still reproduces
+import { readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import vm from 'node:vm';
@@ -24,7 +27,8 @@ const file = args.find((a) => !a.startsWith('--'));
 const verbose = args.includes('--verbose');
 const si = args.indexOf('--stop');
 const stopAt = si >= 0 ? Number(args[si + 1]) : Infinity;
-if (!file) { console.error('usage: node tools/replay-report.mjs <report.json> [--verbose] [--stop N]'); process.exit(2); }
+const selftest = args.includes('--selftest');
+if (!file && !selftest) { console.error('usage: node tools/replay-report.mjs <report.json> [--verbose] [--stop N]\n       node tools/replay-report.mjs --selftest'); process.exit(2); }
 
 // Same script list as the test runner, for the same reason: ONE list, no drift.
 // The tests themselves are dropped; everything else is engine, data and log text.
@@ -36,6 +40,68 @@ window.window = window;
 const context = vm.createContext({ window, console, SB: undefined });
 for (const src of srcs) vm.runInContext(readFileSync(join(root, src), 'utf8'), context, { filename: src });
 const SB = window.SB;
+
+// ---- selftest --------------------------------------------------------------
+// The whole pipeline rests on one promise: a recorded match replays to the same game.
+// js/bugreport.js is UI-only (it touches document), so the browser suite cannot cover
+// it; this does, by recording a random game in the format that file writes — undo
+// included — and running this very tool over it. Any drift between the recorder's
+// shape and the replayer's reading of it fails here.
+if (selftest) {
+  const deck0 = 'deck-c01' in SB.decks ? 'deck-c01' : Object.keys(SB.decks)[0];
+  const deck1 = Object.keys(SB.decks).filter((d) => d !== deck0)[0];
+  const seed = 'selftest';
+  let st = SB.newGame({ deck0: deck0, deck1: deck1, seed: seed });
+  const rand = SB.rng('selftest|play');
+  const events = [];
+  const back = [];
+  let n = 0;
+  const push = (ev) => { ev.n = events.length; ev.t = 0; events.push(ev); };
+  const at = (x) => ({ round: x.round, phase: x.phase, active: x.active,
+    initiative: x.initiative, queue: x.queue.length });
+  while (!SB.isTerminal(st) && n < 400) {
+    const acts = SB.legalActions(st);
+    const act = acts[Math.floor(rand() * acts.length)];
+    const prev = st;
+    const next = SB.apply(st, act);
+    push({ kind: 'action', source: n % 2 ? 'ai' : 'you', action: act, at: at(prev),
+      legal: true, log: next.log.slice(prev.log.length) });
+    back.push(prev);
+    st = next;
+    n++;
+    // Take one move back partway through: an undo the replayer has to follow exactly,
+    // or every action after it lands in a game nobody played.
+    if (n === 20) {
+      // The recorder keeps the undone action in the trace on purpose (js/bugreport.js):
+      // what a player did and then took back is often the very thing that went wrong.
+      // So the event stays and the undo marker follows it.
+      const from = st;
+      st = back.pop();
+      push({ kind: 'undo', steps: 1, from: at(from), to: at(st) });
+      push({ kind: 'note', text: 'selftest pin', at: at(st) });
+    }
+  }
+  const built = {
+    format: 'sb-bugreport/1', when: new Date().toISOString(),
+    finishedAt: new Date().toISOString(),
+    setup: { seed: seed, deck0: deck0, deck1: deck1, difficulty: 'mid', humanSeat: 0,
+      initiative: SB.newGame({ deck0: deck0, deck1: deck1, seed: seed }).initiative },
+    events: events, truncated: false,
+    final: { at: at(st), winner: st.winner, logLength: st.log.length },
+  };
+  const path = join(tmpdir(), 'sb-selftest-' + process.pid + '.json');
+  writeFileSync(path, JSON.stringify(built, null, 1));
+  try {
+    execFileSync(process.execPath, [fileURLToPath(import.meta.url), path], { stdio: 'pipe' });
+    console.log('selftest: ok — ' + events.length + ' recorded events replayed to round ' +
+      st.round + ' ' + st.phase + (st.winner != null ? ', winner P' + st.winner : ''));
+    process.exit(0);
+  } catch (e) {
+    console.error('selftest: FAILED — the replayer no longer reproduces a recorded match');
+    console.error(String(e.stdout || '') + String(e.stderr || ''));
+    process.exit(1);
+  }
+}
 
 const report = JSON.parse(readFileSync(file, 'utf8'));
 if (report.format !== 'sb-bugreport/1') console.error(`! unknown format ${report.format}, trying anyway`);

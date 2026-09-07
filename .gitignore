@@ -48,3 +48,7 @@ node_modules/
 # data/names-source.js; this leftover holds an older, wrong mapping and must never
 # be committed — nothing loads it.
 data/source-local.js
+
+# Bug reports written by the in-game report button (js/bugreport.js). Local play
+# artifacts; commit one deliberately with `git add -f` to send it with a bug.
+traces/*.json

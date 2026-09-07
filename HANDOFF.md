@@ -19,16 +19,22 @@ Suite: `node tools/run-tests.mjs --quiet` → 82 passed. Run it before every com
 either seat applied, with the raw log entries each one produced. Two buttons in the log
 drawer:
 
-- **Flag a bug** — press it the moment something looks wrong and type one line. It pins
-  the exact action index; nothing else can recover that.
-- **Save bug report** — downloads `sb-bug-<seed>-<time>.json` and copies it to the
-  clipboard. A crash saves one by itself.
+- **Flag a bug** — press it the moment something looks wrong and say what you expected.
+  It pins the exact action index, which nothing else can recover. *Send report* files the
+  whole trace then and there; *Pin only* leaves the note and keeps the game going.
+- **Save bug report** — files one without a comment. A crash saves one by itself.
+
+Reports are written into `traces/` as `sb-bug-<seed>-<time>.json` by the dev server
+(`node tools/serve.mjs`, which takes them over `POST /__trace/<name>`). From `file://` or
+the deployed site there is no server to take them, so the browser downloads the report and
+copies it to the clipboard instead. See `traces/README.md`.
 
 Then, on the report:
 
 ```
 node tools/replay-report.mjs <report.json>            # notes, trouble, context
 node tools/replay-report.mjs <report.json> --verbose  # the whole transcript
+node tools/replay-report.mjs --selftest               # prove replay still reproduces
 ```
 
 It re-runs the match headlessly (AI moves are replayed, not re-chosen, so a report
