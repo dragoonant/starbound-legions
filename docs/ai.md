@@ -32,6 +32,40 @@ swing (one-ply min).
   land, but must never argue against deploying at all (the predecessor's first
   version taught the AI to stop attacking).
 
+### Rentals: units with `defeatAtRegroup`
+
+Reported bug: the AI played a temporary summon (the sor-219 "play a unit, defeat it at
+regroup" event), never attacked with it, and lost it at regroup — two cards for nothing.
+Traced with `AI.trace` to one decision: the AI chose `claimInitiative` while the summon
+had a legal attack. `claimInitiative` sets `state.locked[me]`, which is an irreversible
+exit from the phase, so the swing was gone; the evaluator did not know that and priced
+taking the initiative as free.
+
+**The rule.** A `defeatAtRegroup` unit is worth ZERO to a locked-out controller — it can
+never act again, so it is already defeated. Everywhere else it is scored as a normal
+body. A plain `pass` is NOT a lock: a pass is retractable.
+
+`returnAtRegroup` (commandeered units) is deliberately NOT covered: that card comes back,
+so the body is not lost.
+
+**TRIED, FAILED, REVERTED — discounting the body.** The first attempt scored such a unit
+as only the swing it could still make (power, and nothing while exhausted), on the theory
+that its body and HP do not survive the phase. It measured backwards, in two ways:
+
+- It did not reduce blunders. Over 30 competition games on fresh seeds: old 18 summons
+  played / 1 blunder, discounted 10 played / 1 blunder. It mostly stopped the AI playing
+  the card at all.
+- It *weakened* the attack it was meant to encourage. Discounting an exhausted unit makes
+  attacking with one read as spending value: the swing gains `baseDamage` (10/power) but
+  loses the pending-swing term, so the net incentive shrinks. In an isolated position the
+  discounted evaluator declined an attack that the unmodified one took. Pricing a unit's
+  own conversion into damage as a loss is the same mistake `wastedTrigger` warns about.
+
+The lock rule leaves attack incentives exactly as they were and removes only the forfeit.
+Pinned by "ai: a locked-out player owns nothing in a defeat-at-regroup unit" (including
+the assertion that an exhausted rental is NOT discounted) and by the decision test
+"ai: does not claim initiative while a doomed unit still owes a swing".
+
 ## Testing policy
 
 Pin decisions, not scores (tests/test-ai.js): each test builds a position with one

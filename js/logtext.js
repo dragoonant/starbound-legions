@@ -77,6 +77,10 @@
     deckedOut: function (l) { return possessive(l.player) + ' deck is empty — no card drawn!'; },
     deckShuffled: function (l) { return possessive(l.player) + ' deck was shuffled.'; },
     resourced: function (l) { return player(l.player) + ' banked a resource.'; },
+    resourceRevealed: function (l) { return player(l.player) + ' revealed ' + cardName(l.cardId) + ' from resources.'; },
+    handCardRevealed: function (l) { return player(l.player) + ' revealed ' + cardName(l.cardId) + ' from their hand.'; },
+    returnedToDeck: function (l) { return player(l.player) + '’s ' + cardName(l.cardId) + ' was returned to their deck.'; },
+    resourceControlled: function (l) { return player(l.player) + ' took control of an enemy resource.'; },
     resourcesSpent: function (l) { return player(l.player) + ' spent ' + n(l.amount, 'resource') + '.'; },
     resourcesExhausted: function (l) { return player(l.player) + ' exhausted ' + n(l.amount, 'resource') + '.'; },
     resourcesReadied: function (l) { return player(l.player) + ' readied ' + n(l.amount, 'resource') + '.'; },
@@ -92,6 +96,12 @@
     peeked: function (l) { return player(l.player) + ' looked at the top of the deck.'; },
     peekBottomed: function (l) { return player(l.player) + ' buried the card that was peeked at.'; },
     revealedTop: function (l) { return possessive(l.player) + ' top card is ' + cardName(l.cardId) + '.'; },
+    lookedTopBoth: function (l) {
+      return 'Top cards: ' + (l.p0CardId ? cardName(l.p0CardId) : '(empty)') + ' and ' + (l.p1CardId ? cardName(l.p1CardId) : '(empty)') + '.';
+    },
+    resourceDefeated: function (l) { return possessive(l.player) + ' resource was defeated.'; },
+    resourceDefeatArmed: function (l) { return 'At the start of the next action phase, ' + player(l.player) + ' must defeat a resource.'; },
+    extraAction: function (l) { return player(l.player) + ' takes an extra action.'; },
     searched: function (l) { return player(l.player) + ' searched the deck.'; },
     tookFromDiscard: function (l) { return player(l.player) + ' recovered a card from the discard pile.'; },
     handRevealed: function (l) { return possessive(l.player) + ' hand was revealed.'; },
@@ -103,8 +113,12 @@
     // --- tokens and economy ---
     creditsGained: function (l) { return player(l.player) + ' gained ' + n(l.amount, 'credit') + '.'; },
     creditSpent: function (l) { return player(l.player) + ' spent a credit.'; },
-    forceGained: function (l) { return player(l.player) + ' gained the Current.'; },
-    forceUsed: function (l) { return player(l.player) + ' spent the Current.'; },
+    creditStolen: function (l) { return player(l.player) + ' took control of an enemy credit token.'; },
+    creditDefeated: function (l) { return player(l.player) + '’s credit token was defeated.'; },
+    // The token's name is vocabulary (names.js terms), read here so the line follows
+    // the active name set: "spent the Current" or "spent a Force token".
+    forceGained: function (l) { return player(l.player) + ' gained ' + SB.names.terms.forceToken + '.'; },
+    forceUsed: function (l) { return player(l.player) + ' spent ' + SB.names.terms.forceToken + '.'; },
     tokenCreated: function (l, s) {
       return 'A ' + cardName(l.cardId) + ' token joined the board alongside ' + nameOf(l.uid, s, 'its summoner') + '.';
     },
@@ -138,6 +152,7 @@
     shield: function (l, s) { return name(l, s) + ' gained a shield.'; },
     shieldPopped: function (l, s) { return 'A shield on ' + name(l, s) + ' absorbed the hit and broke.'; },
     shieldsSabotaged: function (l, s) { return 'Shields on ' + name(l, s) + ' were sabotaged away!'; },
+    shieldsDefeated: function (l, s) { return 'Every shield on ' + name(l, s) + ' was defeated.'; },
     bountyCollected: function (l, s) { return 'A bounty on ' + name(l, s) + ' was collected.'; },
 
     // --- unit state ---
@@ -182,6 +197,7 @@
       return nameOf(l.a, s, null, l.aCardId) + ' and ' + nameOf(l.b, s, null, l.bCardId) + ' changed sides.';
     },
     binaryChosen: function (l) { return player(l.player) + ' chose an option.'; },
+    modeChosen: function (l) { return player(l.player) + ' chose an effect.'; },
 
     // --- competitive expansion (js/ops2.js) ---
     abilitiesSuppressed: function (l, s) { return name(l, s) + ' lost all its abilities.'; },
@@ -194,7 +210,10 @@
     arenaChosen: function (l) { return player(l.player) + ' chose the ' + l.arena + ' arena.'; },
     toppedCard: function (l) { return player(l.player) + ' put a card on top of the deck.'; },
     ejected: function (l, s) { return name(l, s) + ' ejected into the ground arena.'; },
-    cardNamed: function (l, s) { return name(l, s) + ' named ' + cardName(l.cardId) + '.'; },
+    cardNamed: function (l, s) {
+      if (l.uid == null) return player(l.player) + ' named ' + cardName(l.cardId) + ' — it can’t be played this phase.';
+      return nameOf(l.uid, s) + ' named ' + cardName(l.cardId) + '.';
+    },
     cloned: function (l, s) { return name(l, s) + ' took the form of ' + cardName(l.cardId) + '.'; },
     damagePrevented: function (l, s) { return 'Damage to ' + name(l, s) + ' was prevented.'; },
 
@@ -221,9 +240,14 @@
         case 'cantPay': return who + ' could not be paid for.';
         case 'emptyDeck': return who + ' found an empty deck.';
         case 'noDamage': return who + ' found nothing to heal.';
-        case 'noForce': return who + ' needed the Force.';
+        case 'noForce': return who + ' needed ' + SB.names.terms.force + '.';
         default: return who + ' had no effect.';
       }
+    },
+
+    // --- cluster-c5 expansion ---
+    enemyTaxArmed: function (l) {
+      return possessive(l.player) + ' opponent must pay ' + n(l.amount, 'resource') + ' or exhaust each unit at the start of the next action phase.';
     },
   };
 

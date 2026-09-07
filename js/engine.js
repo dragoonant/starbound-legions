@@ -115,6 +115,7 @@
             const traits = (SB.unitDef(u).traits || []).concat(SB.card(u.cardId).traits || []);
             if (f.notTrait && traits.indexOf(f.notTrait) >= 0) return;
             if (f.trait && traits.indexOf(f.trait) < 0) return;
+            if (f.nonLeader && SB.card(u.cardId).type === 'leader') return;
           }
           if (card.costModAttach && attachDiscountApplies(card.costModAttach, u)) {
             const c2 = Math.max(0, SB.cardCost(state, me, inst.cardId) + card.costModAttach.delta);
@@ -197,6 +198,23 @@
       if (card.type === 'unit' && card.unique &&
           SB.allUnits(state, me).some(function (u) { return u.cardId === card.id; })) return;
       if (p.deck.length === 0) return; // nothing to replace it with
+      if (card.type === 'upgrade') {
+        // Same as a normal upgrade play: one smuggle action per legal attach target.
+        SB.allUnits(state).forEach(function (u) {
+          if (card.attachTo === 'friendly' && u.owner !== me) return;
+          if (card.attachTo === 'enemy' && u.owner === me) return;
+          if (card.attachArena && SB.arenaOf(state, u) !== card.attachArena) return;
+          if (card.attachFilter) {
+            const f = card.attachFilter;
+            const traits = (SB.unitDef(u).traits || []).concat(SB.card(u.cardId).traits || []);
+            if (f.notTrait && traits.indexOf(f.notTrait) >= 0) return;
+            if (f.trait && traits.indexOf(f.trait) < 0) return;
+            if (f.nonLeader && SB.card(u.cardId).type === 'leader') return;
+          }
+          acts.push({ type: 'smuggle', player: me, resourceIndex: ri, cardId: card.id, attachTo: u.uid });
+        });
+        return;
+      }
       acts.push({ type: 'smuggle', player: me, resourceIndex: ri, cardId: card.id });
     });
 
@@ -390,6 +408,21 @@
         p.eventsThisRound = (p.eventsThisRound || 0) + 1;
         const ab = (card.abilities || []).find(function (a) { return a.trigger === 'onPlay'; });
         if (ab) SB.queueEffects(state, me, ab.effects, { cardId: inst.cardId, eventUid: inst.uid });
+      } else if (card.type === 'upgrade') {
+        const target = SB.findUnit(state, action.attachTo);
+        expect(target, action);
+        inst.owner = me;
+        target.upgrades.push(inst);
+        SB.log(state, { type: 'attached', uid: target.uid, cardId: inst.cardId, sound: 'attach' });
+        (card.abilities || []).forEach(function (ab) {
+          if (ab.trigger !== 'onPlay' && ab.trigger !== 'onSmuggle') return;
+          SB.queueEffects(state, me, ab.effects, { sourceUid: target.uid, cardId: inst.cardId,
+            upgradeCardId: inst.cardId, condition: ab.condition });
+        });
+        SB.allUnits(state, me).forEach(function (obs) {
+          SB.fireTriggers(state, 'onUpgradePlayed', obs, { sourceUid: obs.uid, upgradeCardId: inst.cardId });
+        });
+        fireLeaderTrigger(state, me, 'onUpgradePlayed', { upgradeCardId: inst.cardId });
       }
     } else if (action.type === 'deployLeaderPilot') {
       const lc = SB.card(p.leader.cardId);
@@ -526,6 +559,8 @@
         if (ab.trigger !== 'onPlayAsPilot') return;
         SB.queueEffects(state, me, ab.effects, { sourceUid: bearer.uid, cardId: inst.cardId, condition: ab.condition });
       });
+      // "When a Pilot attaches to this unit" observers on the bearer itself (jtl-223).
+      SB.fireTriggers(state, 'onPilotAttached', bearer, { sourceUid: bearer.uid });
     } else if (card.type === 'unit') {
       const unit = SB.makeUnit(state, inst.cardId, me);
       unit.uid = inst.uid; // keep instance identity
@@ -533,6 +568,7 @@
           SB.card(inst.cardId).staticFlags.indexOf('defeatAtRegroup') >= 0) unit.defeatAtRegroup = true;
       if (mods.entersReady) unit.exhausted = false;
       if (card.entersReadyIf && SB.checkCondition(state, me, card.entersReadyIf, { sourceUid: unit.uid })) unit.exhausted = false;
+      if ((card.staticFlags || []).indexOf('entersReady') >= 0) unit.exhausted = false;
       if (mods.defeatAtRegroup) unit.defeatAtRegroup = true;
       if (mods.returnAtRegroup) unit.commandeered = { originalOwner: me };
       // "The next unit you play this phase (matching) enters play ready" grants.
@@ -612,10 +648,12 @@
         SB.queueEffects(state, me, ab.effects, { sourceUid: target.uid, cardId: inst.cardId,
           upgradeCardId: inst.cardId, condition: ab.condition });
       });
+      // bearerUid names the unit the upgrade landed on: "if the upgrade was played on
+      // this unit" (isBearer) compares it against the observer, and was dead without it.
       SB.allUnits(state, me).forEach(function (obs) {
-        SB.fireTriggers(state, 'onUpgradePlayed', obs, { sourceUid: obs.uid, upgradeCardId: inst.cardId });
+        SB.fireTriggers(state, 'onUpgradePlayed', obs, { sourceUid: obs.uid, upgradeCardId: inst.cardId, bearerUid: target.uid });
       });
-      fireLeaderTrigger(state, me, 'onUpgradePlayed', { upgradeCardId: inst.cardId });
+      fireLeaderTrigger(state, me, 'onUpgradePlayed', { upgradeCardId: inst.cardId, bearerUid: target.uid });
     }
   }
 
@@ -709,11 +747,13 @@
     // Defender-side aura: "while this unit is defending, the attacker gets X" and
     // "this unit gets +X while defending".
     let defBonus = 0;
-    (SB.unitDef(defender).abilities || []).forEach(function (ab) {
-      if (ab.trigger !== 'defenderAura') return;
-      power = Math.max(0, power + ((ab.grant || {}).attackerPower || 0));
-      defBonus += (ab.grant || {}).defenderPower || 0;
-    });
+    if (!defender.abilitiesSuppressed && !defender.abilitiesSuppressedForAttack) {
+      (SB.unitDef(defender).abilities || []).forEach(function (ab) {
+        if (ab.trigger !== 'defenderAura') return;
+        power = Math.max(0, power + ((ab.grant || {}).attackerPower || 0));
+        defBonus += (ab.grant || {}).defenderPower || 0;
+      });
+    }
     const defPower = Math.max(0, SB.unitPower(state, defender) + (item.defenderPowerDelta || 0) + defBonus);
     const overwhelm = SB.hasKeyword(state, attacker, 'overwhelm') || mods.overwhelm;
     const sab = SB.hasKeyword(state, attacker, 'saboteur');
@@ -726,20 +766,28 @@
     const alwaysFirst = (SB.unitDef(attacker).staticFlags || []).indexOf('firstStrike') >= 0 || mods.firstStrike;
     const defenderFirst = mods.defenderFirst || !!attacker.defenderFirstNext;
     delete attacker.defenderFirstNext;
+    // "All combat damage that would be dealt to this unit during this attack is
+    // dealt to the chosen unit instead" (shd-090): retaliation damage is redirected
+    // to a chosen friendly unit rather than hitting the attacker.
+    function attackerDamageTarget() {
+      const redirectUid = attacker.redirectAttackerDamageTo;
+      const r = redirectUid != null ? SB.findUnit(state, redirectUid) : null;
+      return r || attacker;
+    }
     if (defenderFirst) {
       // The attacker lets the defender strike first (law-086 style).
-      SB.damageUnit(state, attacker, defPower, { sourceUid: defender.uid, combat: true });
+      SB.damageUnit(state, attackerDamageTarget(), defPower, { sourceUid: defender.uid, combat: true });
       if (SB.findUnit(state, attacker.uid)) SB.damageUnit(state, defender, power, { sourceUid: attacker.uid, combat: true });
     } else if (item.firstStrike || alwaysFirst) {
       // Attacker deals combat damage first; defender only retaliates if it lives.
       SB.damageUnit(state, defender, power, { sourceUid: attacker.uid, combat: true });
       if (SB.findUnit(state, defender.uid)) {
-        SB.damageUnit(state, attacker, defPower, { sourceUid: defender.uid, combat: true });
+        SB.damageUnit(state, attackerDamageTarget(), defPower, { sourceUid: defender.uid, combat: true });
       }
     } else {
       // Simultaneous: compute both, then apply both.
       SB.damageUnit(state, defender, power, { sourceUid: attacker.uid, combat: true });
-      SB.damageUnit(state, attacker, defPower, { sourceUid: defender.uid, combat: true });
+      SB.damageUnit(state, attackerDamageTarget(), defPower, { sourceUid: defender.uid, combat: true });
     }
     const defeated = !SB.findUnit(state, defender.uid);
     if (overwhelm && !defShielded && power > defHpLeft) {
@@ -829,7 +877,10 @@
     const sab = SB.hasKeyword(state, unit, 'saboteur');
     const pool = (sentinels.length > 0 && !sab) ? sentinels : enemies;
     const targets = pool.map(function (e) { return { kind: 'unit', uid: e.uid }; });
-    if (sentinels.length === 0 || sab) targets.push({ kind: 'base', player: SB.other(me) });
+    if ((sentinels.length === 0 || sab) &&
+        !(SB.unitHasGrantedStaticFlag && SB.unitHasGrantedStaticFlag(state, unit, 'cantAttackBases'))) {
+      targets.push({ kind: 'base', player: SB.other(me) });
+    }
     return targets;
   };
 
@@ -846,6 +897,12 @@
     const abilities = SB.card(p.leader.cardId).leaderSide.abilities || [];
     abilities.forEach(function (ab, ai) {
       if (ab.trigger !== trigger) return;
+      // "When a friendly <trait> unit's attack ends" (law-007): filter by the
+      // attacker's trait, mirroring onFriendlyAttack's ab.attackerTrait below.
+      if (ab.attackerTrait) {
+        const au = ctx && ctx.attackEndedUid != null ? SB.findUnit(state, ctx.attackEndedUid) : null;
+        if (!au || SB.unitTraits(state, au).indexOf(ab.attackerTrait) < 0) return;
+      }
       if (ab.exhaustCost && p.leader.exhausted) return;
       const offer = { step: 'leaderTriggerOffer', player: playerIdx, abilityIndex: ai,
         exhaustCost: !!ab.exhaustCost, ctx: ctx || {} };
@@ -982,6 +1039,9 @@
         // Advantage tokens expire when their carrier's attack or defense ends.
         if (atk && atk.advantage) { atk.advantage = 0; SB.log(state, { type: 'advantageExpired', uid: atk.uid }); }
         if (defUnit && defUnit.advantage) { defUnit.advantage = 0; SB.log(state, { type: 'advantageExpired', uid: defUnit.uid }); }
+        // "Loses all abilities for this attack" clears once the attack it named ends.
+        if (defUnit) { delete defUnit.abilitiesSuppressedForAttack; delete defUnit.keywordsSuppressedForAttack; }
+        if (atk) { delete atk.redirectAttackerDamageTo; }
         // "After this unit attacks" triggers, if the attacker survived.
         if (atk) SB.fireTriggers(state, 'onAttackEnds', atk, Object.assign({ sourceUid: atk.uid }, endCtx));
         // "When a friendly unit's attack ends" observers (leader + units).
@@ -1055,12 +1115,21 @@
     state.attackedThisPhase = [];
     state.leftPlayThisPhase = 0;
     state.lastWhenDefeated = null;
+    // "Name a card. Cards with that name can't be played this phase" (law-243) —
+    // scoped to the action phase it was cast in, so it clears here.
+    state.phaseNamedBlocks = [];
     state.players.forEach(function (p) {
       p.playedThisPhase = []; p.eventsThisRound = 0; p.discounts = []; p.plotDiscount = 0;
-      p.discardedThisPhase = []; p.entersReadyGrants = [];
+      p.discardedThisPhase = []; p.entersReadyGrants = []; p.createdTokenThisPhase = false;
       delete p.echoNextOnPlay;
     });
     SB.log(state, { type: 'actionPhase', round: state.round });
+    // A delayed "at the start of the next action phase" tax armed last phase (sec-073).
+    if (SB.applyPendingEnemyTax) SB.applyPendingEnemyTax(state);
+    // A delayed "at the start of the next action phase, defeat a resource" (sor-017).
+    if (SB.applyPendingResourceDefeat) SB.applyPendingResourceDefeat(state);
+    // "When the action phase starts" observers (leader side and units) — sor-016.
+    if (SB.fireActionPhaseStartTriggers) SB.fireActionPhaseStartTriggers(state);
   }
 
   function advanceTurn(state) {
@@ -1144,6 +1213,7 @@
       const wasExhausted = u.exhausted;
       if (u.stunned) { delete u.stunned; } // stunned units miss this ready step
       else if (SB.isJailed(state, u)) { /* jailed units stay exhausted */ }
+      else if (SB.unitHasGrantedStaticFlag && SB.unitHasGrantedStaticFlag(state, u, 'cantReady')) { /* skipped */ }
       else {
         u.exhausted = false;
         // "When this unit readies: pay N or exhaust it" taxes from upgrades.
@@ -1173,6 +1243,18 @@
       p.resources.forEach(function (r) { r.exhausted = false; });
       p.leader.exhausted = false;
     });
+    // "There is an additional regroup phase after the first regroup phase each
+    // round" (law-072): run the whole regroup sequence (ready/draw/resource) a
+    // second time before the next round's action phase starts.
+    const extraRegroup = SB.allUnits(state).some(function (u) {
+      return SB.unitHasGrantedStaticFlag && SB.unitHasGrantedStaticFlag(state, u, 'extraRegroupPhase');
+    });
+    if (extraRegroup && !state.extraRegroupDone) {
+      state.extraRegroupDone = true;
+      startRegroup(state);
+      return;
+    }
+    delete state.extraRegroupDone;
     state.round += 1;
     startActionPhase(state);
   }

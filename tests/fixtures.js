@@ -35,6 +35,9 @@
       abilities: [{ trigger: 'onPlay', effects: [{ op: 'damage', amount: 3, target: { who: 'any', what: 'unitOrBase' } }] }] },
     'fx-supply': { id: 'fx-supply', type: 'event', cost: 2, aspects: ['command'],
       abilities: [{ trigger: 'onPlay', effects: [{ op: 'draw', amount: 2 }] }] },
+    // Plays a unit from hand and grants it ambush (Timely Intervention's shape).
+    'fx-intervene': { id: 'fx-intervene', type: 'event', cost: 1, aspects: ['command'],
+      abilities: [{ trigger: 'onPlay', effects: [{ op: 'playFromHand', filter: { type: 'unit' }, withAmbush: true }] }] },
     'fx-blade': { id: 'fx-blade', type: 'upgrade', cost: 2, power: 2, hp: 1, aspects: ['aggression'], attachTo: 'friendly' },
     // Bounty upgrade: no attachTo, so it may go on either side's units.
     'fx-bounty': { id: 'fx-bounty', type: 'upgrade', cost: 0, aspects: [],

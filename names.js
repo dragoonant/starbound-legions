@@ -5,6 +5,11 @@
 (function (SB) {
   'use strict';
 
+  // Two small prose helpers for text built from the vocabulary below at render time.
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  function an(s) { return (/^[aeiou]/i.test(s) && !/^u(ni|se)/i.test(s) ? 'an ' : 'a ') + s; }
+  function T() { return SB.names.terms; }
+
   SB.names = {
     cards: {},     // cardId -> {name, subtitle?}
     traits: {},    // trait slug -> display
@@ -42,6 +47,34 @@
       unkillableThisRound: 'This round, running out of HP does not defeat this unit.',
     },
     decks: {},     // deckId -> display name
+    // The bug-report dialog (js/bugreport.js). {file}, {round} and {actions} are filled in.
+    bug: {
+      title: 'Flag a bug',
+      blurb: 'Say what you expected and what happened instead. The report carries the ' +
+        'match itself — seed, both decks and every action — so the exact position can ' +
+        'be replayed.',
+      placeholder: 'What went wrong?',
+      attaches: 'Attached: round {round}, {actions} recorded events, plus the seed and both decks.',
+      send: 'Send report', pinOnly: 'Pin only', cancel: 'Cancel', close: 'Close',
+      sending: 'Saving…',
+      pinned: 'Pinned to this moment. Save the report when you are done playing.',
+      savedServer: 'Saved to traces/{file}.',
+      savedDownload: 'Downloaded {file} — drop it in the game\u2019s traces/ folder.',
+      failed: 'Could not save the report.',
+      noGame: 'No match is being played.',
+    },
+    // Game vocabulary that is THEME, not mechanics: what the power token and the unique
+    // insignia are called. Nothing stores these words — every generated log line,
+    // prompt, label and help paragraph builds its prose from them at render time — and
+    // the source pack overrides them alongside the card names (registerSource {terms}),
+    // so "spent the Current" and "spent a Force token" are the same log entry read
+    // under the two name sets. The pack's words: tools/gen-source-names.mjs TERMS.
+    terms: {
+      force: 'the Current',        // the power itself, in prose: "use the Current"
+      forceToken: 'the Current',   // the token as a thing gained or spent, with its article
+      forceLabel: 'The Current',   // as a label or title
+      unique: 'champion',          // the unique insignia, as an adjective: "a champion unit"
+    },
     ui: {
       round: 'Round', yourTurn: 'Your move', enemyTurn: 'Opponent is acting…',
       initiative: 'Initiative', pass: 'Pass', claim: 'Take initiative',
@@ -50,6 +83,10 @@
       youWin: 'Victory!', youLose: 'Defeat', skip: 'Skip', chooseTarget: 'Choose a target',
       decline: 'Decline', keep: 'Keep hand', mulligan: 'Mulligan', undo: 'Undo',
       newGame: 'New game', helpBtn: 'How to play',
+      // The black box: a pin dropped the moment something looks wrong, and the trace
+      // that reproduces the whole match (js/bugreport.js).
+      flagBug: 'Flag a bug', flagged: 'Flagged ✓',
+      saveReport: 'Save bug report', savedReport: 'Saved ✓', saveFailed: 'Save failed',
       // The log/history drawer (collapsed at the start of a game) and its controls.
       logDrawer: 'Battle log', logOpen: 'Log', logClose: 'Close',
       muteOn: 'Sound: on', muteOff: 'Sound: off',
@@ -57,7 +94,7 @@
       animFull: 'Animations: full', animQuick: 'Animations: quick', animOff: 'Animations: off',
       animSkip: 'Click to skip', animShield: 'shield',
       // The card-names button (shown only when data/names-source.js is loaded).
-      namesSource: 'Names: printed cards', namesOriginal: 'Names: Sundered Veil',
+      namesSource: 'Names: printed cards', namesOriginal: 'Names: Starbound Legions',
       // The title screen and its deck picker.
       gameTitle: 'Starbound Legions',
       gameTagline: 'Two fleets. One war. Only one base left standing.',
@@ -71,6 +108,8 @@
       // the tool and a dropdown hides nineteen of the twenty behind a scroll.
       pickDeckFor: { mine: 'Choose your deck', theirs: "Choose the opponent's deck" },
       randomDeck: 'Surprise me', deckChooserBack: 'Back', deckCount: 'cards',
+      // What a slot says while it holds a deck nobody has seen picked yet.
+      hiddenDeck: 'Random deck', rollDeck: 'Pick a random deck',
       difficulty: { easy: 'Easy', mid: 'Medium', hard: 'Hard', competition: 'Competition' },
       // Deck picker groups and the card-pool format a tournament list was built for.
       deckGroups: { precon: 'Legion decks', competitive: 'Tournament lists' },
@@ -83,14 +122,17 @@
       theirLeader: 'Opponent leader', baseEpicAction: 'Base epic action',
       theirHand: 'Opponent hand',
       // The Current token, in its own slot between the leader and the draw deck.
-      forceHeld: 'The Current — held, ready to spend',
-      forceSpent: 'The Current — not held',
+      get forceHeld() { return T().forceLabel + ' — held, ready to spend'; },
+      get forceSpent() { return T().forceLabel + ' — not held'; },
       // Zone browser (click a pile to look through it).
       browseClose: 'Close',
       browseEmpty: 'Nothing here yet.',
       yourDiscard: 'Your discard pile', theirDiscard: 'Opponent discard pile',
       yourResources: 'Your resources', theirResources: 'Opponent resources',
+      yourDeck: 'Your deck', theirDeck: 'Opponent deck',
       browseNewestFirst: 'Most recent first',
+      browseDeckNote: 'Sorted by cost — the real draw order stays hidden.',
+      browseDeckOver: 'Sorted by cost; the game is over, so their deck turns up.',
       browseResourceNote: 'Face down on the board — only you may look.',
       browseResourceOver: 'Face down during play; the game is over, so they turn up.',
       // Board zone labels. The board draws these itself now (js/boardart.js); they
@@ -98,7 +140,7 @@
       // this file. Rendered in caps by the board, so written here in normal case.
       zones: {
         drawDeck: 'Draw Deck', discardPile: 'Discard Pile', resources: 'Resources',
-        base: 'Base', leader: 'Leader', force: 'The Current',
+        base: 'Base', leader: 'Leader', get force() { return T().forceLabel; },
         groundArena: 'Ground Arena', spaceArena: 'Space Arena',
       },
     },
@@ -116,7 +158,13 @@
         ['Arenas & combat', 'Units fight in two arenas: ground and space. A unit attacks only enemy units in its own arena, or either base. Attacking exhausts the unit; attacker and defender strike each other simultaneously with their power, and damage stays on units between rounds. Sentinels must be attacked first. Units enter play exhausted unless an effect says otherwise.'],
         ['Leaders', 'Your leader sits in its own slot with a usable ability — click the leader card to see it enlarged and to use it. Once you control enough resources, deploy them as a powerful unit (some can instead board a friendly vehicle as its pilot). If defeated, the leader flips back — bruised but not gone.'],
         ['Keywords', 'Common unit keywords: Sentinel (must be attacked first) · Ambush (may attack immediately when played) · Overwhelm (extra damage spills onto the base) · Raid X (+X power while attacking) · Restore X (attacking heals your base) · Shielded (arrives with a shield that absorbs one hit) · Saboteur (ignores sentinels and shields) · Grit (+1 power per damage on it) · Hidden (cannot be attacked the round it arrives) · Bounty (defeating it rewards the OTHER player) · Smuggle (playable from your resource row) · Plot (playable from resources when you deploy a leader) · Exploit (sacrifice friendly units to pay part of the cost) · Piloting (playable as an upgrade aboard a vehicle).'],
-        ['The Current & tokens', 'Some decks channel the Current: attacking with an Attuned unit grants your power token, spent to fuel potent abilities. Other decks mint credit tokens (each pays 1 resource when spent) or advantage tokens (+1 power that expires after the unit fights).'],
+        // Built when the modal opens (js/help.js resolves a function entry): the token's
+        // name and the trait that grants it both follow the active name set.
+        [function () { return cap(T().force) + ' & tokens'; },
+         function () {
+           return 'Some decks channel ' + T().force + ': attacking with ' + an((SB.names.traits.tr12 || 'Attuned') + ' unit') +
+             ' grants ' + T().forceToken + ', spent to fuel potent abilities. Other decks mint credit tokens (each pays 1 resource when spent) or advantage tokens (+1 power that expires after the unit fights).';
+         }],
         ['Reading the board', 'Numbers on a unit are power/remaining HP. A tilted card is exhausted. Blue-edged cards can act; red-glowing things are legal targets after you select an attacker or card. When an effect needs a decision, a panel opens in the middle of the screen with a button for every legal choice; hide it to study the board, then bring it back. Hover a card in hand to read its full rules text, and open the battle log from the tab on the left edge.'],
         ['Tips', 'Bank spare cards as resources early — economy wins long games. Do not feed weak attackers into big defenders; hit the base when their board cannot punish you. Watch the initiative: claiming it before a big round can matter more than one extra play.'],
       ],
@@ -137,8 +185,8 @@
   // whole game when no pack is loaded (tests.html never loads one: the text tests must
   // exercise the generated describers, see the test 'names: no source pack…').
   const STORE = 'sb.names';
-  let pack = null;                                 // {cards, traits, decks, text}
-  const original = { cards: {}, traits: {}, decks: {} }; // what the pack displaced
+  let pack = null;                                 // {cards, traits, decks, terms, text}
+  const original = { cards: {}, traits: {}, decks: {}, terms: {} }; // what the pack displaced
   let mode = null;                                 // 'source' | 'original'
 
   function readMode() {
@@ -151,7 +199,7 @@
   function apply() {
     if (!pack) return;
     const useSource = readMode() === 'source';
-    ['cards', 'traits', 'decks'].forEach(function (kind) {
+    ['cards', 'traits', 'decks', 'terms'].forEach(function (kind) {
       Object.keys(pack[kind] || {}).forEach(function (id) {
         const v = useSource ? pack[kind][id] : original[kind][id];
         if (v === undefined) delete SB.names[kind][id]; else SB.names[kind][id] = v;
@@ -163,8 +211,8 @@
 
   SB.names.registerSource = function (p) {
     if (pack) SB.names.clearSource();
-    pack = { cards: p.cards || {}, traits: p.traits || {}, decks: p.decks || {}, text: p.text || {} };
-    ['cards', 'traits', 'decks'].forEach(function (kind) {
+    pack = { cards: p.cards || {}, traits: p.traits || {}, decks: p.decks || {}, terms: p.terms || {}, text: p.text || {} };
+    ['cards', 'traits', 'decks', 'terms'].forEach(function (kind) {
       original[kind] = {};
       Object.keys(pack[kind]).forEach(function (id) { original[kind][id] = SB.names[kind][id]; });
     });

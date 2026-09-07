@@ -51,6 +51,18 @@
     T.eq(SB.cardCost(s, 0, 'fx-supply'), 2, 'command covered');
   });
 
+  T.add('cantAfford: true only when the cost outruns ready resources', function () {
+    const s = T.game();
+    // 2 ready resources at the start of round 1.
+    T.eq(SB.readyResources(s, 0), 2, 'two ready');
+    T.ok(!SB.cantAfford(s, 0, 'fx-grunt'), 'cost 1 is affordable');
+    T.ok(!SB.cantAfford(s, 0, 'fx-supply'), 'cost 2 is exactly affordable');
+    T.ok(SB.cantAfford(s, 0, 'fx-ghost'), 'cost 3+2 off-aspect is not');
+    // The aspect penalty is part of it: the same card is affordable to nobody here,
+    // but the comparison is against the ADJUSTED cost, not the printed one.
+    T.ok(SB.cardCost(s, 0, 'fx-ghost') > SB.card('fx-ghost').cost, 'penalty applied');
+  });
+
   T.add('pass/pass ends round; regroup draws 2 and readies', function () {
     let s = T.game('fixtureA', 'fixtureB', 'rg');
     const first = s.active;

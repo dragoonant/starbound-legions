@@ -178,6 +178,35 @@
     if (node) { node.classList.remove('open'); node.textContent = ''; }
   }
 
+  // ---- the black box (js/bugreport.js) --------------------------------------
+  // Two buttons, because a report has two halves: WHEN it went wrong (only the player
+  // knows, and only in the moment) and WHAT the game did (the recorder always knows).
+  // Neither is a move, so like every other control here they leave the game untouched.
+
+  function flash(node, label, back) {
+    node.textContent = label;
+    setTimeout(function () { node.textContent = back; }, 1400);
+  }
+
+  function initBugButtons() {
+    const flag = $('flag-btn'), save = $('report-btn');
+    if (!flag || !save) return;
+    if (!SB.bugreport) { flag.hidden = true; save.hidden = true; return; }
+    flag.textContent = SB.names.ui.flagBug;
+    // Asked for at the pin, not at export: by the time a player goes looking for the
+    // save button they have already forgotten which of four things looked wrong. The
+    // dialog (js/bugreport.js) takes the sentence and can file the whole report with
+    // it, so pressing this produces something the player can see.
+    flag.onclick = function () { SB.bugreport.openDialog(); };
+    save.textContent = SB.names.ui.saveReport;
+    save.onclick = function () {
+      SB.bugreport.save(function (how) {
+        flash(save, how === 'failed' ? SB.names.ui.saveFailed : SB.names.ui.savedReport,
+          SB.names.ui.saveReport);
+      });
+    };
+  }
+
   // ---- public --------------------------------------------------------------
 
   SB.hud = {
@@ -192,6 +221,7 @@
       $('new-game-btn').onclick = function () { setDrawer(false); SB.title.openPicker(); };
       $('help-btn').textContent = SB.names.ui.helpBtn;
       $('help-btn').onclick = function () { SB.help.open(); };
+      initBugButtons();
       $('mute-btn').onclick = function () { SB.sound.toggleMute(); syncMute(); };
       // Battle animations: full / quick / off, remembered across sessions (js/anim.js).
       $('anim-btn').onclick = function () { SB.anim.cycleMode(); syncAnim(); };
