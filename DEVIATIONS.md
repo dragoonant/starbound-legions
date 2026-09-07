@@ -14,9 +14,14 @@ missing mechanic):
   is readied and attacks again in the same round).
 - Multi-unit "give X to up to N distinct units" effects granted through repeated
   single-target picks can, for one card (Luminous-Beings analogue), pick the same
-  unit twice.
+  unit twice. jtl-174's "deal 2 damage to a different enemy unit" for each of the
+  chosen unit's on-attack abilities has the same limitation: the repeated damage
+  picks are not constrained to be distinct from each other.
 - Abilities lent to another attacker by a support-style unit last until end of
   round rather than only for that one attack.
+- law-237's "Look at the top 3 cards of your deck. You may discard 1 of them. Put
+  the rest back on top in any order." keeps the kept cards in their original
+  relative order instead of letting the player re-arrange them.
 
 ## Competitive-deck expansion (js/ops2.js)
 

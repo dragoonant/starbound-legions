@@ -125,6 +125,7 @@
     if (op.amountRef === 'enemyDefeatedThisPhaseCount') return '1 for each enemy unit that was defeated this phase';
     if (op.amountRef === 'doubleControlledUnits') return 'twice the number of units you control';
     if (op.amountRef === 'powerOfDefeatedSource') return 'as much as this unit’s power in';
+    if (op.amountRef === 'friendlyMinRemHpCount') return '1 for each friendly unit with ' + op.minRemHp + ' or more remaining HP';
     return String(op.amount);
   }
 
@@ -165,6 +166,8 @@
     damage: function (op) { return dealText('deal', op, 'damage', 'to ' + targetText(op)); },
     heal: function (op) { return dealText('heal', op, 'damage', 'from ' + targetText(op)); },
     draw: function (op) { return 'draw ' + ((op.amount || 1) === 1 ? 'a card' : op.amount + ' cards'); },
+    drawRef: function (op) { return 'draw a card for each ' + (op.amountRef === 'friendlyMinRemHpCount' ?
+      'friendly unit with ' + op.minRemHp + ' or more remaining HP' : 'matching thing'); },
     shield: function (op) { return 'give a shield to ' + targetText(op); },
     experience: function (op) {
       if (op.amountRef != null) return 'give an experience token to ' + targetText(op) + ' ' + amountText(op).replace(/^1 /, '');
@@ -179,6 +182,7 @@
     exhaust: function (op) { return 'exhaust ' + targetText(op); },
     ready: function (op) { return 'ready ' + targetText(op); },
     returnHand: function (op) { return 'return ' + targetText(op) + ' to its owner’s hand'; },
+    returnDeckTopOrBottom: function (op) { return 'put ' + targetText(op) + ' on the top or bottom of its owner’s deck (owner’s choice)'; },
     returnHandAll: function (op) { return 'return each ' + scopeNoun(op.scope) + ' to its owner’s hand'; },
     damageAll: function (op) { return dealText('deal', op, 'damage', 'to each ' + scopeNoun(op.scope)); },
     buffAll: function (op) {
@@ -206,7 +210,7 @@
       if (op.ready) s += ' and ready ' + (n === 1 ? 'it' : 'them');
       return s;
     },
-    capture: function (op) { return 'capture ' + describeTarget(op.target); },
+    capture: function (op) { return 'capture ' + targetText(op); },
     healBase: function (op) { return 'heal ' + amountText(op) + ' damage from your base'; },
     damageOwnBase: function (op) { return 'deal ' + op.amount + ' damage to your base'; },
     indirectDamage: function (op) {
@@ -279,6 +283,9 @@
       const play = op.free ? 'play it for free' : op.discount ? 'play it for ' + op.discount + ' less' : 'play it';
       const verbs = { leave: 'leave it on top', bottom: 'put it on the bottom of your deck', discard: 'discard it', play: play };
       return 'look at the top card of your deck — you may ' + op.modes.map(function (m) { return verbs[m]; }).join(', or ');
+    },
+    peekTopDiscardUpTo: function (op) {
+      return 'look at the top ' + op.depth + ' cards of your deck. You may discard 1 of them, then put the rest back on top';
     },
     playFromHand: function (op) {
       const f = op.filter || {};
@@ -398,6 +405,7 @@
       if (op.untilSourceLeaves) s += ' — its owner takes it back when this unit leaves play';
       return s;
     },
+    takeControlResource: function () { return 'take control of an enemy resource — its owner takes it back when this unit leaves play'; },
     revealTop: function () { return 'reveal the top card of your deck'; },
     gainForce: function () { return 'you gain your power token'; },
     useForce: function () { return 'spend your power token'; },
@@ -429,6 +437,8 @@
       return targetText(op) + ' captures ' + who + ' with total remaining HP ' + op.budget + ' or less';
     },
     revealHand: function () { return 'look at the opponent’s hand'; },
+    revealAspectForExperience: function (op) { return 'reveal up to ' + op.upTo + ' ' + (SB.names.aspects[op.aspect] || op.aspect) +
+      ' cards from your hand — give this unit an Experience token for each card revealed this way'; },
     experienceAll: function (op) { return 'give an experience token to each ' + scopeNoun(op.scope); },
     buffTempRef: function (op) { return 'give ' + targetText(op) + ' +1/+1 for this round ' + amountText(op).replace(/^1 /, ''); },
     gainCredits: function (op) { return 'create ' + ((op.amount || 1) === 1 ? 'a credit token' : op.amount + ' credit tokens'); },
@@ -481,7 +491,8 @@
     reuseAbility: function () { return 'use that last-words ability again'; },
     purgeCopies: function () { return 'its controller discards every copy of that card from their hand and deck'; },
     defeatAllUpgradesOn: function (op) { return 'defeat every upgrade on ' + targetText(op); },
-    returnUpgradesToHandOn: function (op) { return 'return each upgrade on ' + targetText(op) + ' to its owner’s hand'; },
+    returnUpgradesToHandOn: function (op) { return 'return each upgrade on ' + targetText(op) +
+      (op.maxCost != null ? ' that costs ' + op.maxCost + ' or less' : '') + ' to its owner’s hand'; },
     selfUpgradeToHand: function () { return 'return this upgrade from your discard pile to your hand'; },
     dividedAdvantage: function (op) {
       const among = ' among ' + scopeNounPlural(op.scope || { who: 'friendly', what: 'unit' });
@@ -517,6 +528,7 @@
     defeatCredit: function () { return 'defeat an enemy Credit token'; },
     captureOrReady: function () { return 'an opponent may choose a non-leader unit they control — if they do, this unit captures that unit; if they don’t, ready this unit'; },
     rescueChoice: function () { return 'the defending player may rescue a card they own guarded by this unit — if they do, draw 2 cards'; },
+    rescueOwnCaptured: function () { return 'you may rescue a captured card'; },
     // ---- cluster-c5 expansion ----
     returnEventFromDiscard: function (op) { return (op.optional === false ? '' : 'you may ') + 'return an event from a discard pile to its owner’s hand'; },
     returnThenReplay: function (op) {
@@ -554,8 +566,14 @@
   function conditionClause(c) {
     const cf = conditionText[c.if];
     if (!cf) throw new Error('no text for condition ' + c.if);
+    // 'saved' and 'selfUpgraded' fold not:true into their own phrasing (mirrors the
+    // same exception in SB.checkCondition) rather than have the generic negation
+    // below mangle a "while ..." clause into "while not ...".
+    if (c.if === 'saved' || c.if === 'selfUpgraded') return cf(c);
     const s = cf(c);
-    return c.not ? s.replace(/^if /, 'unless ') : s;
+    if (!c.not) return s;
+    if (/^if /.test(s)) return s.replace(/^if /, 'unless ');
+    return 'not (' + s + ')';
   }
 
   function scopeNoun(sel) {
@@ -684,7 +702,7 @@
     milledNonUnit: function () { return 'if the discarded card was not a unit'; },
     saved: function (c) { return c.not ? 'if no target was chosen' : 'if a target was chosen'; },
     selfDamaged: function () { return 'if this unit is damaged'; },
-    selfUpgraded: function () { return 'while this unit has an upgrade'; },
+    selfUpgraded: function (c) { return c.not ? 'while this unit has no upgrade' : 'while this unit has an upgrade'; },
     controlUnitWithAspect: function (c) { return 'if you control another ' + (SB.names.aspects[c.aspect] || c.aspect) + ' unit'; },
     bountyUnitUnique: function () { return 'if the defeated unit was ' + an(U()); },
     defenderHasBounty: function () { return 'if the defender carries a bounty'; },

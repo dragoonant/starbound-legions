@@ -114,7 +114,7 @@
   "sec-065": {"id":"sec-065","type":"unit","aspects":["vigilance"],"traits":["tr57"],"unique":true,"cost":5,"power":4,"hp":7,"arena":"ground"},
   "sec-066": {"id":"sec-066","type":"unit","aspects":["vigilance"],"traits":["tr33","tr29"],"cost":6,"power":3,"hp":7,"arena":"ground","keywords":[{"k":"restore","n":3}]},
   "sec-067": {"id":"sec-067","type":"unit","aspects":["vigilance"],"traits":["tr13","tr46","tr47"],"cost":6,"power":7,"hp":3,"arena":"ground"},
-  "sec-068": {"id":"sec-068","type":"unit","aspects":["vigilance"],"traits":["tr13","tr29"],"unique":true,"cost":7,"power":6,"hp":8,"arena":"ground","keywords":[{"k":"grit"}]},
+  "sec-068": {"id":"sec-068","type":"unit","aspects":["vigilance"],"traits":["tr13","tr29"],"arena":"ground","cost":7,"power":6,"hp":8,"unique":true,"keywords":[{"k":"grit"}],"abilities":[{"trigger":"onPlay","effects":[{"op":"binaryChoice","chooser":"self","a":{"effects":[{"op":"pickUnit","target":{"who":"enemy","what":"unit"},"saveTargetAs":"e"},{"op":"pickUnit","target":{"who":"friendly","what":"unit","nonLeader":true,"notSelf":true},"saveTargetAs":"f"},{"op":"healBase","amount":6},{"op":"capture","captorSaved":"e","useTarget":"f"}]},"b":{"effects":[]}}]}]},
   "sec-069": {"id":"sec-069","type":"upgrade","aspects":["vigilance"],"traits":["tr18"],"cost":1,"power":1,"hp":1,"attachTo":"friendly","abilities":[{"trigger":"onPlay","effects":[{"op":"exhaust","target":{"who":"any","what":"unit","sameArenaAsSource":true,"readyOnly":true,"optional":true}}]}]},
   "sec-071": {"id":"sec-071","type":"upgrade","aspects":["vigilance"],"traits":["tr18"],"cost":3,"power":1,"hp":3},
   "sec-072": {"id":"sec-072","type":"event","aspects":["vigilance"],"traits":["tr23"],"cost":1},

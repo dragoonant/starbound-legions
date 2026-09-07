@@ -447,6 +447,40 @@
   // ash-001) — so an unrevealed resource stays exactly as available to pay for
   // anything else resolving alongside this event, and a played one stops being
   // available the moment it is played, not before.
+  // Reveal up to `upTo` hand cards sharing an aspect icon, then give this unit an
+  // Experience token for each card revealed this way (sor-035). Same requeue-until-
+  // stop shape as revealResourcePick, just over the hand instead of the resource row.
+  O.revealAspectForExperience = function (state, item) {
+    state.queue.unshift({ step: 'revealAspectPick', player: item.controller, aspect: item.op.aspect,
+      upTo: item.op.upTo || 1, revealed: [], ctx: item.ctx });
+  };
+  SB.queueSteps.revealAspectPick = {
+    actions: function (state, itemStep) {
+      const p = state.players[itemStep.player];
+      const revealed = itemStep.revealed || [];
+      const acts = [{ type: 'revealHandCard', player: itemStep.player, uid: null }];
+      if (revealed.length < itemStep.upTo) {
+        p.hand.forEach(function (inst) {
+          if (revealed.indexOf(inst.uid) >= 0) return;
+          if ((SB.card(inst.cardId).aspects || []).indexOf(itemStep.aspect) < 0) return;
+          acts.push({ type: 'revealHandCard', player: itemStep.player, uid: inst.uid });
+        });
+      }
+      return acts;
+    },
+    apply: function (state, itemStep, action) {
+      if (action.uid == null) {
+        const n = (itemStep.revealed || []).length;
+        if (n > 0) SB.queueEffects(state, itemStep.player, [{ op: 'experience', amount: n, target: { self: true } }], itemStep.ctx);
+        return;
+      }
+      const p = state.players[itemStep.player];
+      const inst = p.hand.find(function (x) { return x.uid === action.uid; });
+      if (inst) SB.log(state, { type: 'handCardRevealed', player: itemStep.player, cardId: inst.cardId });
+      state.queue.unshift({ step: 'revealAspectPick', player: itemStep.player, aspect: itemStep.aspect,
+        upTo: itemStep.upTo, revealed: (itemStep.revealed || []).concat([action.uid]), ctx: itemStep.ctx });
+    },
+  };
   O.revealResourcesPlayUnits = function (state, item) {
     state.queue.unshift({ step: 'revealResourcePick', player: item.controller, ctx: item.ctx, revealed: [] });
   };
@@ -603,7 +637,9 @@
   O.returnUpgradesToHandOn = function (state, item, target) {
     const u = SB.findUnit(state, target.uid);
     if (!u) return;
+    const maxCost = item.op.maxCost;
     u.upgrades.slice().forEach(function (inst) {
+      if (maxCost != null && (SB.card(inst.cardId).cost || 0) > maxCost) return;
       const i = u.upgrades.indexOf(inst);
       if (i < 0) return;
       u.upgrades.splice(i, 1);
@@ -1432,6 +1468,35 @@
   O.peekTop = function (state, item) {
     state.queue.unshift({ step: 'peekDecide', player: item.controller, modes: item.op.modes, discount: item.op.free ? 99 : (item.op.discount || 0) });
   };
+  // Look at the top `depth` cards of the deck, discard up to 1 of them, and put the
+  // rest back on top (law-237: "Look at the top 3 cards ... You may discard 1 of them.
+  // Put the rest back on top in any order."). Simplification per DEVIATIONS.md: the
+  // kept cards return in their original relative order rather than a player-chosen one.
+  O.peekTopDiscardUpTo = function (state, item) {
+    state.queue.unshift({ step: 'peekTopDiscardUpTo', player: item.controller, depth: item.op.depth || 3 });
+  };
+  SB.queueSteps.peekTopDiscardUpTo = {
+    actions: function (state, itemStep) {
+      const p = state.players[itemStep.player];
+      const n = Math.min(itemStep.depth, p.deck.length);
+      if (n === 0) return null;
+      const acts = [{ type: 'peekDiscardPick', player: itemStep.player, index: -1 }];
+      for (let i = 0; i < n; i++) acts.push({ type: 'peekDiscardPick', player: itemStep.player, index: i });
+      return acts;
+    },
+    apply: function (state, itemStep, action) {
+      const p = state.players[itemStep.player];
+      const n = Math.min(itemStep.depth, p.deck.length);
+      const cards = p.deck.splice(0, n);
+      if (action.index >= 0) {
+        const inst = cards.splice(action.index, 1)[0];
+        p.discard.push(inst);
+        SB.log(state, { type: 'discarded', player: itemStep.player, cardId: inst.cardId, sound: 'discard' });
+      }
+      cards.slice().reverse().forEach(function (c) { p.deck.unshift(c); });
+      SB.log(state, { type: 'arrangedTop', player: itemStep.player });
+    },
+  };
   // takeControl: returned to its owner when the source unit leaves play.
   const prevTakeControl = O.takeControl;
   O.takeControl = function (state, item, target) {
@@ -1648,6 +1713,7 @@
       u.owner = u.controlBond.originalOwner; delete u.controlBond;
       SB.log(state, { type: 'controlTaken', uid: u.uid, by: u.owner, sound: 'claim', notice: true });
     });
+    revertResourceBonds(state, unit.uid);
   };
   // Bounce also counts as leaving play and releases control bonds.
   const prevReturnHand = O.returnHand;
@@ -1666,7 +1732,82 @@
       SB.allUnits(state).filter(function (x) { return x.controlBond && x.controlBond.srcUid === u.uid; }).forEach(function (x) {
         x.owner = x.controlBond.originalOwner; delete x.controlBond;
       });
+      revertResourceBonds(state, u.uid);
     }
+  };
+  // A resource taken under a unit's control (shd-213) reverts to its original
+  // owner the moment that unit leaves play, same idea as controlBond for units but
+  // tracked separately since a resource instance isn't a unit.
+  function revertResourceBonds(state, leftUid) {
+    if (!state.resourceBonds || !state.resourceBonds.length) return;
+    const keep = [];
+    state.resourceBonds.forEach(function (b) {
+      if (b.srcUid !== leftUid) { keep.push(b); return; }
+      const holder = state.players[b.newOwner];
+      const idx = holder.resources.findIndex(function (r) { return r.instance.uid === b.resUid; });
+      if (idx >= 0) {
+        const r = holder.resources.splice(idx, 1)[0];
+        state.players[b.originalOwner].resources.push(r);
+        SB.log(state, { type: 'controlTaken', player: b.originalOwner, sound: 'claim', notice: true });
+      }
+    });
+    state.resourceBonds = keep;
+  }
+  // "Take control of an enemy resource. When this unit leaves play, that
+  // resource's owner takes control of it." (shd-213).
+  O.takeControlResource = function (state, item) {
+    state.queue.unshift({ step: 'takeControlResourcePick', player: item.controller, ctx: item.ctx });
+  };
+  SB.queueSteps.takeControlResourcePick = {
+    actions: function (state, itemStep) {
+      const opp = state.players[SB.other(itemStep.player)];
+      if (!opp.resources.length) return null;
+      return opp.resources.map(function (r, i) { return { type: 'takeControlResourcePick', player: itemStep.player, index: i }; });
+    },
+    apply: function (state, itemStep, action) {
+      const foe = SB.other(itemStep.player);
+      const opp = state.players[foe];
+      const r = opp.resources.splice(action.index, 1)[0];
+      if (!r) return;
+      state.players[itemStep.player].resources.push(r);
+      const srcUid = itemStep.ctx && itemStep.ctx.sourceUid;
+      if (srcUid != null) {
+        state.resourceBonds = state.resourceBonds || [];
+        state.resourceBonds.push({ resUid: r.instance.uid, srcUid: srcUid, originalOwner: foe, newOwner: itemStep.player });
+      }
+      SB.log(state, { type: 'resourceControlled', player: itemStep.player });
+    },
+  };
+  // Return a chosen unit to the top or bottom of ITS OWNER'S deck — the owner's
+  // choice, not the caster's (lof-200: "Its owner puts it on the top or bottom of
+  // their deck.").
+  O.returnDeckTopOrBottom = function (state, item, target) {
+    const u = SB.findUnit(state, target.uid);
+    if (!u) return;
+    const arena = SB.arenaOf(state, u);
+    state[arena].splice(state[arena].indexOf(u), 1);
+    const card = SB.card(u.cardId);
+    const owner = u.owner;
+    u.upgrades.forEach(function (inst) {
+      if (!SB.card(inst.cardId).token) state.players[SB.upgradeOwner(u, inst)].discard.push(inst);
+    });
+    SB.log(state, { type: 'returnedToDeck', uid: u.uid, cardId: u.cardId, player: owner });
+    if (!card.token) {
+      state.queue.unshift({ step: 'deckTopOrBottomPick', player: owner, cardId: u.cardId, uid: u.uid });
+    }
+  };
+  SB.queueSteps.deckTopOrBottomPick = {
+    actions: function (state, itemStep) {
+      return [
+        { type: 'deckPlace', player: itemStep.player, where: 'top' },
+        { type: 'deckPlace', player: itemStep.player, where: 'bottom' },
+      ];
+    },
+    apply: function (state, itemStep, action) {
+      const p = state.players[itemStep.player];
+      const inst = { uid: itemStep.uid, cardId: itemStep.cardId };
+      if (action.where === 'top') p.deck.unshift(inst); else p.deck.push(inst);
+    },
   };
   // Return every unit matched by scope to its owner's hand (shd-233).
   O.returnHandAll = function (state, item) {
@@ -1824,7 +1965,23 @@
     if (ref === 'powerOfDefeatedSource') {
       return (state.defeatPowerSnapshot && state.defeatPowerSnapshot[ctx.sourceUid]) || 0;
     }
+    // Friendly units at or above a printed remaining-HP threshold (lof-121: "for
+    // each friendly unit with 7 or more remaining HP"). The threshold rides on the
+    // op as minRemHp, the same shape as friendlyTraitCount's op.trait.
+    if (ref === 'friendlyMinRemHpCount') {
+      const min = item.op.minRemHp || 0;
+      return SB.allUnits(state, item.controller).filter(function (u) { return SB.unitRemainingHp(state, u) >= min; }).length;
+    }
     return prevExtraAmounts(state, item, target, ref);
+  };
+
+  // draw, with an amountRef (draw doesn't take one natively — see buffTempRef for
+  // the same pattern applied to buffTemp).
+  O.drawRef = function (state, item) {
+    let who = item.controller;
+    if (item.op.who === 'opponent') who = SB.other(item.controller);
+    const n = SB.resolveAmount(state, item, null) || 0;
+    if (n > 0) SB.drawCards(state, who, n);
   };
 
   // A unit that already left play (defeated, its {uid,cardId} pushed to discard by
@@ -1907,6 +2064,41 @@
     SB.log(state, { type: 'creditDefeated', player: SB.other(item.controller) });
   };
 
+  // "You may rescue a captured card. If you don't, give a Shield token to this
+  // unit." (shd-197). Unlike rescueChoice below, the chooser is this card's own
+  // controller and the pick is from ANY of their cards held captive anywhere on
+  // the board, not just ones guarded by a specific unit; there's no draw. A
+  // following op gated on {"if":"storedAtLeast","name":"rescued","n":1,"not":true}
+  // reads as "if you don't" — the store stays unset both on an explicit decline
+  // and when nothing was there to rescue in the first place (queue step auto-skips).
+  O.rescueOwnCaptured = function (state, item) {
+    state.queue.unshift({ step: 'rescueOwnPick', player: item.controller, ctx: item.ctx });
+  };
+  SB.queueSteps.rescueOwnPick = {
+    actions: function (state, itemStep) {
+      const acts = [{ type: 'rescueOwnPick', player: itemStep.player, captorUid: null, uid: null }];
+      SB.allUnits(state).forEach(function (captor) {
+        (captor.captured || []).forEach(function (c) {
+          if (c.owner === itemStep.player) acts.push({ type: 'rescueOwnPick', player: itemStep.player, captorUid: captor.uid, uid: c.uid, cardId: c.cardId });
+        });
+      });
+      return acts.length > 1 ? acts : null;
+    },
+    apply: function (state, itemStep, action) {
+      if (action.uid == null) return;
+      const captor = SB.findUnit(state, action.captorUid);
+      if (!captor) return;
+      const idx = (captor.captured || []).findIndex(function (c) { return c.uid === action.uid; });
+      if (idx < 0) return;
+      const cap = captor.captured.splice(idx, 1)[0];
+      const u = SB.makeUnit(state, cap.cardId, cap.owner);
+      u.uid = cap.uid;
+      u.upgrades = cap.upgrades || [];
+      state[SB.card(cap.cardId).arena].push(u);
+      SB.log(state, { type: 'rescued', uid: u.uid, cardId: u.cardId });
+      if (itemStep.ctx) SB.efx(state, itemStep.ctx).rescued = 1;
+    },
+  };
   // "On Attack: The defending player may rescue a card they own guarded by this
   // unit. If they do, draw 2 cards." (twi-187). The defending player picks one of
   // their own cards currently held captive by the attacker; releasing it returns

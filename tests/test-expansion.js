@@ -1280,4 +1280,19 @@
     T.ok(!SB.allUnits(s, me).some(function (u) { return u.cardId === 'fx-wall'; }),
       'the never-revealed unit was not played');
   });
+
+  T.add('law-237: On Attack, look at top 3, may discard 1, rest go back on top', function () {
+    let s = T.game(); s.active = 0; const me = 0, foe = 1;
+    const u = T.putOnBoard(s, me, 'law-237', { exhausted: false });
+    const top3 = ['fx-grunt', 'fx-flyer', 'fx-wall'].map(function (cid) { return { uid: s.nextUid++, cardId: cid }; });
+    s.players[me].deck = top3.concat(s.players[me].deck);
+    const deckBefore = s.players[me].deck.length;
+    s = T.act(s, { type: 'attack', attacker: u.uid, target: { kind: 'base', player: foe } });
+    s = T.act(s, { type: 'peekDiscardPick', index: 1 }); // discard the middle card
+    T.eq(s.players[me].deck.length, deckBefore - 1, 'exactly one card left the deck');
+    T.ok(s.players[me].discard.some(function (i) { return i.cardId === 'fx-flyer'; }),
+      'the chosen card went to the discard pile');
+    T.eq(s.players[me].deck[0].cardId, 'fx-grunt', 'the first kept card is back on top');
+    T.eq(s.players[me].deck[1].cardId, 'fx-wall', 'the second kept card follows it');
+  });
 })(window.SB = window.SB || {});

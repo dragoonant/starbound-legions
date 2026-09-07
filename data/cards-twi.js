@@ -225,7 +225,7 @@
   "twi-195": {"id":"twi-195","type":"unit","aspects":["cunning","heroism"],"traits":["tr13","tr25","tr36"],"unique":true,"cost":4,"power":4,"hp":4,"arena":"ground"},
   "twi-196": {"id":"twi-196","type":"unit","aspects":["cunning","heroism"],"traits":["tr12","tr21","tr33"],"unique":true,"cost":5,"power":3,"hp":6,"arena":"ground","keywords":[{"k":"ambush"}]},
   "twi-197": {"id":"twi-197","type":"unit","aspects":["cunning","heroism"],"traits":["tr33","tr46","tr47"],"cost":6,"power":6,"hp":7,"arena":"ground"},
-  "twi-198": {"id":"twi-198","type":"unit","aspects":["cunning","heroism"],"traits":["tr45"],"unique":true,"cost":7,"power":5,"hp":7,"arena":"ground","keywords":[{"k":"saboteur"}]},
+  "twi-198": {"id":"twi-198","type":"unit","aspects":["cunning","heroism"],"traits":["tr45"],"arena":"ground","cost":7,"power":5,"hp":7,"unique":true,"keywords":[{"k":"saboteur"}],"abilities":[{"trigger":"onPlay","effects":[{"op":"returnHand","target":{"who":"enemy","what":"unit","nonLeader":true,"powerLessThanSource":true,"optional":true}}]},{"trigger":"onAttack","effects":[{"op":"returnHand","target":{"who":"enemy","what":"unit","nonLeader":true,"powerLessThanSource":true,"optional":true}}]}]},
   "twi-199": {"id":"twi-199","type":"event","aspects":["cunning","heroism"],"traits":["tr39"],"cost":2},
   "twi-200": {"id":"twi-200","type":"event","aspects":["cunning","heroism"],"traits":["tr42"],"cost":2},
   "twi-201": {"id":"twi-201","type":"event","aspects":["cunning","heroism"],"traits":["tr14"],"cost":5},

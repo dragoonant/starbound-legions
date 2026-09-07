@@ -143,7 +143,7 @@
   "sor-031": {"id":"sor-031","type":"unit","aspects":["vigilance","villainy"],"traits":["tr17","tr46","tr10"],"unique":true,"cost":2,"power":2,"hp":3,"arena":"space"},
   "sor-032": {"id":"sor-032","type":"unit","aspects":["vigilance","villainy"],"traits":["tr17","tr43"],"cost":2,"power":1,"hp":4,"arena":"ground"},
   "sor-034": {"id":"sor-034","type":"unit","aspects":["vigilance","villainy"],"traits":["tr17","tr43"],"unique":true,"cost":3,"power":3,"hp":3,"arena":"ground","keywords":[{"k":"restore","n":1}]},
-  "sor-035": {"id":"sor-035","type":"unit","aspects":["vigilance","villainy"],"traits":["tr17","tr29"],"unique":true,"cost":4,"power":2,"hp":2,"arena":"ground","keywords":[{"k":"sentinel"}]},
+  "sor-035": {"id":"sor-035","type":"unit","aspects":["vigilance","villainy"],"traits":["tr17","tr29"],"arena":"ground","cost":4,"power":2,"hp":2,"unique":true,"keywords":[{"k":"sentinel"}],"abilities":[{"trigger":"onPlay","effects":[{"op":"revealAspectForExperience","aspect":"vigilance","upTo":4}]}]},
   "sor-036": {"id":"sor-036","type":"unit","aspects":["vigilance","villainy"],"traits":["tr17","tr43"],"unique":true,"cost":5,"power":5,"hp":5,"arena":"ground"},
   "sor-037": {"id":"sor-037","type":"unit","aspects":["vigilance","villainy"],"traits":["tr17","tr46","tr47"],"cost":6,"power":5,"hp":5,"arena":"ground"},
   "sor-038": {"id":"sor-038","type":"unit","aspects":["vigilance","villainy"],"traits":["tr12","tr34","tr35"],"unique":true,"cost":7,"power":5,"hp":4,"arena":"ground"},

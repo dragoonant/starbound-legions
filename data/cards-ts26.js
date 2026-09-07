@@ -34,7 +34,7 @@
   "ts26-026": {"id":"ts26-026","type":"unit","aspects":["command","cunning","villainy"],"traits":["tr12","tr28"],"unique":true,"cost":5,"power":5,"hp":4,"arena":"ground","keywords":[{"k":"sentinel"}]},
   "ts26-027": {"id":"ts26-027","type":"unit","aspects":["command","cunning"],"traits":["tr45","tr46","tr41"],"unique":true,"cost":4,"power":3,"hp":5,"arena":"space"},
   "ts26-028": {"id":"ts26-028","type":"unit","aspects":["command","cunning"],"traits":["tr25","tr29"],"unique":true,"cost":4,"power":2,"hp":4,"arena":"ground","keywords":[{"k":"saboteur"}]},
-  "ts26-030": {"id":"ts26-030","type":"unit","aspects":["aggression","cunning"],"traits":["tr12","tr45"],"unique":true,"cost":4,"power":5,"hp":4,"arena":"ground","keywords":[{"k":"sentinel"}]},
+  "ts26-030": {"id":"ts26-030","type":"unit","aspects":["aggression","cunning"],"traits":["tr12","tr45"],"arena":"ground","cost":4,"power":5,"hp":4,"unique":true,"keywords":[{"k":"sentinel"}],"abilities":[{"trigger":"onPlay","effects":[{"op":"attackWith","target":{"who":"friendly","what":"unit","notSelf":true,"readyOnly":true},"optionalAttack":true}]}]},
   "ts26-031": {"id":"ts26-031","type":"event","aspects":["aggression","cunning"],"traits":["tr39","tr42"],"cost":1},
   "ts26-032": {"id":"ts26-032","type":"event","aspects":["aggression","cunning"],"traits":["tr14"],"cost":2},
   "ts26-033": {"id":"ts26-033","type":"event","aspects":["cunning","vigilance","villainy"],"traits":["tr14"],"cost":3},
