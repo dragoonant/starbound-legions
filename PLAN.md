@@ -129,16 +129,14 @@ lists, and is deployed on GitHub Pages. Test suite: 117 green
 - **Card behaviour bugs found in play** — ongoing. Fix one at a time: grep the id in
   `data/cards-*.js`, read only that entry and its op handler, add a case to
   `tests/test-expansion.js`, run the suite, commit.
-- **Text audit of the authored cards** — the structural gate (`tests/test-text.js`) runs
-  over all cards and is green. The semantic pass — printed text read against generated
-  text, to catch a clause dropped in hand transcription — is built and working:
-  `node tools/gen-source-names.mjs scratch --fetch --diff`, which writes the ranked
-  comparison to `scratch/text-diff.md` (scratch only; it carries printed text). It has
-  not been RUN against real data. It cannot run from a Claude Code web session: that
-  environment's egress policy denies both the card database and the official API, and
-  the audit is worthless without the source text. Run it locally. Note it regenerates
-  `data/names-source.js` as a side effect, which is correct from a full dump and
-  clobbering from a partial one — check `git diff` on that file before committing.
+- **Text audit of the authored cards** — RUN, 2026-09-07. `tools/audit-card-text.mjs`
+  is portable now (it reads printed text from the committed X table in
+  `data/names-source.js`, so it needs no card dump and no network) and covers every card
+  the registered decks use: 792 compared. Most flags are our own vocabulary — coordinate
+  rendered as its condition, last-words for "when defeated", our trait names — and are
+  correct. The real findings are recorded in the audit report (scratch only, it carries
+  printed text) and fall into two groups: leaders still missing their leader-side action,
+  and units missing a keyword or a whole clause. Fixing them is the open work.
 - **AI quality on the competitive matrix** — `tools/ai-balance.mjs` over the competitive
   group, as `docs/ai.md` already uses it: A/B a weight change against the same seed and
   pairings, with random play as the control. Ongoing whenever the AI changes.
