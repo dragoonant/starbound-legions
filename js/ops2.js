@@ -1071,8 +1071,16 @@
       } else {
         playAction = { handIndex: action.handIndex, cardId: action.cardId, attachTo: action.attachTo };
       }
+      // The enumerator prices a candidate with the trait-dependent discount (a Force
+      // unit costs 8 less instead of 6). Paying with only the flat discount made an
+      // offered card unaffordable at apply time and threw.
+      let discount = it.discount;
+      if (it.discountByTrait) {
+        const dbt = it.discountByTrait;
+        discount = (SB.card(action.cardId).traits || []).indexOf(dbt.trait) >= 0 ? dbt.amount : dbt.otherwise;
+      }
       SB.playCardWithMods(state, it.player, playAction,
-        { discount: it.discount, entersReady: it.entersReady, defeatAtRegroup: it.defeatAtRegroup, returnAtRegroup: it.returnAtRegroup });
+        { discount: discount, entersReady: it.entersReady, defeatAtRegroup: it.defeatAtRegroup, returnAtRegroup: it.returnAtRegroup });
       const played = SB.allUnits(state, it.player).find(function (u) { return u.cardId === action.cardId && u.enteredRound === state.round; });
       if (it.ctx) {
         const st = SB.efx(state, it.ctx);

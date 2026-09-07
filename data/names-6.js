@@ -207,6 +207,41 @@
     "twi-198": ["Corbin Rask"],
     "twi-213": ["Concord Interceptor Barge"],
   };
+  // ---- the 30 wave-2 tournament lists (the picker adds the format label) ----
+  const D = {
+    "deck-c21": "Rennik's Ember Run",
+    "deck-c22": "Rees's Faithful Vigil",
+    "deck-c23": "Corrin's New Banner",
+    "deck-c24": "Dahn's Iron Fist",
+    "deck-c25": "Gorvax's Crime Fleet",
+    "deck-c26": "Threll's Ledger",
+    "deck-c27": "Odrenne's Iron Writ",
+    "deck-c28": "Vrenna's Breaking Point",
+    "deck-c29": "Farrow's Long Odds",
+    "deck-c30": "Vrail's Umbral Voice",
+    "deck-c31": "Dresk's Discipline",
+    "deck-c32": "Ashcroft's Lawless Reach",
+    "deck-c33": "Yerin's Standing Fight",
+    "deck-c34": "Krule's Iron Hand",
+    "deck-c35": "Grave's Hollow Current",
+    "deck-c36": "Vool's Fair Cut",
+    "deck-c37": "Vantrel's Compliance",
+    "deck-c38": "Morrec's Enduring Order",
+    "deck-c39": "Voss's Lumerian Grace",
+    "deck-c40": "Fen's Old Oath",
+    "deck-c41": "Sconce's Waiting Blade",
+    "deck-c42": "Vey's Living Current",
+    "deck-c43": "Verin's Devoted Heart",
+    "deck-c44": "Veyd's Iron Consulate",
+    "deck-c45": "Solmir's Masked Voice",
+    "deck-c46": "Dray's Due Debts",
+    "deck-c47": "Thale's House Odds",
+    "deck-c48": "Ellisar's Last Oath",
+    "deck-c49": "Sorn's Sinful Ledger",
+    "deck-c50": "Vrail's Own Clock",
+  };
+  Object.keys(D).forEach(function (id) { SB.names.decks[id] = D[id]; });
+
   Object.keys(N).forEach(function (id) {
     SB.names.cards[id] = N[id][1] ? { name: N[id][0], subtitle: N[id][1] } : { name: N[id][0] };
   });
