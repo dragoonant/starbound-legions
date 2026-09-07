@@ -129,14 +129,12 @@ lists, and is deployed on GitHub Pages. Test suite: 117 green
 - **Card behaviour bugs found in play** — ongoing. Fix one at a time: grep the id in
   `data/cards-*.js`, read only that entry and its op handler, add a case to
   `tests/test-expansion.js`, run the suite, commit.
-- **Text audit of the authored cards** — RUN, 2026-09-07. `tools/audit-card-text.mjs`
-  is portable now (it reads printed text from the committed X table in
-  `data/names-source.js`, so it needs no card dump and no network) and covers every card
-  the registered decks use: 792 compared. Most flags are our own vocabulary — coordinate
-  rendered as its condition, last-words for "when defeated", our trait names — and are
-  correct. The real findings are recorded in the audit report (scratch only, it carries
-  printed text) and fall into two groups: leaders still missing their leader-side action,
-  and units missing a keyword or a whole clause. Fixing them is the open work.
+- **Text audit — DONE, 2026-09-07.** `tools/audit-card-text.mjs` is portable (printed
+  text comes from the committed X table, so no dump and no network) and covers every
+  card the registered decks use: 792 compared. Every real finding is fixed and pinned
+  by a test; the flags that remain are our own vocabulary and paraphrase. Re-run it
+  after authoring cards — presence of a keyword is not evidence the card is right,
+  which is what it found over and over.
 - **Six pilot leaders cannot deploy as an upgrade** (jtl-001, jtl-003, jtl-008,
   jtl-011, jtl-015, jtl-018). The mechanic works — the engine offers
   `deployLeaderPilot` and four of the ten carry a `pilotSide` — these six just have
