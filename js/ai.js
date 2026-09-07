@@ -43,8 +43,15 @@
                            // cheaper than passing (horizon effect; measured in MRW).
     // Declining to act while a card in hand is affordable. The exchange search is
     // pessimistic by construction — it takes the opponent's BEST reply — so against a
-    // control deck every play looks losing and passing looks free, and both sides
-    // stall. 0 keeps the measured behaviour; raise it only on a gauntlet result.
+    // control deck every play scores worse than holding, and both sides stall. A human
+    // playing a stall leader reported the AI mirroring the stall; measured at the
+    // competition profile the AI declines ~14 times a game with an affordable card.
+    // TRIED, FAILED: idlePass=12 over 48 decided games came out exactly 24-24. The
+    // overall wash hides the shape — the challenger went 10-2 piloting an aggressive
+    // deck and 1-11 piloting the stall deck, because holding cards is what that deck
+    // is FOR. A flat penalty on holding cannot tell patience from paralysis. Any real
+    // fix has to price what the hand is being held FOR, not the act of holding.
+    // Left at 0. The term stays because it makes the pressure measurable.
     idlePass: 0,
     wastedTrigger: 3,      // incidental trigger fizzled — SMALL on purpose: reorders
                            // plays but must never argue against deploying at all.
