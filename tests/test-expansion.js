@@ -1216,4 +1216,68 @@
     s = drive(s, function (a) { return a.type === 'binary' && a.pick === 'a'; });
     T.ok(s.players[me].resources.some(function (r) { return r.instance.cardId === deckTop; }), 'the top card became a resource');
   });
+
+  // ---- shd-109: reveal resources, play every unit revealed for free ---------
+
+  T.add('shd-109: a unit revealed from resources is played for free, a non-unit revealed stays a resource', function () {
+    let s = T.game(); const me = 0;
+    fund(s, me, SB.cardCost(s, me, 'shd-109'));
+    const grunt = { uid: s.nextUid++, cardId: 'fx-grunt' }; // unit
+    const bolt = { uid: s.nextUid++, cardId: 'fx-bolt' }; // event, not a unit
+    s.players[me].resources.push({ instance: grunt, exhausted: false });
+    s.players[me].resources.push({ instance: bolt, exhausted: false });
+    const resourceCountBefore = s.players[me].resources.length;
+    s = play(s, me, 'shd-109');
+    s = T.act(s, { type: 'revealResource', uid: grunt.uid });
+    s = T.act(s, { type: 'revealResource', uid: bolt.uid });
+    s = T.act(s, { type: 'revealResource', uid: null }); // stop revealing
+    s = drive(s); // resolves the forced free play of the revealed unit
+    T.ok(SB.allUnits(s, me).some(function (u) { return u.cardId === 'fx-grunt' && u.enteredRound === s.round; }),
+      'the revealed unit entered play');
+    T.ok(!s.players[me].resources.some(function (r) { return r.instance.uid === grunt.uid; }),
+      'the played unit left the resource row');
+    T.ok(s.players[me].resources.some(function (r) { return r.instance.uid === bolt.uid; }),
+      'the revealed non-unit is still sitting in the resource row');
+    T.eq(s.players[me].resources.length, resourceCountBefore,
+      'the resource row is topped back up from the deck, same as any other card played from resources');
+  });
+
+  T.add('shd-109: stopping early leaves the un-revealed resources untouched', function () {
+    let s = T.game(); const me = 0;
+    fund(s, me, SB.cardCost(s, me, 'shd-109'));
+    const grunt = { uid: s.nextUid++, cardId: 'fx-grunt' };
+    const wall = { uid: s.nextUid++, cardId: 'fx-wall' };
+    s.players[me].resources.push({ instance: grunt, exhausted: false });
+    s.players[me].resources.push({ instance: wall, exhausted: false });
+    s = play(s, me, 'shd-109');
+    s = T.act(s, { type: 'revealResource', uid: null }); // stop before revealing anything
+    T.eq(s.queue.length, 0, 'the ability resolves with nothing revealed');
+    T.ok(s.players[me].resources.some(function (r) { return r.instance.uid === grunt.uid; }),
+      'the un-revealed unit stayed a resource');
+    T.ok(s.players[me].resources.some(function (r) { return r.instance.uid === wall.uid; }),
+      'the other un-revealed unit stayed a resource too');
+    T.ok(!SB.allUnits(s, me).some(function (u) { return u.cardId === 'fx-grunt' || u.cardId === 'fx-wall'; }),
+      'nothing was played');
+  });
+
+  T.add('shd-109: revealing can stop partway through, after some resources are already revealed', function () {
+    let s = T.game(); const me = 0;
+    fund(s, me, SB.cardCost(s, me, 'shd-109'));
+    const grunt = { uid: s.nextUid++, cardId: 'fx-grunt' };
+    const wall = { uid: s.nextUid++, cardId: 'fx-wall' };
+    s.players[me].resources.push({ instance: grunt, exhausted: false });
+    s.players[me].resources.push({ instance: wall, exhausted: false });
+    s = play(s, me, 'shd-109');
+    let acts = SB.legalActions(s);
+    T.ok(acts.some(function (a) { return a.type === 'revealResource' && a.uid == null; }), 'stopping is offered');
+    s = T.act(s, { type: 'revealResource', uid: grunt.uid });
+    s = T.act(s, { type: 'revealResource', uid: null }); // stop after just one reveal
+    s = drive(s);
+    T.ok(SB.allUnits(s, me).some(function (u) { return u.cardId === 'fx-grunt' && u.enteredRound === s.round; }),
+      'the one revealed unit was played');
+    T.ok(s.players[me].resources.some(function (r) { return r.instance.uid === wall.uid; }),
+      'the never-revealed unit was left alone in resources');
+    T.ok(!SB.allUnits(s, me).some(function (u) { return u.cardId === 'fx-wall'; }),
+      'the never-revealed unit was not played');
+  });
 })(window.SB = window.SB || {});

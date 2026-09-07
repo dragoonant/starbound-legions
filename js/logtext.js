@@ -77,6 +77,7 @@
     deckedOut: function (l) { return possessive(l.player) + ' deck is empty — no card drawn!'; },
     deckShuffled: function (l) { return possessive(l.player) + ' deck was shuffled.'; },
     resourced: function (l) { return player(l.player) + ' banked a resource.'; },
+    resourceRevealed: function (l) { return player(l.player) + ' revealed ' + cardName(l.cardId) + ' from resources.'; },
     resourcesSpent: function (l) { return player(l.player) + ' spent ' + n(l.amount, 'resource') + '.'; },
     resourcesExhausted: function (l) { return player(l.player) + ' exhausted ' + n(l.amount, 'resource') + '.'; },
     resourcesReadied: function (l) { return player(l.player) + ' readied ' + n(l.amount, 'resource') + '.'; },

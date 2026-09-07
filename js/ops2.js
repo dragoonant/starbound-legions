@@ -438,6 +438,49 @@
       }
     },
   };
+  // Reveal any number of resources, one at a time, stopping whenever the player
+  // likes; every unit revealed this way is then played for free, one at a time, in
+  // the order it was revealed — shd-109. A non-unit revealed this way simply stays
+  // a resource. Playing one of the revealed units removes it from the resource row
+  // exactly like any other card played from resources (the row is topped back up
+  // from the deck, same as js/ops.js's playHandPick zone:'resources' path used by
+  // ash-001) — so an unrevealed resource stays exactly as available to pay for
+  // anything else resolving alongside this event, and a played one stops being
+  // available the moment it is played, not before.
+  O.revealResourcesPlayUnits = function (state, item) {
+    state.queue.unshift({ step: 'revealResourcePick', player: item.controller, ctx: item.ctx, revealed: [] });
+  };
+  S.revealResourcePick = {
+    actions: function (state, itemStep) {
+      const p = state.players[itemStep.player];
+      const revealed = itemStep.revealed || [];
+      const cands = p.resources.filter(function (r) { return revealed.indexOf(r.instance.uid) < 0; });
+      const acts = cands.map(function (r) { return { type: 'revealResource', player: itemStep.player, uid: r.instance.uid }; });
+      acts.push({ type: 'revealResource', player: itemStep.player, uid: null });
+      return acts;
+    },
+    apply: function (state, itemStep, action) {
+      const p = state.players[itemStep.player];
+      if (action.uid == null) {
+        const revealed = itemStep.revealed || [];
+        // Queue plays in reveal order: unshift the last-revealed unit first so the
+        // first-revealed unit ends up at the front of the queue.
+        revealed.slice().reverse().forEach(function (uid) {
+          const r = p.resources.find(function (x) { return x.instance.uid === uid; });
+          if (!r || SB.card(r.instance.cardId).type !== 'unit') return;
+          state.queue.unshift({ step: 'playHandPick', player: itemStep.player, ctx: itemStep.ctx,
+            filter: { uidIs: uid, type: 'unit' }, discount: 99, entersReady: false, defeatAtRegroup: false,
+            optional: false, zones: ['resources'] });
+        });
+        return;
+      }
+      const r = p.resources.find(function (x) { return x.instance.uid === action.uid; });
+      if (!r) return;
+      SB.log(state, { type: 'resourceRevealed', player: itemStep.player, cardId: r.instance.cardId, uid: r.instance.uid });
+      state.queue.unshift({ step: 'revealResourcePick', player: itemStep.player, ctx: itemStep.ctx,
+        revealed: (itemStep.revealed || []).concat([action.uid]) });
+    },
+  };
   // Give a temporary keyword (numeric allowed) to every unit matched by scope.
   O.giveKeywordAll = function (state, item) {
     SB.selectorCandidates(state, item.controller, item.op.scope, item.ctx || {}).forEach(function (c) {

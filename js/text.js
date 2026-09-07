@@ -326,6 +326,9 @@
     exhaustUpTo: function (op) {
       return 'exhaust up to ' + op.amount + ' ' + scopeNounPlural(op.target || { who: 'any', what: 'unit' });
     },
+    revealResourcesPlayUnits: function () {
+      return 'reveal any number of resources you control. Play each unit revealed this way for free (one at a time)';
+    },
     selfToResource: function () { return 'put this card into play as a resource'; },
     healFull: function (op) { return 'heal all damage from ' + targetText(op); },
     stunExhaust: function (op) { return 'exhaust ' + targetText(op) + ' — it cannot ready this round'; },
@@ -477,7 +480,7 @@
     useWhenDefeatedOf: function (op) { return 'use the last-words ability of ' + targetText(op) + ' without defeating it'; },
     reuseAbility: function () { return 'use that last-words ability again'; },
     purgeCopies: function () { return 'its controller discards every copy of that card from their hand and deck'; },
-    defeatAllUpgradesOn: function (op) { return 'defeat every upgrade on ' + targetText(op); },
+    defeatAllUpgradesOn: function (op) { return 'defeat every upgrade on ' + targetText(op); },
     returnUpgradesToHandOn: function (op) { return 'return each upgrade on ' + targetText(op) + ' to its owner’s hand'; },
     selfUpgradeToHand: function () { return 'return this upgrade from your discard pile to your hand'; },
     dividedAdvantage: function (op) {
@@ -869,6 +872,8 @@
       (item.remaining > 1 ? ' (' + item.remaining + ' more picks left)' : '') + '.';
     if (item.step === 'exhaustUpToPick') return (source ? source + ' — ' : '') +
       'exhaust up to ' + item.remaining + ' more unit' + (item.remaining === 1 ? '' : 's') + ', or stop.';
+    if (item.step === 'revealResourcePick') return (source ? source + ' — ' : '') +
+      'reveal a resource, or stop revealing.';
     if (item.step === 'peekDecide') return 'Look at the top card of your deck — what do you do with it?';
     if (item.step === 'arrangeTop2') return 'Look at the top two cards of your deck — arrange them.';
     let ask;

@@ -765,6 +765,11 @@
         return 'First: ' + triggerLabel(s, sub);
       }
       case 'massExhaust': case 'budgetExhaust': case 'exhaustUpTo': return a.uid == null ? 'Stop' : 'Exhaust: ' + unitName(s, a.uid);
+      case 'revealResource': {
+        if (a.uid == null) return 'Stop revealing';
+        const r = s.players[a.player].resources.find(function (x) { return x.instance.uid === a.uid; });
+        return 'Reveal: ' + (r ? cardName(r.instance.cardId) : '?');
+      }
       case 'chooseMode': {
         const it = s.queue[0] || {};
         const mode = (it.modes || [])[a.index];
