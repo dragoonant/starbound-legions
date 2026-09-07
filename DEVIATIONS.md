@@ -77,9 +77,9 @@ missing mechanic):
   free-text picker over the whole pool has no counterpart in the targeting model and
   would let a player fish for information the rules never give them. The lockout and the
   cost tax themselves behave as printed once a name is chosen.
-- **What a pilot's box grants beyond stats.** A pilot unit aboard a ship now hands over
-  the power and HP printed in its pilot box, and is played for its printed piloting cost.
-  Twenty-six of the thirty pilot boxes also grant the ship a keyword ("attached unit gains
-  Sentinel"), some of them conditionally; none of that is in the card data yet, so a pilot
-  currently lends stats only.
-
+- **What a pilot's box grants beyond stats.** A pilot unit aboard a ship hands over the
+  power and HP printed in its pilot box, and is played for its printed piloting cost.
+  Twenty of the thirty boxes also print an ability — four grant the ship a keyword
+  outright, two do so conditionally, four hand it a triggered ability, eight fire an
+  effect as the pilot attaches, and two have shapes of their own. None of that is in the
+  card data yet, so a pilot lends stats only. See HANDOFF-PILOTS.md.
