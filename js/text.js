@@ -10,6 +10,12 @@
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
   // 'an' by sound, not spelling: 'a unit', 'a used card' but 'an Umbra unit'.
+  // "A or B or C or D" is how a chain of ors reads when a character has four printings
+  // and the condition names every one of them. Commas until the last.
+  function orList(parts) {
+    if (parts.length < 3) return parts.join(' or ');
+    return parts.slice(0, -1).join(', ') + ' or ' + parts[parts.length - 1];
+  }
   function an(phrase) { return (/^[aeiou]/i.test(phrase) && !/^u(ni|se)/i.test(phrase) ? 'an ' : 'a ') + phrase; }
   // The unique insignia's word is vocabulary (names.js terms: "champion", or the pack's
   // word), read at render time so the describers follow the active name set.
@@ -730,7 +736,16 @@
     playedCardThisPhase: function () { return 'if you played a card this phase'; },
     friendlyDefeatedThisPhase: function () { return 'if a friendly unit was defeated this phase'; },
     attachedIs: function (c) { return 'if attached to ' + (c.cards || []).map(function (id) { return SB.names.card(id); }).join(' or '); },
-    controlCard: function (c) { return 'if you control ' + (c.cards || []).map(function (id) { return SB.names.card(id); }).join(' or '); },
+    // Two printings of one character share a name, and naming the same person twice
+    // ("control X or X") reads as a mistake. Dedupe on the rendered name, not the id.
+    controlCard: function (c) {
+      const seen = [];
+      (c.cards || []).forEach(function (id) {
+        const n = SB.names.card(id);
+        if (seen.indexOf(n) < 0) seen.push(n);
+      });
+      return 'if you control ' + orList(seen);
+    },
     bearerHasTrait: function (c) { return 'if the attached unit is ' + an((SB.names.traits[c.trait] || c.trait) + ' unit'); },
     milledNonUnit: function () { return 'if the discarded card was not a unit'; },
     saved: function (c) { return c.not ? 'if no target was chosen' : 'if a target was chosen'; },

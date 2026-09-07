@@ -1375,6 +1375,33 @@
     T.eq(SB.findUnit(s, g.uid).temp.power, 0, 'neither ground unit is "the only unit in its arena" — no buff landed');
     T.eq(SB.findUnit(s, w.uid).temp.power, 0, 'same for the other one');
   });
+  // sec-201 granted the wrong keyword outright: grit where the card grants raid 2.
+  // Both are conditional keyword grants, so the shape looked right and only the
+  // meaning was wrong — invisible to every check except reading the card.
+  T.add('sec-201: raid 2, and only while you control the named character', function () {
+    let s = T.game(); const me = 0;
+    const u = T.putOnBoard(s, me, 'sec-201');
+    T.eq(SB.keywordTotal(s, u, 'raid'), 0, 'alone, it gets nothing');
+    T.ok(!SB.hasKeyword(s, u, 'grit'), 'and it never grants grit');
+    s.players[me].leader = { cardId: 'sec-016', deployed: false };
+    T.eq(SB.keywordTotal(s, u, 'raid'), 2, 'with the character as a leader, raid 2');
+  });
+
+  // twi-159 printed a keyword and carried none at all: it rendered as a blank card.
+  T.add('twi-159: has overwhelm', function () {
+    const s = T.game();
+    T.ok(SB.hasKeyword(s, T.putOnBoard(s, 0, 'twi-159'), 'overwhelm'), 'overwhelm is on it');
+  });
+
+  // twi-196 kept its ambush but lost the coordinate-gated raid entirely.
+  T.add('twi-196: raid 3 once you control three units', function () {
+    let s = T.game(); const me = 0;
+    const u = T.putOnBoard(s, me, 'twi-196');
+    T.eq(SB.keywordTotal(s, u, 'raid'), 0, 'one unit is not a coordination');
+    T.putOnBoard(s, me, 'fx-grunt'); T.putOnBoard(s, me, 'fx-grunt');
+    T.eq(SB.keywordTotal(s, u, 'raid'), 3, 'three units turn it on');
+  });
+
   // shd-204 gains ambush only when it comes out of the hand. Smuggling it out of the
   // resource row is the cheaper line precisely because it does NOT come swinging, so
   // granting ambush on both paths would hand the discount a free attack.
