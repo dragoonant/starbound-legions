@@ -270,6 +270,17 @@ Ship **three** distinct enlargements. They are not interchangeable.
 
 **Trigger**: `mouseenter` **and** `focus` (keyboard parity). Dismiss on `mouseleave`/`blur`.
 
+**Fine pointers only.** Hover is a mouse and keyboard affordance; a touch device must never see
+this overlay, because a coarse pointer cannot hover and a synthesized `mouseenter` on tap would
+flash a card the player did not ask for. Gate it in CSS and take the touch path in §7D instead:
+
+```css
+@media (hover: none), (pointer: coarse) { #preview.hover-preview { display: none !important; } }
+```
+
+Note the class. The overlay NODE is shared with §7D, which does show it on touch — what is
+suppressed here is the hover-driven *use* of it, not the element.
+
 ```js
 var OPEN_DELAY_MS = 300;   // 90ms chases the pointer across the hand; 1000ms feels like waiting
 var GAP = 12;              // min px from viewport edge
@@ -344,6 +355,17 @@ Body stacks: **card → tokens created → glossary → available actions**. `ma
 scroll (`dvh`, not `vh` — mobile browser chrome) so action buttons stay reachable when a token
 panel is present. Dismiss by clicking the backdrop; the body stops propagation.
 
+**The actions list is not optional.** On a touch device the inspector is the only surface that
+can both show a card and act on it: there is no hover, and the board tap that opened the inspector
+is the same tap that would otherwise have committed the action. An inspector without its actions
+is a dead end — the player must dismiss it and re-aim a gesture at a card they have just been
+told they cannot reach from here.
+
+Render one button per legal action on the inspected card, from the same `SB.legalActions(state)`
+the board reads, labelled by the same describer the turn bar uses. Committing closes the
+inspector and runs the action. If the card has no legal action, render nothing — an empty
+actions block reads as a bug, and "no actions" is already said by the card's state.
+
 Below ~420px, turn it sideways so the card and text share the screen:
 ```css
 @media (max-width: 420px) {
@@ -375,6 +397,53 @@ Click anywhere on the overlay to skip. Under `prefers-reduced-motion`, collapse 
 
 **Z-order stack**: board < drag layer < inspector (50) < preview (60), with spotlight
 *below* the preview so a card can still be hovered during a spotlight.
+
+### D. Touch enlargement (coarse pointers)
+
+A touch player must be able to READ a card as cheaply as a mouse player, and §7B alone does not
+buy that: the inspector is a modal that interrupts, and on a card that has a legal action the tap
+that would open it is spent committing the action instead. So a coarse pointer gets two
+enlargements of its own, split by whether the card can be dragged. Both reuse the §7A overlay
+node; neither is a new modal.
+
+**D1. Pick-up-to-read — a card you can drag.** The drag already lifts a clone of the card into
+the drag layer (§10). On a coarse pointer, render that clone at **preview width** rather than at
+the source card's width, offset far enough above the touch point that the hand does not cover it.
+Reading and playing are then the same continuous motion: the card becomes legible the instant it
+moves, and carrying on with the same gesture commits it. This costs the player nothing, adds no
+mode, and needs no timer — the existing 8px distance threshold (§10) is the whole trigger.
+
+The clone is a `card-preview` render, so it carries rules text, and it must keep
+`pointer-events: none` like every other drag clone or it eats its own drop.
+
+**D2. Press-and-hold — a card you cannot drag.** Enemy units, your own board outside an attack,
+card references in the log: nothing to drag, so nothing to lift. Hold to enlarge.
+
+```js
+var HOLD_MS = 350;      // long enough not to fire on a tap, short enough not to feel like waiting
+```
+
+Armed on `pointerdown`, cancelled by movement past the §10 threshold (the gesture was a drag or a
+scroll) and by `pointerup` (it was a tap, and a tap still inspects). Dismissed on release.
+
+**Position it in a fixed place on screen, not against the anchor.** §7A centres the preview on
+the card because a mouse pointer is a few pixels wide. A finger is not: anchored to the card, the
+enlargement appears under the hand holding it down. Centre it in the viewport instead — the
+player already knows which card they are pressing, so the overlay only has to be readable, not
+located.
+
+**Long-press must be taken from the platform first**, or iOS raises its own callout over yours:
+
+```css
+.card { -webkit-touch-callout: none; user-select: none; touch-action: none; }
+```
+
+`touch-action: none` on **every** card, not only draggable ones — a hold on an enemy unit is
+otherwise claimed as a scroll before `HOLD_MS` elapses.
+
+**Z-order**: unchanged. The touch enlargement is the same node at 60, and the drag clone stays in
+the drag layer below the inspector — a clone that painted over the inspector would cover the
+actions it exists to let the player reach.
 
 ---
 
@@ -452,7 +521,7 @@ The whole gesture vocabulary, and nothing more:
 | **Tap / click** | Inspect (never changes game state) |
 | **Hover (300ms)** | Preview |
 | **Right-click** | Secondary/contextual (e.g. remove one copy in the builder) |
-| **Long-press** | **Not used.** Deliberately. |
+| **Long-press (350ms)** | Preview, **coarse pointers only**, on cards that cannot be dragged (§7D2). Unused on a fine pointer, where hover already answers. |
 
 **Use Pointer Events only.** One code path covers mouse, touch, pen, and gaze-and-pinch. No
 platform branching, no `touchstart`/`mousedown` pairs.
@@ -505,11 +574,13 @@ Without it the browser claims the gesture to scroll the hand sideways.
 ```css
 .is-draggable { touch-action: none; user-select: none; -webkit-user-drag: none; }
 ```
-And suppress hover preview entirely on touch:
+And suppress the HOVER USE of the preview on touch — not the overlay itself, which §7D shows by
+press-and-hold:
 ```css
-@media (hover: none) { #preview { display: none !important; } }
+@media (hover: none), (pointer: coarse) { #preview.hover-preview { display: none !important; } }
 ```
-Touch devices get the inspector, which is strictly better there anyway.
+`touch-action` goes on every card, not only `.is-draggable`: an undraggable card is exactly the
+one §7D2 asks the player to hold, and without it the browser claims that hold to scroll.
 
 **Drop feedback**: on drag start, mark every valid target `.drop-ok`; mark the one under the
 pointer `.drop-hot`; fade the source `.is-dragging-source { opacity: .28 }`. Clear all three in
@@ -558,11 +629,17 @@ matters most for images containing text, where downscaling is the thing you can'
 
 ## 12. Responsive strategy: remove content, don't shrink it
 
-There is no minimum-font-size mechanism. Below ~900px, **delete the secondary content** rather
-than scale it into illegibility — the inspector carries the rest.
+There is no minimum-font-size mechanism. Once a card is small enough, **delete the secondary
+content** rather than scale it into illegibility — the inspector carries the rest.
+
+**Measure the card, not the window.** A board card is sized as a fraction of the MAT (§2), and the
+mat is height-constrained as often as it is width-constrained, so viewport width does not predict
+card size: a 1180px tablet in landscape can render smaller board cards than a 900px window does.
+A viewport media query therefore drops text that was legible and keeps text that is not. Key the
+rule to the container the cards actually scale with:
 
 ```css
-@media (max-width: 900px) {
+@container mat (max-width: 900px) {
   .card:not(.card-preview) .traits,
   .card:not(.card-preview) .card-kw,
   .card:not(.card-preview) .pilot-badge { display: none; }
@@ -571,11 +648,41 @@ than scale it into illegibility — the inspector carries the rest.
 }
 ```
 
+(This needs the mat to carry `container-name: mat` alongside its `container-type` — an unnamed
+container would match the nearest one, which for a hand card is not the mat.)
+
+The threshold is a statement about rendered card width; pick it by measuring the smallest card
+size at which each element is still readable, once, on a real device.
+
+**The hand keeps its fan on every pointer type.** It is tempting to drop the overlap on touch —
+fingers are imprecise against a thin sliver — but the overlap is what GUARANTEES the hand fits its
+bar (§2), and a non-overlapping row in a clipped container strands the last cards where nothing
+can reach them. Keep the fan; §7D does the revealing that hover does on a desktop.
+
 And keep hand cards at a readable thumb width instead of letting flex squeeze them:
 ```css
 #hand { justify-content: flex-start; }   /* narrow screens */
 #hand .card { flex: none; }
 ```
+
+### Orientation
+
+**The board is a landscape composition and does not have a portrait form.** Two rows of units
+facing each other across shared arenas is the picture the whole game is read from; stacked
+vertically it stops meaning what it means, and shrunk to fit a portrait width the cards fall below
+the size at which any of §6 survives.
+
+So refuse portrait rather than degrade into it: detect it and show an interstitial asking the
+player to rotate. This is not a fallback, it is the answer — it costs one overlay, and every
+alternative is a second layout to design, build and keep honest forever.
+
+```css
+@media (orientation: portrait) { #rotate-me { display: grid; } }
+```
+
+The interstitial covers the board and takes no gesture. The game underneath is untouched: rotating
+back returns to exactly the position that was there, because nothing about the match ever
+depended on orientation.
 
 **Design your art for the smallest render size.** If a card face appears at ~34px anywhere
 (resource chips, mini-strips), that size dictates the art brief: one bold centered object filling
@@ -622,7 +729,9 @@ survives the smallest size, not the largest.
 6. Glossary collection walker + preview side panels.
 7. Token walker + scratch-instance rendering.
 8. Hover preview with the 300ms delay and fixed-overlay positioning.
-9. Inspector modal (this is what touch users actually get).
+9. Inspector modal, **including its actions list** — without it the touch path cannot act (§7B).
 10. Pointer-events drag with the 8px threshold, capture-phase click swallowing, `touch-action: none`.
 11. Spotlight.
-12. Responsive content-removal pass + reduced-motion + focus/blur parity.
+12. Responsive content-removal pass (container-keyed, §12) + reduced-motion + focus/blur parity.
+13. Touch enlargement (§7D): preview-size drag clone, then press-and-hold, then the portrait
+    interstitial. Last, because it depends on 8, 9, 10 and 12 all being right first.
