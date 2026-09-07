@@ -14,9 +14,14 @@ missing mechanic):
   is readied and attacks again in the same round).
 - Multi-unit "give X to up to N distinct units" effects granted through repeated
   single-target picks can, for one card (Luminous-Beings analogue), pick the same
-  unit twice.
+  unit twice. jtl-174's "deal 2 damage to a different enemy unit" for each of the
+  chosen unit's on-attack abilities has the same limitation: the repeated damage
+  picks are not constrained to be distinct from each other.
 - Abilities lent to another attacker by a support-style unit last until end of
   round rather than only for that one attack.
+- law-237's "Look at the top 3 cards of your deck. You may discard 1 of them. Put
+  the rest back on top in any order." keeps the kept cards in their original
+  relative order instead of letting the player re-arrange them.
 
 ## Competitive-deck expansion (js/ops2.js)
 
@@ -63,3 +68,13 @@ missing mechanic):
   "choose up to N" is modeled as repeated single picks with a Stop action. The
   `multiPicks` toggle list, Confirm/Clear buttons and set-equality matching therefore
   have no counterpart to drive, and are not implemented.
+- **Naming a card.** Two cards print "name a card", meaning any card in the game. The
+  engine offers only the cards the opponent has already revealed this game, because a
+  free-text picker over the whole pool has no counterpart in the targeting model and
+  would let a player fish for information the rules never give them. The lockout and the
+  cost tax themselves behave as printed once a name is chosen.
+- **sor-199, the alternate cost.** The card lets you discard a Cunning card from your
+  hand instead of paying its cost. Paying happens on the shared hand-play path, which
+  has no notion of a cost met by anything but resources, so only the printed effect is
+  implemented: the card exhausts a unit and hands back its upgrades, and is paid for
+  normally.

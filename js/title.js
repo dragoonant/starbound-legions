@@ -94,6 +94,10 @@
   // which a fixed opponent cannot answer. Opening on two random decks means the button
   // that starts a match is always live — nobody has to choose anything to see a game.
   const chosen = { mine: null, theirs: null };
+  // A deck the player never saw picked stays nameless until the board shows it: the
+  // opening randoms and anything the dice button rolls. A pick made in the chooser was
+  // deliberate, so it names itself.
+  const secret = { mine: false, theirs: false };
 
   // ---- the screens ---------------------------------------------------------
 
@@ -110,16 +114,38 @@
   function deckSlot(side, labelText) {
     const row = el('div', 'title-field');
     row.appendChild(el('span', 'title-field-label', labelText));
+    const line = el('div', 'title-deck-line');
     const btn = el('button', 'title-deck-btn');
     btn.id = 'deck-btn-' + side;
-    function paint() { btn.textContent = deckLabel(chosen[side]); }
+    function paint() {
+      btn.textContent = secret[side] ? SB.names.ui.hiddenDeck : deckLabel(chosen[side]);
+      btn.classList.toggle('is-hidden-deck', secret[side]);
+    }
     paint();
-    // Attached once; it reads the slot's CURRENT deck each time it opens.
-    attachDeckPeek(btn, function () { return chosen[side]; });
+    // Attached once; it reads the slot's CURRENT deck each time it opens — and reads
+    // nothing at all while the slot is a surprise, since a peek would give it away.
+    attachDeckPeek(btn, function () { return secret[side] ? null : chosen[side]; });
     btn.onclick = function () {
-      openChooser(side, function (picked) { chosen[side] = picked; paint(); });
+      openChooser(side, function (picked) {
+        chosen[side] = picked; secret[side] = false; paint();
+      });
     };
-    row.appendChild(btn);
+    line.appendChild(btn);
+
+    // The dice: a reroll in place, which is the one thing the chooser cannot offer
+    // without first showing you every name it might land on.
+    const dice = el('button', 'title-deck-dice', '⚄');
+    dice.id = 'deck-dice-' + side;
+    dice.title = SB.names.ui.rollDeck;
+    dice.setAttribute('aria-label', SB.names.ui.rollDeck);
+    dice.onclick = function () {
+      clearPeek();
+      chosen[side] = randomDeck(chosen[side === 'mine' ? 'theirs' : 'mine']);
+      secret[side] = true;
+      paint();
+    };
+    line.appendChild(dice);
+    row.appendChild(line);
     return row;
   }
 
@@ -171,8 +197,8 @@
   }
 
   function picker() {
-    if (!chosen.mine) chosen.mine = randomDeck(null);
-    if (!chosen.theirs) chosen.theirs = randomDeck(chosen.mine);
+    if (!chosen.mine) { chosen.mine = randomDeck(null); secret.mine = true; }
+    if (!chosen.theirs) { chosen.theirs = randomDeck(chosen.mine); secret.theirs = true; }
     const box = el('div', 'title-picker');
     box.appendChild(el('h1', 'title-name title-name-small', SB.names.ui.gameTitle));
     box.appendChild(deckSlot('mine', SB.names.ui.chooseDeck));

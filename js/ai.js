@@ -41,6 +41,18 @@
     wastedPlay: 60,        // resolved into nothing — LARGE on purpose: passing gives
                            // the opponent nothing, so wasting a card must never look
                            // cheaper than passing (horizon effect; measured in MRW).
+    // Declining to act while a card in hand is affordable. The exchange search is
+    // pessimistic by construction — it takes the opponent's BEST reply — so against a
+    // control deck every play scores worse than holding, and both sides stall. A human
+    // playing a stall leader reported the AI mirroring the stall; measured at the
+    // competition profile the AI declines ~14 times a game with an affordable card.
+    // TRIED, FAILED: idlePass=12 over 48 decided games came out exactly 24-24. The
+    // overall wash hides the shape — the challenger went 10-2 piloting an aggressive
+    // deck and 1-11 piloting the stall deck, because holding cards is what that deck
+    // is FOR. A flat penalty on holding cannot tell patience from paralysis. Any real
+    // fix has to price what the hand is being held FOR, not the act of holding.
+    // Left at 0. The term stays because it makes the pressure measurable.
+    idlePass: 0,
     wastedTrigger: 3,      // incidental trigger fizzled — SMALL on purpose: reorders
                            // plays but must never argue against deploying at all.
   };
@@ -112,6 +124,16 @@
       const powerWorth = P.unitPower * (blocked ? P.lockedPower : 1);
       const hpWorth = P.unitHp *
         (paysOnDeath(state, u) ? (mine ? P.deathPayoff : P.deathPayoffEnemy) : 1);
+      // A unit that is defeated at the start of the regroup phase is worth nothing once
+      // its controller is LOCKED: claimInitiative locks you out of the phase for good, so
+      // the unit can never act again and is already, in effect, defeated. Without this
+      // the AI took the initiative while holding an unspent temporary summon (the sor-219
+      // "play a unit, defeat it at regroup" event) and handed over a card for free.
+      // Deliberately NOT a general discount on such units. Scoring them below a normal
+      // body was TRIED and measured backwards (docs/ai.md): it makes ATTACKING with one
+      // cost the value it was carrying, which is the opposite of the intended push.
+      // A plain pass is NOT a lock — a pass is retractable.
+      if (u.defeatAtRegroup && state.locked && state.locked[p]) return;
       v += P.unitOnBoard + SB.unitPower(state, u) * powerWorth +
         SB.unitRemainingHp(state, u) * hpWorth + u.shields * P.shield;
     });
@@ -215,12 +237,17 @@
     // the numbers instead of guessed at. It must never change what is chosen: the
     // scoring below is untouched and the rng is consumed in the same order either way.
     const trace = AI.trace ? [] : null;
+    // Whether holding is actually a choice: a pass with nothing playable is not idling.
+    const hasAffordablePlay = P.idlePass ? acts.some(function (x) { return x.type === 'playCard'; }) : false;
     acts.forEach(function (a) {
       let after = SB.apply(state, a);
       after = settle(after);
       const base = AI.evaluate(after, me);
       const wasted = wastedPlayPenalty(state, after, a);
       let v = base - wasted;
+      if (P.idlePass && (a.type === 'pass' || a.type === 'claimInitiative') && hasAffordablePlay) {
+        v -= P.idlePass;
+      }
       let swing = 0;
       if (P.exchangeWidth > 0) {
         // Replaces the one-reply swing penalty below: the exchange prices the reply AND

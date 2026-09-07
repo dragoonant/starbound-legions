@@ -26,10 +26,12 @@ Read these before doing anything:
 - All display text lives in `names.js`. Everywhere else uses stable internal ids.
 - Card rules text, log lines, and targeting prompts are all GENERATED from data,
   never stored. Log entries are structured objects; prose happens at render time.
-- Third-party card, deck and trait names and printed text live in exactly two places:
+- Third-party card, deck and trait names, printed text, and the published game’s words
+  for the vocabulary the theme renames (`names.js` `terms`) live in exactly two places:
   the gitignored `scratch/` dir and the generated `data/names-source.js`. Never in card
   data, engine, tests, art prompts, docs or commit messages. The generator is the only
-  way names enter that file; never hand-edit it.
+  way names enter that file; never hand-edit it. Generated prose never stores a
+  vocabulary word: it reads `SB.names.terms` when it renders.
 - API keys: `.hf_token`, `.elevenlabs_key` are gitignored; resolution order is
   flag → env var → key file.
 - Every log entry goes through `SB.log(state, entry)` — never `state.log.push` — so
