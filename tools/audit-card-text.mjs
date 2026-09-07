@@ -2,11 +2,15 @@
 // game generates, and flag any printed clause with no counterpart. Presence of a field
 // is not evidence of implementation: a card can carry a keyword and still be missing its
 // whole ability, which is how shd-184 slipped through.
-// Run: node tools/audit-card-text.mjs [scratchDir]
-// Reads the local source-name pack for printed text, so it only works on a machine that
-// has one; it is a checking tool, not part of the game.
-import { readFileSync, writeFileSync } from 'node:fs'; import vm from 'node:vm';
-const root = 'C:/Users/antho/OneDrive/Documents/Star wars unlimited/';
+// Run: node tools/audit-card-text.mjs [outDir]      (outDir defaults to scratch/)
+// Printed text comes from the source-name pack's X table in data/names-source.js, which
+// is committed, so this runs anywhere the repo does — no card dump and no network. The
+// report it writes DOES carry printed text: it goes to scratch/, never into the repo.
+// A checking tool, not part of the game.
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path'; import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
+const root = join(dirname(fileURLToPath(import.meta.url)), '..') + '/';
 const html = readFileSync(root + 'tests.html', 'utf8');
 const srcs = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]).filter(s => !/tests\//.test(s));
 const window = {}; window.window = window;
@@ -16,9 +20,16 @@ const SB = window.SB;
 function objAfter(src, marker) { const i = src.indexOf(marker); let s = src.indexOf('{', i), d = 0;
   for (let j = s; j < src.length; j++) { if (src[j] === '{') d++; else if (src[j] === '}' && --d === 0) return JSON.parse(src.slice(s, j + 1)); } }
 const X = objAfter(readFileSync(root + 'data/names-source.js', 'utf8'), 'var X = ');
+// Scope: every card a registered deck actually uses. Read from the engine's own deck
+// registry rather than a scratch export, so the audit covers whatever is playable today
+// and cannot drift from the decks the game ships.
 const ids = new Set();
-for (const d of JSON.parse(readFileSync((process.argv[2] || 'scratch') + '/decks2.json', 'utf8')))
-  for (const c of d.cats.flatMap(x => x.cards)) if (c.id) ids.add(c.id);
+for (const d of Object.values(SB.decks)) {
+  if (d.leader) ids.add(d.leader);
+  if (d.base) ids.add(d.base);
+  for (const c of (d.cards || [])) ids.add(typeof c === 'string' ? c : c.id);
+  if (d.list) for (const k of Object.keys(d.list)) ids.add(k);
+}
 // Markers that MUST show up on our side if the printed card has them.
 const MARK = [
   [/when played/i, /when played/i], [/on attack\b/i, /on attack/i],
@@ -38,13 +49,18 @@ for (const id of [...ids].sort()) {
   const printed = (X[id] || []).join(' / ');
   if (!printed) continue;
   let ours; try { ours = SB.cardText(id).join(' / '); } catch (e) { ours = 'TEXT ERROR: ' + e.message; }
-  const missing = MARK.filter(([p, o]) => p.test(printed) && !o.test(ours)).map(([p]) => String(p));
+  // Reminder text in parens restates a keyword the card already prints; matching against
+  // it turns every reminder into a false "missing keyword". Strip before comparing.
+  const bare = printed.replace(/\(([^()]|\([^()]*\))*\)/g, ' ');
+  const missing = MARK.filter(([p, o]) => p.test(bare) && !o.test(ours)).map(([p]) => String(p));
   // A printed number that appears nowhere in ours is often a dropped cost or amount.
   const pn = (printed.match(/\d+/g) || []); const on = new Set(ours.match(/\d+/g) || []);
   const lostNums = [...new Set(pn.filter(n => !on.has(n)))];
   if (missing.length || (!ours && printed) || lostNums.length)
     rows.push({ id, printed, ours, missing, lostNums });
 }
-writeFileSync((process.argv[2] || 'scratch') + '/audit.json', JSON.stringify(rows, null, 1));
+const outDir = process.argv[2] || join(root, 'scratch');
+mkdirSync(outDir, { recursive: true });
+writeFileSync(join(outDir, 'audit.json'), JSON.stringify(rows, null, 1));
 console.log('cards with printed rules checked:', ids.size, '| flagged:', rows.length);
 for (const r of rows) console.log('\n### ' + r.id + (r.missing.length ? '  MISSING ' + r.missing.join(' ') : '') + (r.lostNums.length ? '  NUMS ' + r.lostNums.join(',') : '') + '\n  P: ' + r.printed.slice(0, 150) + '\n  O: ' + (r.ours || '(nothing)').slice(0, 150));

@@ -582,6 +582,10 @@
         });
         if (gi >= 0) { p.entersReadyGrants.splice(gi, 1); unit.exhausted = false; grantedReady = true; }
       }
+      // How the unit arrived is a rules fact some cards read: one gains ambush only when
+      // played from hand, and must NOT gain it when it arrives out of the resource row
+      // for its smuggle cost. The smuggle path deliberately leaves this unset.
+      unit.playedFromHand = true;
       state[card.arena].push(unit);
       // Say it out loud, and only once the unit is on the board so the line can name it:
       // a unit that arrives ready looks identical to one the opponent exhausted a moment

@@ -19,6 +19,15 @@ missing mechanic):
   picks are not constrained to be distinct from each other.
 - Abilities lent to another attacker by a support-style unit last until end of
   round rather than only for that one attack.
+- Costs that are not resources or exhausting — discarding a card, returning a unit to
+  hand — are modeled as the ability's first effect rather than as a price paid to
+  activate it (sec-007, law-015). The card resolves the same way when the price can be
+  paid; the difference shows only when it cannot, where the printed card would not
+  offer the action at all and ours offers it and fizzles.
+- Shield tokens are a counter on the unit rather than an attached upgrade, so an
+  ability that fires when an upgrade attaches (ash-208) does not fire for the shield
+  the unit's own shielded keyword gives it on arrival. Every other way an upgrade
+  reaches it does fire.
 - law-237's "Look at the top 3 cards of your deck. You may discard 1 of them. Put
   the rest back on top in any order." keeps the kept cards in their original
   relative order instead of letting the player re-arrange them.

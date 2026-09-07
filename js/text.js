@@ -10,6 +10,12 @@
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
   // 'an' by sound, not spelling: 'a unit', 'a used card' but 'an Umbra unit'.
+  // "A or B or C or D" is how a chain of ors reads when a character has four printings
+  // and the condition names every one of them. Commas until the last.
+  function orList(parts) {
+    if (parts.length < 3) return parts.join(' or ');
+    return parts.slice(0, -1).join(', ') + ' or ' + parts[parts.length - 1];
+  }
   function an(phrase) { return (/^[aeiou]/i.test(phrase) && !/^u(ni|se)/i.test(phrase) ? 'an ' : 'a ') + phrase; }
   // The unique insignia's word is vocabulary (names.js terms: "champion", or the pack's
   // word), read at render time so the describers follow the active name set.
@@ -43,6 +49,7 @@
     if (sel.minPower != null) s += ' with power ' + sel.minPower + ' or more';
     if (sel.maxPower != null) s += ' with power ' + sel.maxPower + ' or less';
     if (sel.maxCostRefPlayed) s += ' that costs no more than the played card';
+    if (sel.costEqRefPlayed) s += ' that costs the same as the played card';
     if (sel.tokenOnly) s = s.replace(/unit$/, 'token unit');
     if (sel.traitOrCards) s += ' (of the matching kind or the named ' + U() + ')';
     if (sel.pilotish) s += ' that is a pilot or carries one';
@@ -60,6 +67,8 @@
     if (sel.damagedBaseThisPhase) s += ' that dealt damage to a base this phase';
     if (sel.sharesTraitWithFriendlyLeader) s += ' that shares a kind with a friendly leader';
     if (sel.sameArenaAsSaved) s += ' in the same arena as the chosen unit';
+    if (sel.otherArenaFromSource) s += ' in the other arena';
+    if (sel.costLtSaved) s += ' that costs less than the chosen unit';
     if (sel.powerLteSaved) s += ' with power no greater than the chosen unit’s';
     if (sel.costGtLastDiscarded) s += ' that costs more than the discarded card';
     if (sel.damaged) s += ' that is damaged';       // engine: selectorCandidates .damaged
@@ -172,7 +181,14 @@
   const opText = {
     damage: function (op) { return dealText('deal', op, 'damage', 'to ' + targetText(op)); },
     heal: function (op) { return dealText('heal', op, 'damage', 'from ' + targetText(op)); },
-    draw: function (op) { return 'draw ' + ((op.amount || 1) === 1 ? 'a card' : op.amount + ' cards'); },
+    // The engine draws for whoever `who` names; saying "draw a card" for all of them
+    // made a card that hands the OPPONENT a card read as if you drew it twice.
+    draw: function (op) {
+      const cards = (op.amount || 1) === 1 ? 'a card' : op.amount + ' cards';
+      if (op.who === 'opponent') return 'the opponent draws ' + cards;
+      if (op.who === 'targetOwner') return 'its controller draws ' + cards;
+      return 'draw ' + cards;
+    },
     drawRef: function (op) { return 'draw a card for each ' + (op.amountRef === 'friendlyMinRemHpCount' ?
       'friendly unit with ' + op.minRemHp + ' or more remaining HP' : 'matching thing'); },
     shield: function (op) { return 'give a shield to ' + targetText(op); },
@@ -202,7 +218,9 @@
     discard: function (op) {
       const who = op.who === 'self' ? 'you discard' : 'your opponent discards';
       const f = op.filter || {};
-      const what = f.type ? an(f.type) : f.notType ? 'a non-' + f.notType + ' card' : 'a card';
+      let what = f.type ? an(f.type) : f.notType ? 'a non-' + f.notType + ' card' : 'a card';
+      if (f.minCost != null) what += ' that costs ' + f.minCost + ' or more';
+      if (f.maxCost != null) what += ' that costs ' + f.maxCost + ' or less';
       const whose = op.who === 'self' ? ' from your hand' : ' from their hand';
       return who + ' ' + ((op.amount || 1) === 1 ? what : (op.amount + ' cards')) + whose;
     },
@@ -294,7 +312,9 @@
       return 'look at the top card of your deck — you may ' + op.modes.map(function (m) { return verbs[m]; }).join(', or ');
     },
     peekTopDiscardUpTo: function (op) {
-      return 'look at the top ' + op.depth + ' cards of your deck. You may discard 1 of them, then put the rest back on top';
+      return 'look at the top ' + op.depth + ' cards of ' +
+        (op.who === 'opponent' ? 'the opponent’s deck. ' : 'your deck. ') +
+        (op.required ? 'Discard 1 of them' : 'You may discard 1 of them') + ', then put the rest back on top';
     },
     playFromHand: function (op) {
       const f = op.filter || {};
@@ -319,6 +339,9 @@
       if (op.entersReady) perks.push('it enters play ready');
       if (op.withHidden) perks.push('it gains Hidden for this round');
       if (op.withAmbush) perks.push('it gains Ambush for this round');
+      // The engine honours this; leaving it out of the text made a leader look like it
+      // merely played a unit, hiding the payoff for spending a credit on the cost.
+      if (op.withAmbushIfCredit) perks.push('if a credit token was defeated paying for it, it gains Ambush for this round');
       if (op.defeatAtRegroup) perks.push('defeat it at the start of the regroup phase');
       if (op.returnAtRegroup) perks.push('return it to hand at the start of the regroup phase');
       if (perks.length) s += ' — ' + perks.join(', ');
@@ -706,6 +729,8 @@
       return 'if you control ' + an(c.aspects.map(function (a) { return SB.names.aspects[a] || a; }).join(' or ') + ' unit');
     },
     canPay: function (c) { return 'if you can pay ' + c.n + ' resource' + (c.n === 1 ? '' : 's'); },
+    enemyDefeatedThisPhase: function () { return 'if an enemy unit was defeated this phase'; },
+    playedFromHand: function () { return 'if you played this unit from your hand'; },
     selfReady: function () { return 'while this unit is ready'; },
     selfRemHpAtLeast: function (c) { return 'if this unit has ' + c.n + ' or more remaining HP'; },
     controlArenaUnit: function (c) { return 'while you control a ' + c.arena + ' unit'; },
@@ -729,7 +754,16 @@
     playedCardThisPhase: function () { return 'if you played a card this phase'; },
     friendlyDefeatedThisPhase: function () { return 'if a friendly unit was defeated this phase'; },
     attachedIs: function (c) { return 'if attached to ' + (c.cards || []).map(function (id) { return SB.names.card(id); }).join(' or '); },
-    controlCard: function (c) { return 'if you control ' + (c.cards || []).map(function (id) { return SB.names.card(id); }).join(' or '); },
+    // Two printings of one character share a name, and naming the same person twice
+    // ("control X or X") reads as a mistake. Dedupe on the rendered name, not the id.
+    controlCard: function (c) {
+      const seen = [];
+      (c.cards || []).forEach(function (id) {
+        const n = SB.names.card(id);
+        if (seen.indexOf(n) < 0) seen.push(n);
+      });
+      return 'if you control ' + orList(seen);
+    },
     bearerHasTrait: function (c) { return 'if the attached unit is ' + an((SB.names.traits[c.trait] || c.trait) + ' unit'); },
     milledNonUnit: function () { return 'if the discarded card was not a unit'; },
     saved: function (c) { return c.not ? 'if no target was chosen' : 'if a target was chosen'; },

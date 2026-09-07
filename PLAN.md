@@ -87,27 +87,61 @@ prebuilt 50-card decks. Grow after the loop is fun.
 - Audio: ElevenLabs SFX for structured-log events (ambience, not music).
 - Key precedence: flag → env var → gitignored file.
 
-### Phase 7 — Polish & balance
-- Deck-matrix win rates as a crude balance readout; expand the set once the loop is fun.
+### Phase 7 — Polish
+- Originally: deck-matrix win rates as a balance readout, to tune our own cards. That
+  premise died when the scope changed. The pool is now a faithful reproduction of published
+  cards, so there is no balance knob to turn — a deck that underperforms is the meta, not a
+  bug, and changing a cost or a stat to even it out would be exactly the deviation this
+  project refuses. Deck win rates measure the AI and the engine's fidelity, nothing else.
+- What is left here is polish: play bugs, and AI strength measured per `docs/ai.md`.
 
 ## Order of play
 Phases 0–3 land together as the foundation (engine + tests before any UI). Then UI with
 placeholder art, then AI, then theme/art/audio last — art is the most expensive and least
 reworkable step, so it waits until names and card pool are stable.
 
-## Status (2026-08-29, autonomous build session)
+## Status (2026-09-07)
 
-- DONE Phase 0–3: repo hygiene, engine, content system, tests (40 green: text-quality,
-  200-game fuzz, 16-deck matrix, reproducibility, immutability, AI pinned decisions,
-  AI-vs-AI full game).
-- DONE expanded scope: all 16 precon decks (3 two-player starters + 10 spotlight decks,
-  sets 1–8), 408 unique cards + 6 tokens, every mechanic implemented (see DEVIATIONS.md
-  for the few logged digital-model simplifications).
-- DONE Phase 4–5: playable click UI with generic choice bar for every queue step; AI
-  with three difficulties (docs/ai.md).
-- DONE Phase 6 naming: "Starbound Legions" theme (THEME.md), 414 original names.
-- Art: pipeline live (tools/gen-art.mjs, HF router → FLUX.1-schnell); prompts in
-  tools/art-prompts.json; delivery WebPs in art/ are committed and served by GitHub
-  Pages (PAGES-PLAN.md); masters and PNG intermediates stay gitignored.
-- Sound: pipeline built (tools/gen-sfx.mjs + js/sound.js) — BLOCKED on a valid
-  ElevenLabs key (.elevenlabs_key is rejected by the API).
+Scope grew well past the first-set target below (2 leaders + 2 bases + ~50 cards): the game
+now carries 1,500+ registered cards across every set, 16 precon decks plus 20 tournament
+lists, and is deployed on GitHub Pages. Test suite: 117 green
+(`node tools/run-tests.mjs --quiet`).
+
+### Complete
+
+- **Phases 0-3** — repo hygiene, engine (`legalActions`/`apply`/`isTerminal`, immutable,
+  seeded RNG, structured log), content system with generated rules text, and the test
+  foundation: day-one text-quality guard over every card, 200-game fuzz, deck matrix,
+  reproducibility, immutability, content-integrity gates.
+- **Phase 4** — playable click UI, generic choice bar for every queue step, deck-picker
+  screen, undo, log-driven sound, and per-hit battle animations (`js/anim.js`, planned
+  purely and tested in `tests/test-anim.js`).
+- **Phase 5** — three AI difficulties, pinned-decision tests with margins, `docs/ai.md`.
+- **Phase 6** — "The Sundered Veil" theme (THEME.md) and 414 original names; art pipeline
+  (`tools/gen-art.mjs`, FLUX.1-schnell via HF) with delivery WebPs committed for Pages;
+  audio done and in game (`tools/gen-sfx.mjs` + `js/sound.js`, 22 clips committed under
+  `sfx/`). The earlier ElevenLabs key blocker is resolved.
+- Every mechanic in the list above is implemented; digital-model simplifications are logged
+  in DEVIATIONS.md.
+
+### In flight
+
+- **Card behaviour bugs found in play** — ongoing. Fix one at a time: grep the id in
+  `data/cards-*.js`, read only that entry and its op handler, add a case to
+  `tests/test-expansion.js`, run the suite, commit.
+- **Text audit — DONE, 2026-09-07.** `tools/audit-card-text.mjs` is portable (printed
+  text comes from the committed X table, so no dump and no network) and covers every
+  card the registered decks use: 792 compared. Every real finding is fixed and pinned
+  by a test; the flags that remain are our own vocabulary and paraphrase. Re-run it
+  after authoring cards — presence of a keyword is not evidence the card is right,
+  which is what it found over and over.
+- **AI quality on the competitive matrix** — `tools/ai-balance.mjs` over the competitive
+  group, as `docs/ai.md` already uses it: A/B a weight change against the same seed and
+  pairings, with random play as the control. Ongoing whenever the AI changes.
+
+### Not planned
+
+- **~590 cards carry no abilities or keywords.** This is deliberate, not a backlog: the
+  competitive decks that are implemented make no use of them, so authoring them buys
+  nothing. Author a card when a deck needs it.
+- The 21 sideboard-only skeletons fall under the same rule.

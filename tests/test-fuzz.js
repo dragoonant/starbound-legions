@@ -34,8 +34,10 @@
   });
 
   // Deck-matrix fuzz over the real deck registry: every deck vs every other, both
-  // seats. With only fixtures loaded this covers the fixtures; when the 13 real
-  // decks land this automatically becomes the full matrix + crude balance readout.
+  // seats. With only fixtures loaded this covers the fixtures; real decks join the
+  // matrix automatically as they land. This is a crash gate, not a balance readout:
+  // the cards are reproductions and cannot be tuned. AI strength is measured
+  // separately by tools/ai-balance.mjs (see docs/ai.md).
   // The competitive group (data/decks.js, group:'competitive') is 20 decks on top of the
   // 16 precons; a full matrix over all of them is ~1,400 games and blew the runner's
   // budget. Precons keep the full matrix; each competitive deck plays a fixed trio of
