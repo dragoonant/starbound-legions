@@ -80,6 +80,37 @@ Define size as CSS custom properties on `:root` so responsive breakpoints overri
 .card-preview { width: var(--card-preview-w); min-height: 26rem; } /* NO aspect-ratio */
 ```
 
+### Size the board card to the arena, not to a guess
+
+A board card's width is a share of the mat, so the number is not a taste decision — it is bounded,
+and the binding bound is **height, not width**. Work it out rather than picking it:
+
+```
+row height = arena height  −  vertical padding  −  the gap between the two rows,  halved
+card width = row height / (7/5)
+```
+
+Anything less than that leaves the arena's vertical space unused, and vertical space is the
+scarcest thing on a phone or a short window. Take ~95% of the computed ceiling so the hover lift
+and any badge overflow have somewhere to go, and put the result in `--card-board-w`.
+
+**A crowded row does not constrain this, and it is worth knowing exactly why.** Once units overlap
+(§4 — the row fans rather than wrapping), the visible sliver of a covered card is
+
+```
+card_w + (row_w − card_w × n) / (n − 1)     →     row_w / (n − 1)  as n grows
+```
+
+The card width **cancels**. A row of ten units shows the same sliver of each whether the cards are
+small or large; all the extra size goes to the uncovered card and to every row below the count at
+which overlap begins. So sizing the card for the COMMON case (a handful of units) costs the
+crowded case nothing. The fan is what makes a large card safe — it is not an argument for a small
+one.
+
+This is also why the card must stay ONE fixed size rather than growing when its side is empty
+(below). Spacing responds to count; width does not. A unit that resized when its neighbour died
+would make the board move for a reason that has nothing to do with the board.
+
 **The preview must not have a fixed aspect ratio.** It carries variable-length rules text and has
 to grow. Give it a `min-height` instead so short cards don't look stunted.
 
@@ -664,6 +695,27 @@ And keep hand cards at a readable thumb width instead of letting flex squeeze th
 #hand { justify-content: flex-start; }   /* narrow screens */
 #hand .card { flex: none; }
 ```
+
+### Standalone display
+
+On a phone the browser's own chrome is a real fraction of a landscape viewport — a toolbar plus
+the home indicator is on the order of 15% of the height, and height is what the arena is short of.
+Most of it comes back for free with a web app manifest and the iOS meta tags: added to the home
+screen, the game runs with no toolbar at all.
+
+```html
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+```
+
+with `"display": "standalone"` and `"orientation": "landscape"` in the manifest, and
+`env(safe-area-inset-*)` padding on the app shell — a notched device eats ~59px on each side in
+landscape whether or not there is a toolbar, and content under the notch is content lost.
+
+This is worth doing and it is nearly free, but be clear about what it is not: it buys back the
+toolbar, not the safe areas, and it does nothing about card size. If the board is illegible on a
+phone, removing the toolbar will not fix it — §2's sizing and §12's content removal will.
 
 ### Orientation
 
