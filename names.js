@@ -47,6 +47,22 @@
       unkillableThisRound: 'This round, running out of HP does not defeat this unit.',
     },
     decks: {},     // deckId -> display name
+    // The bug-report dialog (js/bugreport.js). {file}, {round} and {actions} are filled in.
+    bug: {
+      title: 'Flag a bug',
+      blurb: 'Say what you expected and what happened instead. The report carries the ' +
+        'match itself — seed, both decks and every action — so the exact position can ' +
+        'be replayed.',
+      placeholder: 'What went wrong?',
+      attaches: 'Attached: round {round}, {actions} recorded events, plus the seed and both decks.',
+      send: 'Send report', pinOnly: 'Pin only', cancel: 'Cancel', close: 'Close',
+      sending: 'Saving…',
+      pinned: 'Pinned to this moment. Save the report when you are done playing.',
+      savedServer: 'Saved to traces/{file}.',
+      savedDownload: 'Downloaded {file} — drop it in the game\u2019s traces/ folder.',
+      failed: 'Could not save the report.',
+      noGame: 'No match is being played.',
+    },
     // Game vocabulary that is THEME, not mechanics: what the power token and the unique
     // insignia are called. Nothing stores these words — every generated log line,
     // prompt, label and help paragraph builds its prose from them at render time — and
@@ -69,8 +85,8 @@
       newGame: 'New game', helpBtn: 'How to play',
       // The black box: a pin dropped the moment something looks wrong, and the trace
       // that reproduces the whole match (js/bugreport.js).
-      flagBug: 'Flag a bug', flagPrompt: 'What went wrong? (one line)',
-      flagged: 'Flagged ✓', saveReport: 'Save bug report', savedReport: 'Saved ✓',
+      flagBug: 'Flag a bug', flagged: 'Flagged ✓',
+      saveReport: 'Save bug report', savedReport: 'Saved ✓', saveFailed: 'Save failed',
       // The log/history drawer (collapsed at the start of a game) and its controls.
       logDrawer: 'Battle log', logOpen: 'Log', logClose: 'Close',
       muteOn: 'Sound: on', muteOff: 'Sound: off',
