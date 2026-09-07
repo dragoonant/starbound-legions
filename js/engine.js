@@ -72,6 +72,15 @@
         const maxK = Math.min(exKw.n, SB.allUnits(state, me).length);
         cost = Math.max(0, cost - 2 * maxK); // affordable via max exploit
       }
+      // altCostDiscard: pay by discarding a card of the named aspect instead of paying
+      // the cost. One action per candidate so the player picks which card goes.
+      if (card.altCostDiscard) {
+        p.hand.forEach(function (pay, j) {
+          if (j === i) return;
+          if ((SB.card(pay.cardId).aspects || []).indexOf(card.altCostDiscard.aspect) < 0) return;
+          acts.push({ type: 'playCard', player: me, handIndex: i, cardId: inst.cardId, altDiscardIndex: j });
+        });
+      }
       if (cost > SB.readyResources(state, me)) return;
       if (card.type === 'unit') {
         if (card.unique && SB.allUnits(state, me).some(function (u) { return u.cardId === inst.cardId; })) return;
@@ -139,7 +148,7 @@
     if (!p.leader.deployed) {
       // A leader defeated as a unit stays leader-side up for the rest of the game:
       // its leader-side abilities still work, but it can never deploy again.
-      if (!p.leader.defeated && p.resources.length >= leaderCard.deployCost) {
+      if (!p.leader.defeated && SB.deployReach(state, me) >= leaderCard.deployCost) {
         acts.push({ type: 'deployLeader', player: me });
         if (leaderCard.pilotSide) {
           SB.allUnits(state, me).forEach(function (u) {
@@ -396,7 +405,7 @@
         const unit = SB.makeUnit(state, inst.cardId, me);
         unit.uid = inst.uid;
         state[card.arena].push(unit);
-        if (SB.hasKeyword(state, unit, 'shielded')) { unit.shields += 1; SB.log(state, { type: 'shield', uid: unit.uid, sound: 'shield' }); }
+        if (SB.hasKeyword(state, unit, 'shielded')) SB.giveShield(state, unit, 1);
         SB.fireTriggers(state, 'onSmuggle', unit, { sourceUid: unit.uid });
         if (SB.hasKeyword(state, unit, 'ambush')) {
           state.queue.push({ step: 'effect', controller: me, ctx: { sourceUid: unit.uid, cardId: unit.cardId },
@@ -414,6 +423,7 @@
         inst.owner = me;
         target.upgrades.push(inst);
         SB.log(state, { type: 'attached', uid: target.uid, cardId: inst.cardId, sound: 'attach' });
+      SB.fireTriggers(state, 'onUpgradeAttachedSelf', target, { sourceUid: target.uid, upgradeCardId: inst.cardId });
         (card.abilities || []).forEach(function (ab) {
           if (ab.trigger !== 'onPlay' && ab.trigger !== 'onSmuggle') return;
           SB.queueEffects(state, me, ab.effects, { sourceUid: target.uid, cardId: inst.cardId,
@@ -427,7 +437,7 @@
     } else if (action.type === 'deployLeaderPilot') {
       const lc = SB.card(p.leader.cardId);
       expect(!p.leader.deployed && !p.leader.defeated &&
-        p.resources.length >= lc.deployCost && lc.pilotSide, action);
+        SB.deployReach(state, me) >= lc.deployCost && lc.pilotSide, action);
       const bearer = SB.findUnit(state, action.attachTo);
       expect(bearer && bearer.owner === me && !SB.hasPilot(state, bearer), action);
       p.leader.deployed = 'pilot';
@@ -445,13 +455,16 @@
     } else if (action.type === 'deployLeader') {
       const leaderCard = SB.card(p.leader.cardId);
       expect(!p.leader.deployed && !p.leader.defeated &&
-        p.resources.length >= leaderCard.deployCost, action);
+        SB.deployReach(state, me) >= leaderCard.deployCost, action);
       p.leader.deployed = true;
       const unit = SB.makeUnit(state, p.leader.cardId, me);
       unit.exhausted = false; // leaders deploy ready
       p.leader.uid = unit.uid;
       state[leaderCard.deployedSide.arena || 'ground'].push(unit);
       SB.log(state, { type: 'deployLeader', player: me, cardId: p.leader.cardId, sound: 'deploy' });
+      // A deployed side printed with Shielded gets its shield on the deploy — that is
+      // the only moment the leader is ever "played".
+      if (SB.hasKeyword(state, unit, 'shielded')) SB.giveShield(state, unit, 1);
       SB.fireTriggers(state, 'onDeploy', unit, { sourceUid: unit.uid });
       state.queue.push({ step: 'plotOffer', player: me });
     } else if (action.type === 'leaderAction') {
@@ -459,7 +472,10 @@
       expect(ab && ab.trigger === 'action' && !p.leader.exhausted, action);
       expect(!ab.gate || SB.checkCondition(state, me, ab.gate, {}), action);
       expect(!ab.forceCost || p.force, action);
-      if (ab.forceCost) { p.force = false; SB.log(state, { type: 'forceUsed', player: me, sound: 'ability' }); }
+      if (ab.forceCost) {
+        p.force = false; p.forceUsesThisPhase = (p.forceUsesThisPhase || 0) + 1;
+        SB.log(state, { type: 'forceUsed', player: me, sound: 'ability' });
+      }
       payResources(state, me, ab.cost || 0);
       p.leader.exhausted = true;
       SB.log(state, { type: 'leaderAction', player: me, sound: 'ability' });
@@ -480,6 +496,15 @@
     }
     advanceTurn(state);
   }
+
+  // What a leader's deploy threshold is measured against. Normally the resources you
+  // control; a leader printed with deployCostCountsForceUses also counts the times you
+  // used the Force this phase (lof-007).
+  SB.deployReach = function (state, playerIdx) {
+    const p = state.players[playerIdx];
+    const card = SB.card(p.leader.cardId);
+    return p.resources.length + (card.deployCostCountsForceUses ? (p.forceUsesThisPhase || 0) : 0);
+  };
 
   function payResources(state, playerIdx, n) {
     const p = state.players[playerIdx];
@@ -511,6 +536,7 @@
     expect(inst && inst.cardId === action.cardId, action);
     const card = SB.card(inst.cardId);
     let cost = Math.max(0, SB.cardCost(state, me, inst.cardId) - (mods.discount || 0));
+    if (action.altDiscardIndex != null) cost = 0;
     if (action.asPilot) {
       const pk = (card.keywords || []).find(function (k) { return k.k === 'piloting'; });
       cost = SB.smuggleCost(state, me, card, pk);
@@ -541,6 +567,14 @@
     else if (action.fromDeckIndex != null) p.deck.splice(action.fromDeckIndex, 1);
     else if (action.fromDiscard != null) p.discard.splice(action.fromDiscard, 1);
     else p.hand.splice(action.handIndex, 1);
+    if (action.altDiscardIndex != null) {
+      // The paid card was indexed before the played card left the hand.
+      const j = action.altDiscardIndex - (action.handIndex != null && action.altDiscardIndex > action.handIndex ? 1 : 0);
+      const paid = p.hand.splice(j, 1)[0];
+      expect(paid, action);
+      p.discard.push(paid);
+      SB.log(state, { type: 'discard', player: me, cardId: paid.cardId, sound: 'discard' });
+    }
     p.playedThisPhase = p.playedThisPhase || [];
     p.playedThisPhase.push(inst.cardId);
     SB.log(state, { type: 'playCard', player: me, cardId: inst.cardId, cost: cost, sound: 'play' });
@@ -587,15 +621,14 @@
       // a unit that arrives ready looks identical to one the opponent exhausted a moment
       // later, and from the log alone the player cannot tell which happened.
       if (grantedReady) SB.log(state, { type: 'arrivedReady', uid: unit.uid, sound: 'buff' });
-      if (SB.hasKeyword(state, unit, 'shielded')) {
-        unit.shields += 1;
-        SB.log(state, { type: 'shield', uid: unit.uid, sound: 'shield' });
-      }
+      if (SB.hasKeyword(state, unit, 'shielded')) SB.giveShield(state, unit, 1);
       // Ambush: may ready and attack immediately. It triggers on the play, so it is
       // batched with the leader's when-you-play-a-unit offers below and the player
       // chooses which of them resolves first.
       const simul = [];
-      if (SB.hasKeyword(state, unit, 'ambush')) {
+      // entersWithAmbushFromHand: ambush only on this path — the card played from hand,
+      // not the same card smuggled off a resource or plotted into play.
+      if (SB.hasKeyword(state, unit, 'ambush') || card.entersWithAmbushFromHand) {
         simul.push({ step: 'effect', controller: me, ctx: { sourceUid: unit.uid, cardId: unit.cardId },
           op: { op: 'ambushAttack', target: null } });
       }
@@ -1120,6 +1153,7 @@
     state.phaseNamedBlocks = [];
     state.players.forEach(function (p) {
       p.playedThisPhase = []; p.eventsThisRound = 0; p.discounts = []; p.plotDiscount = 0;
+      p.forceUsesThisPhase = 0;
       p.discardedThisPhase = []; p.entersReadyGrants = []; p.createdTokenThisPhase = false;
       delete p.echoNextOnPlay;
     });

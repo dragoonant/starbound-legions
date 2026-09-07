@@ -1375,4 +1375,261 @@
     T.eq(SB.findUnit(s, g.uid).temp.power, 0, 'neither ground unit is "the only unit in its arena" — no buff landed');
     T.eq(SB.findUnit(s, w.uid).temp.power, 0, 'same for the other one');
   });
+
+  // ---- wave-2 audit: cards whose printed rules had no implementation at all --------
+
+  T.add('audit shd-187: enemy card abilities cannot damage, defeat or capture it', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    const ward = T.putOnBoard(s, foe, 'shd-187');
+    SB.damageUnit(s, ward, 2, { controller: me });
+    T.eq(SB.findUnit(s, ward.uid).damage, 0, 'ability damage from the other side is shrugged off');
+    SB.damageUnit(s, ward, 1, { controller: foe });
+    T.eq(SB.findUnit(s, ward.uid).damage, 1, 'its own controller can still damage it');
+    SB.damageUnit(s, ward, 5, { controller: me, combat: true });
+    T.ok(!SB.findUnit(s, ward.uid), 'combat damage still kills it');
+  });
+
+  T.add('audit ash-208: a shield arriving counts as an upgrade attaching', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const victim = T.putOnBoard(s, foe, 'fx-grunt', { exhausted: false });
+    s = play(s, me, 'ash-208');
+    s = drive(s, function (a) { return a.type !== 'chooseNone' && a.target ? a.target.uid === victim.uid : true; });
+    T.ok(SB.findUnit(s, victim.uid).exhausted, 'the shielded keyword fired the attach trigger');
+  });
+
+  T.add('audit jtl-198: it damages itself when the regroup phase starts', function () {
+    let s = T.game(); const me = 0;
+    const u = T.putOnBoard(s, me, 'jtl-198');
+    s.active = me; s.players[me].locked = false;
+    SB.fireTriggers(s, 'onRegroup', u, { sourceUid: u.uid });
+    SB.drainQueue(s);
+    T.eq(SB.findUnit(s, u.uid).damage, 1, 'one damage on itself at regroup');
+  });
+
+  T.add('audit sor-198: it strikes first while attacking', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    const mine = T.putOnBoard(s, me, 'sor-198', { exhausted: false });
+    const theirs = T.putOnBoard(s, foe, 'fx-grunt'); // 2/2, dies to 6 power before it swings
+    s.active = me;
+    s = T.act(s, { type: 'attack', attacker: mine.uid, target: { kind: 'unit', uid: theirs.uid } });
+    s = drive(s);
+    T.ok(!SB.findUnit(s, theirs.uid), 'the defender is gone');
+    T.eq(SB.findUnit(s, mine.uid).damage, 0, 'and it never dealt its damage back');
+  });
+
+  T.add('audit twi-196: coordinate hands it Raid 3 at three units', function () {
+    let s = T.game(); const me = 0;
+    const u = T.putOnBoard(s, me, 'twi-196');
+    T.ok(!SB.hasKeyword(s, u, 'raid'), 'no raid on its own');
+    T.putOnBoard(s, me, 'fx-grunt'); T.putOnBoard(s, me, 'fx-wall');
+    T.ok(SB.hasKeyword(s, u, 'raid'), 'raid once you control three units');
+  });
+
+  T.add('audit shd-204: ambush from hand only, and its smuggle cost is 6', function () {
+    T.eq(SB.card('shd-204').keywords[0].cost, 6, 'the printed smuggle cost');
+    T.ok(!SB.hasKeyword(T.game(), { cardId: 'shd-204', upgrades: [], temp: {} }, 'ambush'),
+      'it does not carry Ambush as a printed keyword');
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const prey = T.putOnBoard(s, foe, 'fx-flyer'); // 3/2 in space
+    s = play(s, me, 'shd-204');                    // 5/5 in space
+    s = drive(s);
+    T.ok(!SB.findUnit(s, prey.uid), 'played from hand, it attacked the moment it landed');
+  });
+
+  T.add('audit sor-199: a Cunning card may be discarded instead of paying', function () {
+    let s = T.game(); const me = 0;
+    s.active = me;
+    T.putInHand(s, me, 'sor-199');
+    T.putInHand(s, me, 'fx-ghost'); // cunning
+    s.players[me].resources = [];
+    const acts = SB.legalActions(s).filter(function (a) { return a.type === 'playCard' && a.cardId === 'sor-199'; });
+    T.eq(acts.length, 1, 'with no resources at all the alternate cost is the only way to play it');
+    T.ok(acts[0].altDiscardIndex != null, 'and it is the discard payment');
+    const before = s.players[me].hand.length;
+    s = T.act(s, acts[0]);
+    T.eq(s.players[me].hand.length, before - 2, 'both the event and the card that paid for it left the hand');
+  });
+
+  T.add('audit sec-209: defeating a unit in combat lets it capture another', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    const mine = T.putOnBoard(s, me, 'sec-209', { exhausted: false });
+    const dies = T.putOnBoard(s, foe, 'fx-grunt');
+    const prize = T.putOnBoard(s, foe, 'fx-medic');
+    s.active = me;
+    s = T.act(s, { type: 'attack', attacker: mine.uid, target: { kind: 'unit', uid: dies.uid } });
+    s = drive(s);
+    T.ok(!SB.findUnit(s, prize.uid), 'the second unit was carried off');
+  });
+
+  // ---- the ten leaders that deployed with no abilities at all ----------------------
+
+  T.add('audit ash-007 leader: one arena gains Sentinel and Overwhelm', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    s.players[me].leader.cardId = 'ash-007'; s.active = me;
+    const g = T.putOnBoard(s, foe, 'fx-grunt');
+    const f = T.putOnBoard(s, me, 'fx-flyer');
+    s = T.act(s, { type: 'leaderAction' });
+    s = drive(s, function (a) { return a.type !== 'binary' || a.pick === 'a'; });
+    T.ok(SB.hasKeyword(s, SB.findUnit(s, g.uid), 'sentinel'), 'every ground unit, both sides');
+    T.ok(SB.hasKeyword(s, SB.findUnit(s, g.uid), 'overwhelm'), 'and overwhelm with it');
+    T.ok(!SB.hasKeyword(s, SB.findUnit(s, f.uid), 'sentinel'), 'the space arena was not the one chosen');
+  });
+
+  T.add('audit ash-007 unit side: the aura passes both keywords to the others', function () {
+    let s = T.game(); const me = 0;
+    deployed(s, me, 'ash-007');
+    const g = T.putOnBoard(s, me, 'fx-grunt');
+    T.ok(SB.hasKeyword(s, g, 'overwhelm') && SB.hasKeyword(s, g, 'sentinel'), 'each other friendly unit');
+  });
+
+  T.add('audit jtl-015 leader: a space unit attacks with +1 power and saboteur', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    s.players[me].leader.cardId = 'jtl-015'; s.active = me;
+    T.giveResources(s, me, 1);
+    const mine = T.putOnBoard(s, me, 'fx-flyer', { exhausted: false }); // 3/2 in space
+    const wall = T.putOnBoard(s, foe, 'fx-shieldy');                    // 2/3 shielded, space
+    s = T.act(s, { type: 'leaderAction' });
+    s = drive(s, function (a) { return !a.attacker || a.attacker === mine.uid; });
+    T.ok(!SB.findUnit(s, wall.uid), 'saboteur popped the shield and +1 power finished it');
+  });
+
+  T.add('audit law-002 leader: the gift pays a credit', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].leader.cardId = 'law-002'; s.active = me;
+    const g = T.putOnBoard(s, me, 'fx-grunt');
+    s = T.act(s, { type: 'leaderAction' });
+    s = drive(s);
+    T.eq(SB.findUnit(s, g.uid).owner, 1, 'the opponent controls it now');
+    T.eq(s.players[me].credits || 0, 1, 'and a credit was created');
+  });
+
+  T.add('audit lof-001 leader: discarding an upgrade draws', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].leader.cardId = 'lof-001'; s.active = me;
+    T.putInHand(s, me, 'fx-blade');
+    const hand = s.players[me].hand.length;
+    s = T.act(s, { type: 'leaderAction' });
+    s = drive(s, function (a) { return a.type !== 'discardCard' || SB.card(s.players[me].hand[a.handIndex].cardId).type === 'upgrade'; });
+    T.eq(s.players[me].hand.length, hand, 'one card discarded, one drawn back');
+    T.eq(s.players[me].discard[s.players[me].discard.length - 1].cardId, 'fx-blade', 'the upgrade is the card that went');
+  });
+
+  T.add('audit lof-007: force uses count towards its deploy threshold', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].leader.cardId = 'lof-007'; s.active = me;
+    T.giveResources(s, me, 8);
+    s.players[me].resources = s.players[me].resources.slice(0, 8);
+    T.ok(!SB.legalActions(s).some(function (a) { return a.type === 'deployLeader'; }), '8 resources is not enough');
+    s.players[me].forceUsesThisPhase = 1;
+    T.ok(SB.legalActions(s).some(function (a) { return a.type === 'deployLeader'; }), 'one use of the Force closes the gap');
+  });
+
+  T.add('audit sec-006 leader: a second, cheaper unit may follow the first into the attack', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    s.players[me].leader.cardId = 'sec-006'; s.active = me;
+    const brute = T.putOnBoard(s, me, 'fx-brute'); // cost 4, attacks first
+    const grunt = T.putOnBoard(s, me, 'fx-grunt'); // cost 1, may follow
+    T.putOnBoard(s, foe, 'fx-medic');
+    s = T.act(s, { type: 'leaderAction' });
+    s = drive(s);
+    const attackers = s.log.filter(function (e) { return e.type === 'attackDeclared'; })
+      .map(function (e) { return e.attacker; });
+    T.eq(attackers.length, 2, 'two attacks came out of one leader action');
+    T.eq(attackers[0], brute.uid, 'the 4-cost unit went first');
+    T.eq(attackers[1], grunt.uid, 'and only the cheaper unit could follow it');
+  });
+
+  T.add('audit sec-006 leader: nothing follows when the first attacker is the cheapest', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    s.players[me].leader.cardId = 'sec-006'; s.active = me;
+    T.putOnBoard(s, me, 'fx-grunt');  // cost 1 — the only ready unit
+    T.putOnBoard(s, foe, 'fx-medic');
+    s = T.act(s, { type: 'leaderAction' });
+    s = drive(s);
+    T.eq(s.log.filter(function (e) { return e.type === 'attackDeclared'; }).length, 1,
+      'no unit costs less than a 1-cost attacker, so the second attack never happens');
+  });
+
+  T.add('audit sec-007 leader: the action needs a card costing 6 or more to discard', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].leader.cardId = 'sec-007'; s.active = me;
+    s.players[me].hand = [];
+    T.putInHand(s, me, 'fx-grunt');
+    T.ok(!SB.legalActions(s).some(function (a) { return a.type === 'leaderAction'; }),
+      'nothing expensive in hand — the action is not offered');
+    T.putInHand(s, me, 'sec-209'); // cost 8
+    T.ok(SB.legalActions(s).some(function (a) { return a.type === 'leaderAction'; }),
+      'an 8-cost card in hand unlocks it');
+  });
+
+  T.add('audit sec-017 leader: base damage lets it strip the enemy deck', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    s.players[me].leader.cardId = 'sec-017'; s.active = me;
+    const mine = T.putOnBoard(s, me, 'fx-grunt', { exhausted: false });
+    const deckBefore = s.players[foe].deck.length;
+    s = T.act(s, { type: 'attack', attacker: mine.uid, target: { kind: 'base', player: foe } });
+    s = drive(s);
+    T.eq(s.players[foe].deck.length, deckBefore - 1, 'one card left their deck');
+    T.ok(s.players[me].leader.exhausted, 'the leader paid with its own exhaust');
+  });
+
+  T.add('audit sor-002: the leader heals only after an enemy unit died', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].leader.cardId = 'sor-002'; s.active = me;
+    s.players[me].base.damage = 3;
+    T.ok(!SB.legalActions(s).some(function (a) { return a.type === 'leaderAction'; }), 'nothing died yet');
+    s.defeatedThisPhase = [{ owner: 1, cardId: 'fx-grunt' }];
+    T.ok(SB.legalActions(s).some(function (a) { return a.type === 'leaderAction'; }), 'now it is offered');
+    s = T.act(s, { type: 'leaderAction' });
+    s = drive(s);
+    T.eq(s.players[me].base.damage, 2, 'one damage healed');
+  });
+
+  T.add('audit sor-002 unit side: it deploys with a shield', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].leader.cardId = 'sor-002'; s.active = me;
+    T.giveResources(s, me, 12);
+    s = T.act(s, { type: 'deployLeader' });
+    s = drive(s);
+    const u = SB.findUnit(s, s.players[me].leader.uid);
+    T.eq(u.shields, 1, 'the printed Shielded keyword lands on the deploy');
+  });
+
+  T.add('audit twi-018 leader: it hits a unit of the played card\u2019s cost', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    s.players[me].leader.cardId = 'twi-018';
+    const same = T.putOnBoard(s, foe, 'fx-gritty'); // cost 3, matches
+    s = play(s, me, 'fx-ghost');                    // cost 3, no ambush of its own
+    s = drive(s);
+    T.eq(SB.findUnit(s, same.uid).damage, 1, 'the equal-cost unit took it');
+    T.ok(s.players[me].leader.exhausted, 'and the leader paid its exhaust');
+  });
+
+  T.add('audit twi-018 leader: a unit of any other cost is not a legal target', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    s.players[me].leader.cardId = 'twi-018';
+    const other = T.putOnBoard(s, foe, 'fx-wall'); // cost 2
+    s = play(s, me, 'fx-ghost');                   // cost 3
+    s = drive(s);
+    T.eq(SB.findUnit(s, other.uid).damage, 0, 'the cheaper unit was never in range');
+  });
+
+  // Two shapes the pulled skeletons kept getting wrong, now that every one they broke
+  // has been repaired: a keyword cost left at its default, and a leader with no
+  // abilities on either side.
+  T.add('audit: no smuggle keyword is left at a zero cost', function () {
+    const zero = Object.keys(SB.cards).filter(function (id) {
+      return (SB.cards[id].keywords || []).some(function (k) { return k.k === 'smuggle' && !(k.cost > 0); });
+    });
+    T.eq(zero.length, 0, 'a smuggle cost of 0 plays the card off a resource for free: ' + zero.join(', '));
+  });
+
+  T.add('audit: every leader a registered deck uses has a leader-side ability', function () {
+    const seen = {};
+    Object.keys(SB.decks).forEach(function (d) { seen[SB.decks[d].leader] = true; });
+    const bare = Object.keys(seen).filter(function (id) {
+      return !((SB.cards[id].leaderSide.abilities || []).length);
+    });
+    T.eq(bare.length, 0, 'a leader with no leader-side ability does nothing until it deploys: ' + bare.join(', '));
+  });
 })(window.SB = window.SB || {});

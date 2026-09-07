@@ -42,6 +42,8 @@
     if (sel.minCost != null) s += ' that costs ' + sel.minCost + ' or more';
     if (sel.minPower != null) s += ' with power ' + sel.minPower + ' or more';
     if (sel.maxPower != null) s += ' with power ' + sel.maxPower + ' or less';
+    if (sel.costEqRefPlayed) s += ' that costs the same as the played card';
+    if (sel.costLtSaved) s += ' that costs less than the chosen unit';
     if (sel.maxCostRefPlayed) s += ' that costs no more than the played card';
     if (sel.tokenOnly) s = s.replace(/unit$/, 'token unit');
     if (sel.traitOrCards) s += ' (of the matching kind or the named ' + U() + ')';
@@ -172,7 +174,7 @@
   const opText = {
     damage: function (op) { return dealText('deal', op, 'damage', 'to ' + targetText(op)); },
     heal: function (op) { return dealText('heal', op, 'damage', 'from ' + targetText(op)); },
-    draw: function (op) { return 'draw ' + ((op.amount || 1) === 1 ? 'a card' : op.amount + ' cards'); },
+    draw: function (op) { return (op.who === 'opponent' ? 'your opponent draws ' : 'draw ') + ((op.amount || 1) === 1 ? 'a card' : op.amount + ' cards'); },
     drawRef: function (op) { return 'draw a card for each ' + (op.amountRef === 'friendlyMinRemHpCount' ?
       'friendly unit with ' + op.minRemHp + ' or more remaining HP' : 'matching thing'); },
     shield: function (op) { return 'give a shield to ' + targetText(op); },
@@ -319,6 +321,7 @@
       if (op.entersReady) perks.push('it enters play ready');
       if (op.withHidden) perks.push('it gains Hidden for this round');
       if (op.withAmbush) perks.push('it gains Ambush for this round');
+      if (op.withAmbushIfCredit) perks.push('it gains Ambush for this round if a credit token paid part of its cost');
       if (op.defeatAtRegroup) perks.push('defeat it at the start of the regroup phase');
       if (op.returnAtRegroup) perks.push('return it to hand at the start of the regroup phase');
       if (perks.length) s += ' — ' + perks.join(', ');
@@ -384,6 +387,8 @@
       return op.optional ? 'you may ' + s : s;
     },
     upgradeFromDiscard: function () { return 'you may return an upgrade from your discard pile to your hand'; },
+    playUpgradesFromDiscard: function () { return 'play any number of upgrades from your discard pile on this unit, one at a time, paying their costs'; },
+    defeatOwnedNotControlled: function (op) { return 'defeat any number of units you own but do not control' + ((op.perDefeat || []).length ? ' — for each, ' + op.perDefeat.map(describeOpChain).join(', then ') : ''); },
     bondBuff: function (op) {
       return 'while this unit is in play, ' + targetText(op) + ' gets ' + statPair(op.power, op.hp);
     },
@@ -407,6 +412,8 @@
     readyAll: function (op) { return 'ready each ' + scopeNoun(op.scope); },
     spendResources: function (op) { return 'pay ' + op.amount + ' resource' + (op.amount === 1 ? '' : 's'); },
     moveSelfArena: function (op) { return 'move this unit to the ' + (op.to || 'other') + ' arena'; },
+    giveControl: function (op) { return 'let the opponent take control of ' + targetText(op); },
+    peekEnemyDeckDiscard: function (op) { return 'look at the top ' + (op.depth || 2) + ' cards of your opponent\u2019s deck and discard one of them'; },
     takeControl: function (op) {
       let s = 'take control of ' + targetText(op);
       if (op.ready) s += ' and ready it';
@@ -659,6 +666,7 @@
     bounty: 'Bounty — when this unit is defeated or captured, its opponent',
     onSmuggle: 'When played using its smuggle cost',
     onUpgradePlayed: 'When you play an upgrade',
+    onUpgradeAttachedSelf: 'When an upgrade attaches to this unit',
     whenCombatDamaged: 'When combat damage is dealt to this unit (and it survives)',
     onOpponentDraw: 'When an opponent draws during the action phase',
     whenHealed: 'When damage is healed from this unit',
@@ -746,6 +754,9 @@
     milledOddCost: function () { return 'if the discarded card has an odd cost'; },
     controlOtherSpaceUnit: function () { return 'if you control another space unit'; },
     discardedUnit: function () { return 'if the discarded card was a unit'; },
+    discardedType: function (c) { return 'if the discarded card was a' + (/^[aeiou]/.test(c.t) ? 'n ' : ' ') + c.t; },
+    enemyDefeatedThisPhase: function () { return 'if an enemy unit was defeated this phase'; },
+    canDiscardCost: function (c) { return 'if you can discard a card that costs ' + c.minCost + ' or more'; },
     defenderExhaustedOld: function () { return 'while attacking an exhausted unit that did not enter play this round'; },
     controlMoreUnitsThanOpponent: function () { return 'if you control more units than the opponent'; },
     // competitive expansion (js/ops2.js SB.extraConditions)
@@ -937,6 +948,7 @@
     if (item.step === 'revealResourcePick') return (source ? source + ' — ' : '') +
       'reveal a resource, or stop revealing.';
     if (item.step === 'peekDecide') return 'Look at the top card of your deck — what do you do with it?';
+    if (item.step === 'enemyDeckPeek') return 'Look at the top of your opponent\u2019s deck — which card is discarded?';
     if (item.step === 'arrangeTop2') return 'Look at the top two cards of your deck — arrange them.';
     let ask;
     if (item.op && item.op.op && opText[item.op.op]) {
@@ -964,6 +976,7 @@
     indirectBoost: 'Indirect damage you deal to your opponent is increased by 1.',
     extraPilotSlot: 'This unit may carry a second pilot.',
     firstStrike: 'This unit deals its combat damage before the other unit deals its.',
+    wardEnemyAbilities: 'This unit cannot be captured, damaged or defeated by enemy card abilities.',
     defeatAtRegroup: 'Defeat this unit at the start of the regroup phase.',
     attackOnlyDamaged: 'This unit can attack only while it is damaged.',
     negateFirstEvent: 'While you control this unit, the first event your opponent plays each round is cancelled.',
@@ -1029,6 +1042,8 @@
     });
     // Engine-enforced card fields outside the ability list (keep in step with
     // engine.playCard / legalActions / state.newGame).
+    if (card.altCostDiscard) out.push('You may discard a ' + (SB.names.aspects[card.altCostDiscard.aspect] || card.altCostDiscard.aspect) + ' card from your hand instead of paying this card\u2019s cost.');
+    if (card.entersWithAmbushFromHand) out.push('If you play this unit from your hand, it gains Ambush.');
     if (card.entersReadyIf) out.push(cap(conditionClause(card.entersReadyIf)) + ', this unit enters play ready.');
     if (card.discardAction) out.push('Action: if this card was discarded from your hand or deck this round, play it from your discard pile (paying its cost).');
     if (card.copyLimit) out.push('A deck may hold up to ' + card.copyLimit + ' copies of this card.');
@@ -1062,6 +1077,7 @@
     if (card.type === 'leader') {
       block(card.leaderSide, 'Leader');
       lines.push('Epic Action: deploy this leader when you control ' + card.deployCost + ' or more resources' +
+        (card.deployCostCountsForceUses ? ' (counting the times you used ' + SB.names.terms.force + ' this phase)' : '') +
         (card.pilotSide ? ', as a ground unit or as a pilot on a friendly vehicle without a pilot' : '') + '.');
       block(card.deployedSide, 'Unit');
       if (card.pilotSide) block(card.pilotSide, 'Pilot');

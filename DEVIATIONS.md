@@ -73,8 +73,8 @@ missing mechanic):
   free-text picker over the whole pool has no counterpart in the targeting model and
   would let a player fish for information the rules never give them. The lockout and the
   cost tax themselves behave as printed once a name is chosen.
-- **sor-199, the alternate cost.** The card lets you discard a Cunning card from your
-  hand instead of paying its cost. Paying happens on the shared hand-play path, which
-  has no notion of a cost met by anything but resources, so only the printed effect is
-  implemented: the card exhausts a unit and hands back its upgrades, and is paid for
-  normally.
+- **jtl-015, the pilot side's stats.** The leader's epic action offers a choice between
+  deploying as a ground unit and deploying as an upgrade on a friendly vehicle without a
+  pilot. The pilot side prints no separate stats or abilities, so it is authored with the
+  deployed side's power and HP; the engine already grants a leader pilot its deployed-side
+  power, so the two readings agree in play.
