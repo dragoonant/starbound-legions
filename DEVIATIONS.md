@@ -19,15 +19,10 @@ missing mechanic):
   picks are not constrained to be distinct from each other.
 - Abilities lent to another attacker by a support-style unit last until end of
   round rather than only for that one attack.
-- Costs that are not resources or exhausting — discarding a card, returning a unit to
-  hand — are modeled as the ability's first effect rather than as a price paid to
-  activate it (sec-007, law-015). The card resolves the same way when the price can be
-  paid; the difference shows only when it cannot, where the printed card would not
-  offer the action at all and ours offers it and fizzles.
-- Shield tokens are a counter on the unit rather than an attached upgrade, so an
-  ability that fires when an upgrade attaches (ash-208) does not fire for the shield
-  the unit's own shielded keyword gives it on arrival. Every other way an upgrade
-  reaches it does fire.
+- law-015's leader action models returning a friendly unit as the ability's first
+  effect rather than as a price paid to activate it. The card resolves the same way
+  when the price can be paid; the difference shows only when it cannot, where the
+  printed card would not offer the action at all and ours offers it and fizzles.
 - law-237's "Look at the top 3 cards of your deck. You may discard 1 of them. Put
   the rest back on top in any order." keeps the kept cards in their original
   relative order instead of letting the player re-arrange them.
@@ -82,8 +77,3 @@ missing mechanic):
   free-text picker over the whole pool has no counterpart in the targeting model and
   would let a player fish for information the rules never give them. The lockout and the
   cost tax themselves behave as printed once a name is chosen.
-- **sor-199, the alternate cost.** The card lets you discard a Cunning card from your
-  hand instead of paying its cost. Paying happens on the shared hand-play path, which
-  has no notion of a cost met by anything but resources, so only the printed effect is
-  implemented: the card exhausts a unit and hands back its upgrades, and is paid for
-  normally.

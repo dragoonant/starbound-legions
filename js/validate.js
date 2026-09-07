@@ -9,6 +9,7 @@
   const TRIGGERS = ['onPlay', 'onAttack', 'whenDefeated', 'onDeploy', 'onRegroup', 'action',
     'constant', 'onAttackEnds', 'whenAttacked', 'onCardPlayed', 'onUnitPlayed',
     'combatConstant', 'onDefeatUnit', 'bounty', 'onSmuggle', 'onUpgradePlayed',
+    'onUpgradeAttachedSelf',
     'whenCombatDamaged', 'combatAura', 'onOpponentDraw', 'whenHealed',
     'onIndirectUnitDamage', 'onDeployPilot', 'onPlayAsPilot', 'onNonCombatDamage',
     'onForceUnitAttack', 'onRevealOrDiscard', 'onFriendlyAttack',

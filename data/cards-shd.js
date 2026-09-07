@@ -211,7 +211,7 @@
   "shd-184": {"id":"shd-184","type":"unit","aspects":["cunning","villainy"],"traits":["tr45"],"arena":"ground","cost":2,"power":1,"hp":3,"unique":true,"keywords":[{"k":"smuggle","cost":4,"aspects":["cunning","villainy"]}],"abilities":[{"trigger":"onPlay","effects":[{"op":"discardFromOpponentHandChoice","optional":true,"saveAs":"d"},{"op":"draw","who":"opponent","amount":1,"condition":{"if":"storedAtLeast","name":"d","n":1}}]}]},
   "shd-185": {"id":"shd-185","type":"unit","aspects":["cunning","villainy"],"traits":["tr45"],"unique":true,"cost":2,"power":3,"hp":3,"arena":"ground","keywords":[{"k":"shielded"}]},
   "shd-186": {"id":"shd-186","type":"unit","aspects":["cunning","villainy"],"traits":["tr45","tr03"],"cost":3,"power":4,"hp":3,"arena":"ground"},
-  "shd-187": {"id":"shd-187","type":"unit","aspects":["cunning","villainy"],"traits":["tr17","tr46","tr10"],"cost":3,"power":2,"hp":2,"arena":"space","keywords":[{"k":"raid","n":2}]},
+  "shd-187": {"id":"shd-187","type":"unit","aspects":["cunning","villainy"],"traits":["tr17","tr46","tr10"],"cost":3,"power":2,"hp":2,"arena":"space","keywords":[{"k":"raid","n":2}],"staticFlags":["wardEnemyAbilities"]},
   "shd-188": {"id":"shd-188","type":"unit","aspects":["cunning","villainy"],"traits":["tr45","tr08","tr03"],"unique":true,"cost":4,"power":4,"hp":4,"arena":"ground"},
   "shd-189": {"id":"shd-189","type":"unit","aspects":["cunning","villainy"],"traits":["tr45","tr46","tr41"],"cost":5,"power":4,"hp":5,"arena":"space"},
   "shd-190": {"id":"shd-190","type":"unit","aspects":["cunning","villainy"],"traits":["tr45","tr03"],"unique":true,"cost":5,"power":6,"hp":6,"arena":"ground","keywords":[{"k":"saboteur"}]},
