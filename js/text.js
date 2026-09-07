@@ -49,6 +49,7 @@
     if (sel.minPower != null) s += ' with power ' + sel.minPower + ' or more';
     if (sel.maxPower != null) s += ' with power ' + sel.maxPower + ' or less';
     if (sel.maxCostRefPlayed) s += ' that costs no more than the played card';
+    if (sel.costEqRefPlayed) s += ' that costs the same as the played card';
     if (sel.tokenOnly) s = s.replace(/unit$/, 'token unit');
     if (sel.traitOrCards) s += ' (of the matching kind or the named ' + U() + ')';
     if (sel.pilotish) s += ' that is a pilot or carries one';
@@ -66,6 +67,7 @@
     if (sel.damagedBaseThisPhase) s += ' that dealt damage to a base this phase';
     if (sel.sharesTraitWithFriendlyLeader) s += ' that shares a kind with a friendly leader';
     if (sel.sameArenaAsSaved) s += ' in the same arena as the chosen unit';
+    if (sel.costLtSaved) s += ' that costs less than the chosen unit';
     if (sel.powerLteSaved) s += ' with power no greater than the chosen unit’s';
     if (sel.costGtLastDiscarded) s += ' that costs more than the discarded card';
     if (sel.damaged) s += ' that is damaged';       // engine: selectorCandidates .damaged
@@ -307,7 +309,9 @@
       return 'look at the top card of your deck — you may ' + op.modes.map(function (m) { return verbs[m]; }).join(', or ');
     },
     peekTopDiscardUpTo: function (op) {
-      return 'look at the top ' + op.depth + ' cards of your deck. You may discard 1 of them, then put the rest back on top';
+      return 'look at the top ' + op.depth + ' cards of ' +
+        (op.who === 'opponent' ? 'the opponent’s deck. ' : 'your deck. ') +
+        (op.required ? 'Discard 1 of them' : 'You may discard 1 of them') + ', then put the rest back on top';
     },
     playFromHand: function (op) {
       const f = op.filter || {};
@@ -719,6 +723,7 @@
       return 'if you control ' + an(c.aspects.map(function (a) { return SB.names.aspects[a] || a; }).join(' or ') + ' unit');
     },
     canPay: function (c) { return 'if you can pay ' + c.n + ' resource' + (c.n === 1 ? '' : 's'); },
+    enemyDefeatedThisPhase: function () { return 'if an enemy unit was defeated this phase'; },
     playedFromHand: function () { return 'if you played this unit from your hand'; },
     selfReady: function () { return 'while this unit is ready'; },
     selfRemHpAtLeast: function (c) { return 'if this unit has ' + c.n + ' or more remaining HP'; },

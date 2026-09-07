@@ -54,6 +54,11 @@
           const su = t && t.kind === 'unit' ? SB.findUnit(state, t.uid) : null;
           if (!su || SB.arenaOf(state, u) !== SB.arenaOf(state, su)) return;
         }
+        if (sel.costLtSaved) {
+          const t = SB.efx(state, ctx)[sel.costLtSaved];
+          const su = t && t.kind === 'unit' ? SB.findUnit(state, t.uid) : null;
+          if (!su || (SB.card(u.cardId).cost || 0) >= (SB.card(su.cardId).cost || 0)) return;
+        }
         if (sel.powerLteSaved) {
           const t = SB.efx(state, ctx)[sel.powerLteSaved];
           const su = t && t.kind === 'unit' ? SB.findUnit(state, t.uid) : null;
@@ -80,6 +85,10 @@
         if (sel.maxCostRefPlayed) {
           const pc = ctx.playedCardId ? SB.card(ctx.playedCardId).cost : null;
           if (pc == null || SB.card(u.cardId).cost > pc) return;
+        }
+        if (sel.costEqRefPlayed) {
+          const pc = ctx.playedCardId ? SB.card(ctx.playedCardId).cost : null;
+          if (pc == null || SB.card(u.cardId).cost !== pc) return;
         }
         if (sel.powerLessThanSource) {
           const src = SB.findUnit(state, ctx.sourceUid);
@@ -478,6 +487,7 @@
         });
       case 'playedCardThisPhase': return (state.players[controller].playedThisPhase || []).length > 0;
       case 'friendlyDefeatedThisPhase': return (state.defeatedThisPhase || []).some(function (d) { return d.owner === controller; });
+      case 'enemyDefeatedThisPhase': return (state.defeatedThisPhase || []).some(function (d) { return d.owner !== controller; });
       case 'attachedIs': {
         // Context: upgrade ability; ctx.sourceUid is the bearer unit.
         const bearer = SB.findUnit(state, ctx.sourceUid);

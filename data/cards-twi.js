@@ -88,7 +88,7 @@
   "twi-013": {"id":"twi-013","type":"leader","aspects":["aggression","heroism"],"traits":["tr12","tr21","tr33"],"unique":true,"deployCost":7,"leaderSide":{"abilities":[]},"deployedSide":{"arena":"ground","power":5,"hp":8}},
   "twi-014": {"id":"twi-014","type":"leader","aspects":["cunning","villainy"],"traits":["tr12","tr34","tr35"],"unique":true,"deployCost":4,"leaderSide":{"abilities":[]},"deployedSide":{"arena":"ground","power":3,"hp":4}},
   "twi-017": {"id":"twi-017","type":"leader","aspects":["cunning","heroism","villainy"],"traits":["tr12","tr34","tr35","tr33","tr29"],"unique":true,"deployCost":0,"leaderSide":{"abilities":[]},"deployedSide":{"arena":"ground","power":0,"hp":0}},
-  "twi-018": {"id":"twi-018","type":"leader","aspects":["cunning","heroism"],"traits":["tr12","tr21","tr33"],"unique":true,"deployCost":5,"leaderSide":{"abilities":[]},"deployedSide":{"arena":"ground","power":3,"hp":7}},
+  "twi-018": {"id":"twi-018","type":"leader","aspects":["cunning","heroism"],"traits":["tr12","tr21","tr33"],"unique":true,"deployCost":5,"leaderSide":{"abilities":[{"trigger":"onUnitPlayed","exhaustCost":true,"effects":[{"op":"damage","amount":1,"target":{"who":"enemy","what":"unit","costEqRefPlayed":true}}]}]},"deployedSide":{"arena":"ground","power":3,"hp":7,"abilities":[{"trigger":"onUnitPlayed","effects":[{"op":"damage","amount":1,"target":{"who":"enemy","what":"unit","maxCostRefPlayed":true,"optional":true}}]}]}},
   "twi-019": {"id":"twi-019","type":"base","aspects":["vigilance"],"hp":26},
   "twi-020": {"id":"twi-020","type":"base","aspects":["vigilance"],"hp":30},
   "twi-021": {"id":"twi-021","type":"base","aspects":["vigilance"],"hp":30},

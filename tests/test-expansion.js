@@ -1375,6 +1375,85 @@
     T.eq(SB.findUnit(s, g.uid).temp.power, 0, 'neither ground unit is "the only unit in its arena" — no buff landed');
     T.eq(SB.findUnit(s, w.uid).temp.power, 0, 'same for the other one');
   });
+  // Six leaders shipped with an empty leaderSide.abilities: the deploy line rendered,
+  // the leader sat there, and the ability printed on the front of the card did not
+  // exist. These pin the ones restored, both that the action is offered and that it
+  // does something.
+  T.add('sor-002 leader side: heals only after an enemy unit died this phase', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].leader.cardId = 'sor-002'; s.active = me;
+    s.players[me].base.damage = 3;
+    // The "if" is part of the effect, not a gate on the action: you may always spend
+    // the exhaust, and it simply does nothing when nothing has died.
+    let idle = drive(T.act(s, { type: 'leaderAction' }));
+    T.eq(idle.players[me].base.damage, 3, 'nothing died, so nothing heals');
+
+    // A fresh position: the first action above already exhausted that leader.
+    let t = T.game();
+    t.players[me].leader.cardId = 'sor-002'; t.active = me;
+    t.players[me].base.damage = 3;
+    t.defeatedThisPhase = [{ owner: 1, cardId: 'fx-grunt' }];
+    t = drive(T.act(t, { type: 'leaderAction' }));
+    T.eq(t.players[me].base.damage, 2, 'an enemy loss heals one off the base');
+  });
+
+  T.add('sor-002 unit side: shielded, and heals on every enemy death', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].base.damage = 2;
+    const u = deployed(s, me, 'sor-002');
+    T.ok(SB.hasKeyword(s, u, 'shielded'), 'the deployed side is shielded');
+  });
+
+  T.add('ash-007 leader side: hands a whole arena sentinel and overwhelm', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].leader.cardId = 'ash-007'; s.active = me;
+    const mine = T.putOnBoard(s, me, 'fx-grunt');
+    const theirs = T.putOnBoard(s, 1, 'fx-grunt');
+    s = drive(T.act(s, { type: 'leaderAction' }));
+    const g = SB.findUnit(s, mine.uid), e = SB.findUnit(s, theirs.uid);
+    T.ok(SB.hasKeyword(s, g, 'sentinel') && SB.hasKeyword(s, g, 'overwhelm'), 'yours gained both');
+    T.ok(SB.hasKeyword(s, e, 'sentinel'), 'and so did theirs — it says each unit');
+  });
+
+  T.add('ash-007 unit side: every other friendly unit gains both keywords', function () {
+    let s = T.game(); const me = 0;
+    deployed(s, me, 'ash-007');
+    const other = T.putOnBoard(s, me, 'fx-grunt');
+    T.ok(SB.hasKeyword(s, other, 'overwhelm'), 'the aura reaches other friendlies');
+    T.ok(SB.hasKeyword(s, other, 'sentinel'), 'with both keywords');
+  });
+
+  T.add('twi-018 leader side: the damage only reaches an equal-cost enemy', function () {
+    let s = rich(T.game(), 0); const me = 0;
+    s.players[me].leader.cardId = 'twi-018'; s.active = me;
+    const same = T.putOnBoard(s, 1, 'fx-grunt');       // same cost as the unit played
+    s = play(s, me, 'fx-grunt');
+    s = drive(s);
+    T.eq(SB.findUnit(s, same.uid).damage, 1, 'the equal-cost enemy took it');
+  });
+
+  T.add('jtl-015 leader side: the action is offered and lends saboteur', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].leader.cardId = 'jtl-015'; s.active = me;
+    T.giveResources(s, me, 2);
+    const flyer = T.putOnBoard(s, me, 'fx-flyer', { exhausted: false });
+    T.ok(SB.legalActions(s).some(function (a) { return a.type === 'leaderAction'; }),
+      'a ready space unit makes the action live');
+    s = T.act(s, { type: 'leaderAction' });
+    T.ok((SB.findUnit(s, flyer.uid).tempKeywords || []).indexOf('saboteur') >= 0,
+      'the attacker carries saboteur into the swing');
+  });
+
+  T.add('sec-006 leader side: offers a second, strictly cheaper attacker', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].leader.cardId = 'sec-006'; s.active = me;
+    T.putOnBoard(s, me, 'fx-brute', { exhausted: false });
+    T.putOnBoard(s, me, 'fx-grunt', { exhausted: false });
+    T.putOnBoard(s, 1, 'fx-grunt');
+    T.ok(SB.legalActions(s).some(function (a) { return a.type === 'leaderAction'; }),
+      'the action is offered at all');
+  });
+
   // jtl-198 lost the upkeep that balances its cheap body.
   T.add('jtl-198: takes 1 damage when the regroup phase starts', function () {
     let s = T.game(); const me = 0;
