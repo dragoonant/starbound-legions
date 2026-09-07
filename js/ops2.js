@@ -150,7 +150,7 @@
     let p = def.power + unit.temp.power + unit.experience + (unit.advantage || 0);
     unit.upgrades.forEach(function (inst) {
       const c = SB.card(inst.cardId);
-      p += c.type === 'leader' ? c.deployedSide.power : (c.power || 0);
+      p += SB.upgradeStats(c).power; // same rule as SB.unitPower: the pilot box, if any
     });
     if (prevHasKeyword(state, unit, 'grit')) p += unit.damage;
     return Math.max(0, p);

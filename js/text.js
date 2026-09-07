@@ -950,9 +950,11 @@
   function describeKeyword(kw) {
     const name = SB.names.keywords[kw.k];
     if (!name) throw new Error('no display name for keyword ' + kw.k);
-    if (kw.k === 'smuggle') {
+    // Smuggle and piloting are both played for a SECOND printed cost with its own
+    // aspects. The engine charges it either way, so the card has to show it.
+    if (kw.k === 'smuggle' || kw.k === 'piloting') {
       const asp = (kw.aspects || []).map(function (a) { return SB.names.aspects[a] || a; }).join(', ');
-      return name + ' [' + kw.cost + (asp ? ', ' + asp : '') + ']';
+      return name + ' [' + (kw.cost || 0) + (asp ? ', ' + asp : '') + ']';
     }
     return kw.n != null ? name + ' ' + kw.n : name;
   }
@@ -1129,6 +1131,11 @@
       }
       if ((card.keywords || []).some(function (k) { return k.k === 'piloting'; })) {
         for (let i = 0; i < lines.length; i++) lines[i] = lines[i].replace(/^When played:/, 'When played as a unit:');
+        // What it hands the ship it flies: its pilot box, not its own body.
+        if (card.pilotSide) {
+          const st = SB.upgradeStats(card);
+          lines.push('While piloting, the attached unit gets ' + statPair(st.power, st.hp) + '.');
+        }
       }
     }
     cardLevelLines(card).forEach(function (l) { lines.push(l); });

@@ -58,16 +58,16 @@
     }, 0);
   };
 
-  // An upgrade's stat contribution. A leader aboard a ship is its PILOT box, which is
-  // printed with its own smaller numbers — using the deployed unit side instead handed
-  // the ship the body of a leader standing on the ground, several HP too many.
-  function upgradeStats(card) {
-    if (card.type === 'leader') {
-      const side = card.pilotSide || card.deployedSide;
-      return { power: side.power || 0, hp: side.hp || 0 };
-    }
+  // An upgrade's stat contribution. Anything aboard a ship contributes its PILOT box,
+  // which is printed with its own smaller numbers: a leader aboard a ship was handing
+  // over the body of a leader standing on the ground, and a pilot UNIT was handing over
+  // its own unit body, several power and HP too many in both cases.
+  SB.upgradeStats = function (card) {
+    const side = card.pilotSide || (card.type === 'leader' ? card.deployedSide : null);
+    if (side) return { power: side.power || 0, hp: side.hp || 0 };
     return { power: card.power || 0, hp: card.hp || 0 };
-  }
+  };
+  const upgradeStats = SB.upgradeStats;
 
   SB.unitPower = function (state, unit) {
     const def = SB.unitDef(unit);
