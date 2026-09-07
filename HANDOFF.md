@@ -13,6 +13,39 @@ Start here in a fresh chat. Read CLAUDE.md first (it points at the binding docs)
 
 Suite: `node tools/run-tests.mjs --quiet` → 82 passed. Run it before every commit.
 
+## Reporting a bug from play (the black box)
+
+`js/bugreport.js` records every match: the seed, the two deck ids, and every action
+either seat applied, with the raw log entries each one produced. Two buttons in the log
+drawer:
+
+- **Flag a bug** — press it the moment something looks wrong and say what you expected.
+  It pins the exact action index, which nothing else can recover. *Send report* files the
+  whole trace then and there; *Pin only* leaves the note and keeps the game going.
+- **Save bug report** — files one without a comment. A crash saves one by itself.
+
+Reports are written into `traces/` as `sb-bug-<seed>-<time>.json` by the dev server
+(`node tools/serve.mjs`, which takes them over `POST /__trace/<name>`). From `file://` or
+the deployed site there is no server to take them, so the browser downloads the report and
+copies it to the clipboard instead. See `traces/README.md`.
+
+Then, on the report:
+
+```
+node tools/replay-report.mjs <report.json>            # notes, trouble, context
+node tools/replay-report.mjs <report.json> --verbose  # the whole transcript
+node tools/replay-report.mjs --selftest               # prove replay still reproduces
+```
+
+It re-runs the match headlessly (AI moves are replayed, not re-chosen, so a report
+survives AI changes) and calls out ILLEGAL actions the UI offered, applies that THREW,
+and logs that DIVERGED from what the browser produced. A clean replay ending in a
+`FLAGGED` note means the engine is consistent and the bug is in the card's rules text
+or its op — go read the transcript around the note.
+
+Traces carry internal ids only — no names, printed text or vocabulary words — so they
+are safe to paste anywhere.
+
 ## Open work, in the order agreed with the user
 
 1. **Card behaviour bugs seen in play.** The user saw several cards not doing what they should
@@ -34,6 +67,9 @@ Suite: `node tools/run-tests.mjs --quiet` → 82 passed. Run it before every com
   dump; `--fetch` downloads one). Loaded by `index.html` only, never by `tests.html` (a
   test enforces this). `names.js registerSource` keeps both sets; the HUD drawer's
   names button toggles, remembered in `localStorage['sb.names']`; default is printed.
+- The pack also carries the published game's words for the vocabulary the theme
+  renames — the power token and the unique insignia (`terms`; theme words in THEME.md).
+  Generated prose reads `SB.names.terms` at render time, so it follows the toggle.
 - Third-party names go nowhere else: not card data, engine, tests, art prompts, docs
   or commit messages. Regenerate the file rather than editing it.
 

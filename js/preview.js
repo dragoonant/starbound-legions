@@ -168,7 +168,16 @@
           node.tabIndex = 0;
           // Hover for the full rules text — the hand-size face alone does not carry it.
           Preview.attach(node, cardId, null, function () { return state; });
-          grid.appendChild(node);
+          // An entry may stand for several identical cards (a deck list collapses its
+          // copies). One face then carries a count instead of repeating the tile.
+          if (inst.count > 1) {
+            const cell = el('div', 'browse-cell');
+            cell.appendChild(node);
+            cell.appendChild(el('div', 'browse-count', '×' + inst.count));
+            grid.appendChild(cell);
+          } else {
+            grid.appendChild(node);
+          }
         });
         body.appendChild(grid);
       }

@@ -27,8 +27,9 @@ const DRY = process.argv.includes('--dry-run');
 if (!SCRATCH) { console.error('usage: node tools/pull-sets.mjs <scratchDir> [--dry-run]'); process.exit(2); }
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-// Sets pulled in full; anything else enters only if one of the 20 lists uses it.
-const FULL_SETS = ['ash', 'law', 'lof', 'sec', 'jtl'];
+// Sets pulled in full. Wave 1 needed only the five newest; wave 2's lists reach back into
+// the three oldest sets and the two small ones, so every set we hold a dump for is pulled.
+const FULL_SETS = ['ash', 'law', 'lof', 'sec', 'jtl', 'sor', 'shd', 'twi', 'ts26', 'ibh'];
 const ASPECTS = ['vigilance', 'command', 'aggression', 'cunning', 'heroism', 'villainy'];
 const idOf = (set, num) => String(set).toLowerCase() + '-' + String(num).padStart(3, '0');
 

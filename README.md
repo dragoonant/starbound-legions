@@ -1,4 +1,4 @@
-# The Sundered Veil
+# Starbound Legions
 
 A browser card duel against an AI opponent. Unofficial, non-commercial fan project: the
 game's mechanics follow a published trading card game; every name, rules sentence, image
@@ -6,7 +6,7 @@ and sound here is original or generated for this project (see NOTICE.md). Not af
 with, endorsed by, or connected to Fantasy Flight Games, Lucasfilm Ltd., or The Walt Disney
 Company.
 
-**Play:** https://dragoonant.github.io/sundered-veil/
+**Play:** https://dragoonant.github.io/starbound-legions/
 
 Pick your deck, the opponent's deck and a difficulty on the title screen. Every deck is a
 registered list from `data/decks.js`.
@@ -26,6 +26,38 @@ node tools/run-tests.mjs --quiet
 ```
 
 `tests.html` runs the same suite in a browser. Run the headless suite before any commit.
+
+The suite checks every card's text statically and fuzzes whole games, but it does not
+assert that each card's abilities actually fired. For that there is a separate, slower
+audit that plays many random games with a recorder on the op dispatcher:
+
+```
+node tools/coverage.mjs --games 20     # ~30s; --deck <id>, --top K, --all, --out file
+```
+
+It prints the cards never played and the ops never resolved (full report in the
+gitignored `scratch/coverage.json`). Entries marked PLAYED are the suspects: the card
+reached the board and the ability still never fired. Treat the list as a work queue
+for deterministic scenario tests, not a verdict — a rare trigger can be fine.
+
+## Reporting and replaying a bug
+
+Every match records itself (`js/bugreport.js`): the seed, both deck ids, and every action
+either seat applied, with the log entries each produced. The engine is deterministic in
+exactly those inputs, so a report is a replayable match rather than a screenshot.
+
+**Flag a bug** in the log drawer takes what you saw and writes the trace into `traces/`
+(via the dev server; from `file://` or the deployed site the browser downloads it
+instead). Then:
+
+```
+node tools/replay-report.mjs traces/<report>.json     # notes, trouble, context
+node tools/replay-report.mjs --selftest               # prove replay still reproduces
+```
+
+Replay re-runs the match against the real engine and calls out ILLEGAL actions the UI
+offered, applies that THREW, and logs that DIVERGED from what the browser produced. See
+`traces/README.md`.
 
 ## Deploying
 

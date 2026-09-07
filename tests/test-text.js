@@ -188,4 +188,27 @@
     delete SB.names.cards['zz-901']; delete SB.names.traits['tr-zz']; delete SB.names.decks['deck-zz'];
   });
 
+  // The words for the power token and the unique insignia are vocabulary, not stored
+  // prose: a log line, a label and a describer all build from SB.names.terms when they
+  // render, so the pack can swap the words and switching it off brings the theme back.
+  T.add('names: the game vocabulary switches with the pack, and generated prose follows it', function () {
+    T.eq(SB.describeLog({ type: 'forceUsed', player: 0 }), 'You spent the Current.', 'theme words without a pack');
+    T.eq(SB.names.ui.forceHeld.indexOf('The Current'), 0, 'the token label uses the theme word');
+    try {
+      SB.names.registerSource({ terms: { forceToken: 'a power token', forceLabel: 'Power token', unique: 'one-of-a-kind' } });
+      T.eq(SB.describeLog({ type: 'forceUsed', player: 0 }), 'You spent a power token.', 'log line in the pack’s words');
+      T.eq(SB.describeLog({ type: 'forceGained', player: 1 }), 'The opponent gained a power token.', 'either seat');
+      T.eq(SB.names.ui.forceHeld.indexOf('Power token'), 0, 'the label follows too');
+      T.eq(SB.names.terms.force, 'the Current', 'a term the pack leaves out keeps the theme word');
+      SB.names.setMode('original');
+      T.eq(SB.describeLog({ type: 'forceUsed', player: 0 }), 'You spent the Current.', 'theme words back under mode original');
+      T.eq(SB.names.terms.unique, 'champion', 'and the insignia word');
+    } finally {
+      SB.names.clearSource();
+      SB.names.setMode('source');
+    }
+    T.eq(SB.describeLog({ type: 'forceUsed', player: 0 }), 'You spent the Current.', 'clearing restores the theme');
+    T.eq(SB.names.terms.unique, 'champion', 'every term restored');
+  });
+
 })(window.SB = window.SB || {});

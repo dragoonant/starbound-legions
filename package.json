@@ -1,5 +1,5 @@
 {
-  "name": "sundered-veil",
+  "name": "starbound-legions",
   "version": "1.0.0",
   "description": "",
   "main": "names.js",
@@ -12,16 +12,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dragoonant/sundered-veil.git"
+    "url": "git+https://github.com/dragoonant/starbound-legions.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/dragoonant/sundered-veil/issues"
+    "url": "https://github.com/dragoonant/starbound-legions/issues"
   },
-  "homepage": "https://github.com/dragoonant/sundered-veil#readme",
+  "homepage": "https://github.com/dragoonant/starbound-legions#readme",
   "devDependencies": {
     "ffmpeg-static": "^5.3.0",
     "ffprobe-static": "^3.1.0",

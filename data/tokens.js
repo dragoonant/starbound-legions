@@ -16,6 +16,8 @@
       aspects: [], traits: ['tr29'], keywords: [{ k: 'raid', n: 2 }] },
     'tok-mnd': { id: 'tok-mnd', type: 'unit', token: true, cost: 0, power: 2, hp: 2, arena: 'ground',
       aspects: ['vigilance'], traits: ['tr25'], keywords: [{ k: 'shielded' }] },
+    'tok-xwg': { id: 'tok-xwg', type: 'unit', token: true, cost: 0, power: 2, hp: 3, arena: 'space',
+      aspects: ['vigilance'], traits: ['tr46', 'tr10'] },
   });
   SB.names.cards['tok-gv1'] = { name: 'P-TOK-GV1' };
   SB.names.cards['tok-gh2'] = { name: 'P-TOK-GH2' };
@@ -23,4 +25,5 @@
   SB.names.cards['tok-sh2'] = { name: 'P-TOK-SH2' };
   SB.names.cards['tok-spy'] = { name: 'P-TOK-SPY' };
   SB.names.cards['tok-mnd'] = { name: 'P-TOK-MND' };
+  SB.names.cards['tok-xwg'] = { name: 'P-TOK-XWG' };
 })(window.SB = window.SB || {});

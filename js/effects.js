@@ -132,6 +132,12 @@
     base.damage += amount;
     SB.log(state, { type: 'baseDamage', player: playerIdx, amount: amount, why: why || null,
       source: sourceUid != null ? sourceUid : null, combat: why === 'attack' || why === 'overwhelm', sound: 'hit' });
+    // "When your base is dealt damage" observers — any source, not only combat
+    // (ash-204; onOwnBaseCombatDamaged above stays combat-only).
+    SB.allUnits(state, playerIdx).forEach(function (obs) {
+      SB.fireTriggers(state, 'onBaseDamaged', obs, { sourceUid: obs.uid });
+    });
+    if (SB.fireLeaderTrigger) SB.fireLeaderTrigger(state, playerIdx, 'onBaseDamaged', {});
     const hp = SB.card(base.cardId).hp;
     if (base.damage >= hp && state.winner == null) {
       state.winner = SB.other(playerIdx);
@@ -216,6 +222,11 @@
       owner.discard.push({ uid: unit.uid, cardId: unit.cardId });
     }
     // Upgrades go to their owner's discard (tokens vanish; leader pilots flip back).
+    // Recorded before discarding so a "return an upgrade that was on this unit"
+    // whenDefeated ability (shd-001's aura) can still find them (ops2.js).
+    const formerUpgrades = unit.upgrades.filter(function (inst) {
+      return !inst.leaderPilot && !SB.card(inst.cardId).token;
+    }).map(function (inst) { return { uid: inst.uid, owner: SB.upgradeOwner(unit, inst) }; });
     unit.upgrades.forEach(function (inst) {
       if (inst.leaderPilot) {
         SB.sidelineLeaderPilot(state, unit, inst, { log: true }); // no redeploy: it died aboard
@@ -223,7 +234,8 @@
         state.players[SB.upgradeOwner(unit, inst)].discard.push(inst);
       }
     });
-    SB.fireTriggers(state, 'whenDefeated', unit, Object.assign({}, ctx, { sourceUid: unit.uid, combat: ctx && ctx.combat }));
+    SB.fireTriggers(state, 'whenDefeated', unit, Object.assign({}, ctx,
+      { sourceUid: unit.uid, combat: ctx && ctx.combat, formerUpgrades: formerUpgrades }));
     // "When a friendly unit is defeated" observers on the owner's other units.
     SB.allUnits(state, unit.owner).forEach(function (obs) {
       SB.fireTriggers(state, 'onFriendlyDefeated', obs,
@@ -238,6 +250,11 @@
       state._drawObserverGuard = true;
       SB.allUnits(state, SB.other(playerIdx)).forEach(function (u) {
         SB.fireTriggers(state, 'onOpponentDraw', u, { sourceUid: u.uid });
+      });
+      // "When you draw 1 or more cards during the action phase" observers on the
+      // drawing player's own units (law-052).
+      SB.allUnits(state, playerIdx).forEach(function (u) {
+        SB.fireTriggers(state, 'onOwnDraw', u, { sourceUid: u.uid });
       });
       delete state._drawObserverGuard;
     }
@@ -255,6 +272,7 @@
 
   // Queue an ability's effects (in order) for a trigger on a unit.
   SB.fireTriggers = function (state, trigger, unit, ctx) {
+    if (unit.abilitiesSuppressed || unit.abilitiesSuppressedForAttack) return;
     const def = SB.unitDef(unit);
     const sources = [def].concat(unit.upgrades.map(function (i) { return SB.card(i.cardId); }));
     if (unit.tempAbilities) sources.push({ abilities: unit.tempAbilities });
@@ -264,11 +282,13 @@
         if (ab.playedTrait && (!ctx || !ctx.playedCardId ||
             (SB.card(ctx.playedCardId).traits || []).indexOf(ab.playedTrait) < 0)) return;
         if (ab.playedUnique && (!ctx || !ctx.playedCardId || !SB.card(ctx.playedCardId).unique)) return;
-        if (ab.oncePerRoundTrigger) {
-          if (unit.triggerUsedRound === state.round) return;
-          unit.triggerUsedRound = state.round;
+        if (ab.playedType && (!ctx || !ctx.playedCardId || SB.card(ctx.playedCardId).type !== ab.playedType)) return;
+        // "When a friendly <trait> unit's attack ends" (law-007's unit side).
+        if (ab.attackerTrait) {
+          const au = ctx && ctx.attackEndedUid != null ? SB.findUnit(state, ctx.attackEndedUid) : null;
+          if (!au || SB.unitTraits(state, au).indexOf(ab.attackerTrait) < 0) return;
         }
-        SB.queueEffects(state, unit.owner, ab.effects, {
+        const effectCtx = {
           // viaTrigger: this ability spoke up on its own, so the log attributes its
           // lines to it instead of printing them as if the player chose each one.
           viaTrigger: true,
@@ -280,7 +300,19 @@
           baseDamageDealt: ctx && ctx.baseDamageDealt, attackEndedUid: ctx && ctx.attackEndedUid,
           defeatedUid: ctx && ctx.defeatedUid, playedUid: ctx && ctx.playedUid,
           combat: ctx && ctx.combat, defenderDamagedNonLeader: ctx && ctx.defenderDamagedNonLeader,
-        });
+          formerUpgrades: ctx && ctx.formerUpgrades,
+        };
+        if (ab.oncePerRoundTrigger) {
+          if (unit.triggerUsedRound === state.round) return;
+          // A trigger paired with a condition (law-053: "a unit with the highest
+          // cost... is defeated") only spends its once-per-round use when it
+          // actually goes off — checked here, before consuming the flag, since
+          // the condition itself is otherwise only re-checked once the queued
+          // effect resolves (too late to gate the once-per-round flag by).
+          if (ab.condition && !SB.checkCondition(state, unit.owner, ab.condition, effectCtx)) return;
+          unit.triggerUsedRound = state.round;
+        }
+        SB.queueEffects(state, unit.owner, ab.effects, effectCtx);
       });
     });
   };
@@ -511,8 +543,10 @@
         return !!u && u.exhausted;
       }
       case 'canDisclose': {
-        // Can the hand cover the required multiset of aspect icons?
-        const need = (cond.aspects || []).slice();
+        // Can the hand cover the required multiset of aspect icons? A card that
+        // discloses a chosen aspect (sec-004) passes aspectRef instead of a
+        // literal list — resolve it to a single-icon requirement.
+        const need = cond.aspectRef ? [SB.efx(state, ctx)[cond.aspectRef]] : (cond.aspects || []).slice();
         const hand = state.players[controller].hand.map(function (inst) {
           return (SB.card(inst.cardId).aspects || []).slice();
         });

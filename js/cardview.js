@@ -65,10 +65,6 @@
     return svg.cloneNode(true);
   }
 
-  const ASPECT_CLASS = { vigilance: 'color-vigilance', command: 'color-command',
-    aggression: 'color-aggression', cunning: 'color-cunning', heroism: 'color-heroism',
-    villainy: 'color-villainy' };
-
   function el(tag, cls, text) {
     const e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -151,7 +147,11 @@
     }
     const def = faceDef(card, ref.unit);
     const aspects = card.aspects || [];
-    if (aspects.length) root.classList.add(ASPECT_CLASS[aspects[0]] || 'color-heroism');
+    // Every card keeps the default slate border. A per-aspect border color reads as a
+    // state — it sits where the actable/selected/target rings live, and cunning's yellow
+    // was all but --role-actable — so players took it for "this card is playable". The
+    // aspect pips in the corner and the colored aspect words in the rules text carry the
+    // aspect; the border is left to say only what the player may do.
 
     // Layer 0: art + scrim (scrim is .card-art::after in CSS).
     const artWrap = el('div', 'card-art');

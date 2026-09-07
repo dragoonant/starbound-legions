@@ -25,19 +25,42 @@
     UI.state = SB.newGame({ deck0: opts.deck0, deck1: opts.deck1,
       seed: opts.seed || ('g' + Math.floor(Math.random() * 1e9)) });
     UI.aiDifficulty = opts.difficulty || 'mid';
+    // Start the black box (js/bugreport.js) before the first action, so a trace is
+    // always a whole match from the deal onwards and never a fragment.
+    if (SB.bugreport) SB.bugreport.begin({ deck0: opts.deck0, deck1: opts.deck1,
+      difficulty: UI.aiDifficulty }, UI.state);
     if (SB.endVideo) SB.endVideo.reset();
     if (SB.anim) SB.anim.skip();
     UI.render();
     UI.maybeAI();
   };
 
-  UI.doAction = function (action) {
-    if (SB.anim && SB.anim.busy()) return;   // the picture finishes (or is skipped) first
+  // The one place an action reaches the engine, for both seats. Everything the black
+  // box records hangs off this: the action itself, the log it produced, and — the case
+  // a screenshot can never capture — an apply that threw before producing anything.
+  function applyRecorded(source, action) {
     UI.history.push(UI.state);
     const before = UI.state.log.length;
     const prev = UI.state;
-    UI.state = SB.apply(UI.state, action);
+    let next;
+    try {
+      next = SB.apply(prev, action);
+    } catch (err) {
+      if (SB.bugreport) {
+        SB.bugreport.error('apply', err, { source: source, action: action });
+        SB.bugreport.download();       // a crash is the report; do not make them find a button
+      }
+      UI.history.pop();                // the state never advanced
+      throw err;
+    }
+    UI.state = next;
+    if (SB.bugreport) SB.bugreport.action(source, action, prev, next);
     settle(prev, before);
+  }
+
+  UI.doAction = function (action) {
+    if (SB.anim && SB.anim.busy()) return;   // the picture finishes (or is skipped) first
+    applyRecorded('human', action);
   };
 
   // After an apply: sound, the played-card spotlight, then the battle animation
@@ -64,10 +87,18 @@
     if (SB.sound && SB.sound.dropDeferredEnd) SB.sound.dropDeferredEnd();
     if (SB.anim) SB.anim.skip();
     if (SB.endVideo) SB.endVideo.reset();
+    const from = UI.state;
+    // History entries are one-per-applied-action (applyRecorded pushes exactly one), so
+    // the number popped is the number of recorded actions a replay has to rewind.
+    let steps = 0;
     while (UI.history.length > 0) {
       const prev = UI.history.pop();
+      steps++;
       if (whoActs(prev) === UI.humanSeat) { UI.state = prev; break; }
     }
+    // The trace itself does NOT rewind — a move taken back is often the move that
+    // misbehaved — so the marker carries the step count instead.
+    if (SB.bugreport) SB.bugreport.undo(from, UI.state, steps);
     UI.render();
   };
 
@@ -85,12 +116,14 @@
       // The state may have changed hands while the timer ran (an undo, a new game):
       // never choose a move for the human.
       if (SB.isTerminal(UI.state) || whoActs(UI.state) === UI.humanSeat) return;
-      const action = SB.ai.chooseAction(UI.state, UI.aiDifficulty);
-      UI.history.push(UI.state);
-      const before = UI.state.log.length;
-      const prev = UI.state;
-      UI.state = SB.apply(UI.state, action);
-      settle(prev, before);
+      let action;
+      try {
+        action = SB.ai.chooseAction(UI.state, UI.aiDifficulty);
+      } catch (err) {
+        if (SB.bugreport) { SB.bugreport.error('ai', err); SB.bugreport.download(); }
+        throw err;
+      }
+      applyRecorded('ai', action);
     }, 450);
   };
 
@@ -552,6 +585,16 @@
         return a.type === 'resourceCard' && a.player === UI.humanSeat && a.handIndex === i;
       });
       if (spec.plays.length || resource) markActable(cardNode);
+      // Nothing to do with this card, on my own turn, and the cost is more than I can
+      // pay: mark it, so an unlit hand reads as "I am broke" instead of "is this even
+      // playable?". Only on my action-phase turn with no prompt open — outside that
+      // nothing in hand is playable anyway, and dimming the whole hand would say
+      // nothing. The border stays slate: the mark lives on the cost pip, which is the
+      // number that is the problem.
+      else if (s.phase === 'action' && s.active === UI.humanSeat && !s.queue.length &&
+               SB.cantAfford(s, UI.humanSeat, inst.cardId)) {
+        cardNode.classList.add('is-unaffordable');
+      }
       cardNode.tabIndex = 0;
       cardNode.addEventListener('pointerdown', function (e) {
         if (e.button !== 0) return;
@@ -616,6 +659,30 @@
     };
   }
 
+  // A deck browses as a LIST, not as a pile: sorted by cost then name, never in deck
+  // order, so looking through it can never leak what the shuffle decided you draw next.
+  function deckSortKey(inst) {
+    const c = SB.card(inst.cardId || inst);
+    const cost = c.type === 'leader' ? c.deployCost : c.cost;
+    return [cost == null ? 99 : cost, SB.names.card(c.id)];
+  }
+  function deckListOrder(cards) {
+    const sorted = cards.slice().sort(function (x, y) {
+      const a = deckSortKey(x), b = deckSortKey(y);
+      return a[0] - b[0] || (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0);
+    });
+    // Copies collapse to one face with a count: a deck reads as a list, and three
+    // identical tiles say nothing the number does not.
+    const out = [];
+    sorted.forEach(function (inst) {
+      const id = inst.cardId || inst;
+      const last = out[out.length - 1];
+      if (last && last.cardId === id) last.count++;
+      else out.push({ cardId: id, count: 1 });
+    });
+    return out;
+  }
+
   function renderZones(s) {
     [['my', UI.humanSeat], ['enemy', SB.other(UI.humanSeat)]].forEach(function (pair) {
       const p = s.players[pair[1]];
@@ -632,17 +699,28 @@
       makeBrowsable($(pair[0] + '-discard'),
         mine ? SB.names.ui.yourDiscard : SB.names.ui.theirDiscard,
         p.discard.slice().reverse(), s, SB.names.ui.browseNewestFirst);
+      // A zone the seat may not look into is handed NO cards rather than being skipped:
+      // makeBrowsable clears a stale handler only when it actually runs, and these nodes
+      // outlive a game. Skipping the call left the opponent's deck and resource row still
+      // opening in the NEXT game, from the handler the last game's post-mortem installed.
+      const secretsOut = mine || postMortem(s);
+
+      // Your deck browses too — it is a list you built, so its contents are yours to
+      // re-read. Theirs opens once the game is over, exactly as their resource row does.
+      makeBrowsable($(pair[0] + '-deck'),
+        mine ? SB.names.ui.yourDeck : SB.names.ui.theirDeck,
+        secretsOut ? deckListOrder(p.deck) : [], s,
+        mine ? SB.names.ui.browseDeckNote : SB.names.ui.browseDeckOver);
+
       // Only YOUR resources browse. They are face down to everyone, but you banked
       // them and know what they are; the opponent's stay hidden or a Smuggle played
       // out of their resource row would be readable in advance.
       // ...and once it is over, THEIR row browses too: the reason for the asymmetry has
       // expired with the game.
-      if (mine || postMortem(s)) {
-        makeBrowsable($(pair[0] + '-res'),
-          mine ? SB.names.ui.yourResources : SB.names.ui.theirResources,
-          p.resources.map(function (r) { return r.instance || r; }), s,
-          mine && !postMortem(s) ? SB.names.ui.browseResourceNote : SB.names.ui.browseResourceOver);
-      }
+      makeBrowsable($(pair[0] + '-res'),
+        mine ? SB.names.ui.yourResources : SB.names.ui.theirResources,
+        secretsOut ? p.resources.map(function (r) { return r.instance || r; }) : [], s,
+        mine && !postMortem(s) ? SB.names.ui.browseResourceNote : SB.names.ui.browseResourceOver);
     });
   }
 
@@ -696,7 +774,21 @@
         const sub = (it.items || [])[a.index] || {};
         return 'First: ' + triggerLabel(s, sub);
       }
-      case 'massExhaust': case 'budgetExhaust': return a.uid == null ? 'Stop' : 'Exhaust: ' + unitName(s, a.uid);
+      case 'massExhaust': case 'budgetExhaust': case 'exhaustUpTo': return a.uid == null ? 'Stop' : 'Exhaust: ' + unitName(s, a.uid);
+      case 'revealResource': {
+        if (a.uid == null) return 'Stop revealing';
+        const r = s.players[a.player].resources.find(function (x) { return x.instance.uid === a.uid; });
+        return 'Reveal: ' + (r ? cardName(r.instance.cardId) : '?');
+      }
+      case 'chooseMode': {
+        const it = s.queue[0] || {};
+        const mode = (it.modes || [])[a.index];
+        if (mode && SB.describeEffects) {
+          const t = SB.describeEffects(mode.effects);
+          return t.charAt(0).toUpperCase() + t.slice(1);
+        }
+        return 'Option ' + (a.index + 1);
+      }
       case 'massAttackChoose': case 'supportChoose': return a.uid == null ? 'Stop' : 'Attack with: ' + unitName(s, a.uid);
       case 'defeatOwn': return 'Defeat: ' + unitName(s, a.uid);
       case 'swapPick': return 'Trade away: ' + unitName(s, a.uid);
@@ -706,7 +798,7 @@
       case 'readyTax': return a.pay ? 'Pay to stay ready' : 'Stay exhausted';
       case 'payXp': return a.pay ? 'Pay 1 (gain a token)' : 'Stop paying';
       case 'bottomCard': return 'Bottom: ' + cardName(s.players[a.player].hand[a.handIndex].cardId);
-      case 'bottomDiscard': return a.index === -1 ? 'Done' : 'Bottom: ' + cardName(s.players[a.player].discard[a.index].cardId);
+      case 'bottomDiscard': return a.index === -1 ? 'Done' : 'Bottom: ' + cardName(s.players[a.owner != null ? a.owner : a.player].discard[a.index].cardId);
       case 'bottomUnit': return 'Bottom: ' + cardName(s.players[a.player].discard[a.index].cardId);
       case 'arrange2': return {
         keep: 'Keep both, same order', swap: 'Keep both, swapped',
@@ -731,6 +823,17 @@
       case 'creditSpend': return a.who == null ? SB.names.ui.decline : (a.who === a.player ? 'Spend your credit' : 'Spend their credit');
       case 'nameCard': return 'Name: ' + cardName(a.cardId);
       case 'playDiscardAction': return 'Play from discard: ' + cardName(a.cardId);
+      // cluster-c4 expansion
+      case 'captureOrReady': return a.uid == null ? SB.names.ui.decline : 'Give up: ' + unitName(s, a.uid);
+      case 'rescuePick': return a.uid == null ? SB.names.ui.decline : 'Rescue: ' + cardName(a.cardId);
+      // cluster-c5 expansion
+      case 'returnEventCard': return a.index === -1 ? SB.names.ui.decline : 'Return: ' + cardName(s.players[a.owner].discard[a.index].cardId);
+      case 'returnReplay': return a.play ? 'Play: ' + cardName(a.cardId) : SB.names.ui.decline;
+      case 'mutualReturn': return a.uid == null ? SB.names.ui.decline : 'Return: ' + unitName(s, a.uid);
+      case 'healBudgetPoint': return a.kind === 'stop' ? 'Stop'
+        : a.kind === 'base' ? 'Heal 1 on ' + (a.pi === UI.humanSeat ? 'your base' : 'their base')
+        : 'Heal 1 on ' + unitName(s, a.uid);
+      case 'payOrExhaust': return a.pay ? 'Pay ' + '1 resource' : 'Exhaust: ' + unitName(s, a.uid);
       default: return a.type;
     }
   }
@@ -787,11 +890,16 @@
     switch (a.type) {
       case 'searchTake': return a.deckIndex >= 0 ? p.deck[a.deckIndex].cardId : null;
       case 'takeFromDiscard': return a.index >= 0 ? p.discard[a.index].cardId : null;
-      case 'bottomDiscard': case 'bottomUnit': return a.index >= 0 ? p.discard[a.index].cardId : null;
+      case 'bottomDiscard': case 'bottomUnit': {
+        const pile = a.owner != null ? s.players[a.owner] : p;
+        return a.index >= 0 ? pile.discard[a.index].cardId : null;
+      }
       case 'playHandCard': return a.handIndex === -1 ? null : (a.cardId || null);
       case 'peekAct': return a.mode === 'play' ? a.cardId : null;
       case 'plotPlay': return a.resourceIndex === -1 ? null : (a.cardId || null);
       case 'bottomCard': return p.hand[a.handIndex].cardId;
+      case 'returnEventCard': return a.index >= 0 ? s.players[a.owner].discard[a.index].cardId : null;
+      case 'returnReplay': return a.play ? a.cardId : null;
       case 'discardCard':
         return s.players[a.targetPlayer != null ? a.targetPlayer : a.player].hand[a.handIndex].cardId;
       default: return null;

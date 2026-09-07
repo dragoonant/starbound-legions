@@ -379,6 +379,124 @@
     return bearer;
   }
 
+  // ---- cluster-c4 expansion: credit tokens, naming, capture forms, extra regroup ----
+
+  T.add('cluster-c4: law-221 takes control of an enemy Credit token on attack', function () {
+    let s = T.game(); s.active = 0; const me = 0, foe = 1;
+    s.players[foe].credits = 1;
+    const u = T.putOnBoard(s, me, 'law-221');
+    s = T.act(s, { type: 'attack', attacker: u.uid, target: { kind: 'base', player: foe } });
+    s = drive(s);
+    T.eq(s.players[foe].credits, 0, 'the opponent lost their credit token');
+    T.eq(s.players[me].credits, 1, 'this unit\'s controller gained it');
+  });
+
+  T.add('cluster-c4: law-106 may defeat an enemy Credit token when played', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    s.players[foe].credits = 1;
+    s = play(s, me, 'law-106');
+    s = drive(s, function (a) { return a.type === 'binary' && a.pick === 'a'; });
+    T.eq(s.players[foe].credits, 0, 'the enemy credit token was defeated, not taken');
+    T.eq(s.players[me].credits || 0, 0, 'this player did not gain a credit');
+  });
+
+  T.add('cluster-c4: law-243 blocks a named card from being played for the rest of the phase', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    T.putInHand(s, foe, 'fx-grunt'); // seen in the opponent's hand so it is nameable
+    s = play(s, me, 'law-243');
+    s = drive(s, function (a) { return a.type === 'nameCard' && a.cardId === 'fx-grunt'; });
+    T.ok(SB.nameBlocked(s, foe, 'fx-grunt'), 'fx-grunt is blocked for the rest of this phase');
+    T.ok(SB.nameBlocked(s, me, 'fx-grunt'), 'the block applies to either player, not just the opponent');
+    T.eq(s.phaseNamedBlocks.length, 1, 'tracked as a phase-scoped block, not a unit-bound one');
+  });
+
+  T.add('cluster-c4: shd-202 names a card that costs opponents 3 more while this unit is in play', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    T.putInHand(s, foe, 'fx-grunt');
+    const before = SB.cardCost(s, foe, 'fx-grunt');
+    s = play(s, me, 'shd-202');
+    s = drive(s, function (a) { return a.type === 'nameCard' && a.cardId === 'fx-grunt'; });
+    T.eq(SB.cardCost(s, foe, 'fx-grunt'), before + 3, 'costs 3 more for the opponent to play');
+    T.eq(SB.cardCost(s, me, 'fx-grunt'), before, 'unaffected for this unit\'s own controller');
+  });
+
+  T.add('cluster-c4: twi-187 captures up to 3 enemy non-leader units totalling 8 or less remaining HP', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const a1 = T.putOnBoard(s, foe, 'fx-grunt'); // cheap, low HP
+    const a2 = T.putOnBoard(s, foe, 'fx-grunt');
+    const big = T.putOnBoard(s, foe, 'fx-wall'); // too much HP to fit the budget alongside the others
+    s = play(s, me, 'twi-187');
+    s = drive(s, function (a) { return a.type === 'captureBudget' && (a.uid === a1.uid || a.uid === a2.uid); }, 60);
+    const captor = unitsOf(s, me, 'twi-187')[0];
+    T.ok(!SB.findUnit(s, a1.uid) || !SB.findUnit(s, a2.uid), 'at least one cheap unit was captured');
+    T.ok(SB.findUnit(s, big.uid), 'the high-HP unit was never a legal pick and stayed in play');
+    T.ok(captor.captured && captor.captured.length <= 3, 'never more than 3 captives');
+  });
+
+  T.add('cluster-c4: sec-193 lets an opponent give up a unit to be captured, or this unit readies', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const victim = T.putOnBoard(s, foe, 'fx-grunt');
+    s = play(s, me, 'sec-193');
+    const captor = unitsOf(s, me, 'sec-193')[0];
+    s = drive(s, function (a) { return a.type === 'captureOrReady' && a.uid === victim.uid; });
+    T.ok(!SB.findUnit(s, victim.uid), 'the opponent\'s unit was captured');
+    T.ok(SB.findUnit(s, captor.uid).captured.some(function (c) { return c.uid === victim.uid; }), 'held by sec-193');
+
+    let s2 = rich(T.game(), 0); s2.active = 0;
+    s2 = play(s2, me, 'sec-193');
+    const captor2 = unitsOf(s2, me, 'sec-193')[0];
+    captor2.exhausted = true;
+    s2 = drive(s2, function (a) { return a.type === 'captureOrReady' && a.uid == null; });
+    T.ok(!SB.findUnit(s2, captor2.uid).exhausted, 'declining readies sec-193 instead');
+  });
+
+  T.add('cluster-c4: law-072 adds a second regroup phase each round', function () {
+    let s = T.game();
+    T.putOnBoard(s, 0, 'law-072');
+    const round0 = s.round;
+    s = T.act(s, { type: 'pass' });
+    s = T.act(s, { type: 'pass' });
+    s = drive(s, null, 200); // resource/ready choices for both regroup phases
+    T.eq(s.round, round0 + 1, 'still exactly one round later — the extra phase does not skip a round');
+    T.eq(s.phase, 'action', 'settles back into a normal action phase');
+    const regroupEntries = s.log.filter(function (l) { return l.type === 'regroup'; });
+    T.eq(regroupEntries.length, 2, 'two regroup phases happened this round');
+  });
+
+  T.add('cluster-c4: sor-193 enters play ready and must pay 1 or bounce at regroup', function () {
+    T.ok((SB.card('sor-193').staticFlags || []).indexOf('entersReady') >= 0, 'card data carries the entersReady flag');
+
+    // Can pay: stays.
+    let s1 = rich(T.game(), 0); const me = 0;
+    const u1 = T.putOnBoard(s1, me, 'sor-193');
+    SB.fireTriggers(s1, 'onRegroup', u1, { sourceUid: u1.uid });
+    SB.drainQueue(s1);
+    s1 = drive(s1, function (a) { return a.type === 'binary' && a.pick === 'a'; });
+    T.ok(SB.findUnit(s1, u1.uid), 'stays in play after paying 1');
+
+    // Cannot pay: returns to hand.
+    let s2 = T.game();
+    const u2 = T.putOnBoard(s2, me, 'sor-193');
+    s2.players[me].resources.forEach(function (r) { r.exhausted = true; });
+    SB.fireTriggers(s2, 'onRegroup', u2, { sourceUid: u2.uid });
+    SB.drainQueue(s2);
+    s2 = drive(s2);
+    T.ok(!SB.findUnit(s2, u2.uid), 'left play');
+    T.ok(s2.players[me].hand.some(function (inst) { return inst.cardId === 'sor-193'; }), 'returned to hand');
+  });
+
+  T.add('cluster-c4: law-077 upgrade stops its bearer readying and burns the base at regroup', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    const bearer = T.putOnBoard(s, me, 'fx-grunt');
+    bearer.exhausted = true;
+    s = play(s, me, 'law-077', { attachTo: bearer.uid });
+    const before = s.players[me].base.damage;
+    SB.fireTriggers(s, 'onRegroup', SB.findUnit(s, bearer.uid), { sourceUid: bearer.uid });
+    SB.drainQueue(s);
+    T.eq(s.players[me].base.damage, before + 2, 'the bearer\'s controller took 2 base damage at regroup');
+    T.ok(SB.unitHasGrantedStaticFlag(s, SB.findUnit(s, bearer.uid), 'cantReady'), 'the bearer cannot ready while wearing it');
+  });
+
   T.add('expansion: killing a seized ship sidelines ITS leader, not yours', function () {
     let s = rich(T.game(), 0);
     const bearer = leaderAboard(s, 1, 'fx-grunt');   // their leader, aboard their unit
@@ -462,5 +580,799 @@
     T.ok(acts.length > 1 && acts.every(function (a) { return a.player === 1 && a.targetPlayer === 0; }), "every choice is the opponent picking from seat 0's hand");
     s = SB.apply(s, acts[0]);
     T.eq(s.queue.length && s.queue[0].step === "discardChoice" ? 1 : 0, 0, "the pick resolves");
+  });
+
+  // ---- new vocabulary: fewerResourcesThanOpponent, opponentControlsNoGroundUnits,
+  // hasShield, resourcesOwned, friendlyTraitCount, cantAttackBases, cantReady,
+  // minDeckSizeDelta ---------------------------------------------------------
+
+  T.add('expansion: law-202 buffs its attacker when you control fewer resources than an opponent', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    s.active = me;
+    const atk = T.putOnBoard(s, me, 'fx-grunt');
+    fund(s, me, 3);
+    T.giveResources(s, foe, 10); // strictly more resources than me
+    s = play(s, me, 'law-202');
+    s = drive(s);
+    const u = SB.findUnit(s, atk.uid);
+    T.ok(SB.hasKeyword(s, u, 'saboteur'), 'gains Saboteur for the attack');
+    T.eq(u.temp.power, 2, 'the +2/+0 bonus applied while behind on resources');
+  });
+
+  T.add('expansion: law-202 withholds the stat bonus without fewer resources than an opponent', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    s.active = me;
+    const atk = T.putOnBoard(s, me, 'fx-grunt');
+    fund(s, me, 5); fund(s, foe, 5); // tied, not fewer
+    s = play(s, me, 'law-202');
+    s = drive(s);
+    const u = SB.findUnit(s, atk.uid);
+    T.ok(SB.hasKeyword(s, u, 'saboteur'), 'still gains Saboteur');
+    T.eq(u.temp.power, 0, 'no bonus while not behind on resources');
+  });
+
+  T.add('expansion: sec-170 enters play ready only while the opponent controls no ground units', function () {
+    let s = rich(T.game(), 0); s.active = 0;
+    s = play(s, 0, 'sec-170');
+    T.ok(!unitsOf(s, 0, 'sec-170')[0].exhausted, 'ready — the opponent has no ground units');
+    let s2 = rich(T.game(), 0); s2.active = 0;
+    T.putOnBoard(s2, 1, 'fx-wall');
+    s2 = play(s2, 0, 'sec-170');
+    T.ok(unitsOf(s2, 0, 'sec-170')[0].exhausted, 'exhausted — the opponent controls a ground unit');
+  });
+
+  T.add('expansion: sor-090 deals damage equal to the resources you control', function () {
+    SB.cards['fx-tank'] = { id: 'fx-tank', type: 'unit', arena: 'space', cost: 1, power: 0, hp: 20, aspects: ['vigilance'] };
+    try {
+      let s = rich(T.game(), 0); const me = 0, foe = 1;
+      s.active = me;
+      fund(s, me, 12);
+      const n = s.players[me].resources.length;
+      const victim = T.putOnBoard(s, foe, 'fx-tank'); // hp 20: survives any resource count in this test
+      s = play(s, me, 'sor-090');
+      s = drive(s, function (a) { return a.uid === victim.uid; });
+      T.eq(SB.findUnit(s, victim.uid).damage, n, 'damage dealt equals the number of resources controlled');
+      const u = unitsOf(s, me, 'sor-090')[0];
+      T.ok(SB.hasKeyword(s, u, 'sentinel') && SB.hasKeyword(s, u, 'overwhelm'), 'keeps its printed Sentinel and Overwhelm');
+    } finally {
+      delete SB.cards['fx-tank'];
+    }
+  });
+
+  T.add('expansion: jtl-116 deals indirect damage equal to the Vehicle units you control', function () {
+    let s = rich(T.game(), 0); const me = 0, foe = 1;
+    s.active = me;
+    T.putOnBoard(s, me, 'jtl-183'); // a Vehicle already in play (tr46)
+    const before = s.players[foe].base.damage;
+    s = play(s, me, 'jtl-116'); // itself a Vehicle too: 2 on the board once played
+    s = drive(s);
+    T.eq(s.players[foe].base.damage - before, 2, 'indirect damage equals the number of friendly Vehicles');
+  });
+
+  T.add('expansion: sor-072 stops its bearer from attacking a base', function () {
+    let s = T.game(); const me = 0;
+    const bearer = T.putOnBoard(s, me, 'fx-grunt');
+    bearer.upgrades.push({ uid: s.nextUid++, cardId: 'sor-072', owner: me });
+    T.ok(!SB.attackTargets(s, bearer).some(function (t) { return t.kind === 'base'; }), 'no base among its attack targets');
+    T.ok(SB.unitHasGrantedStaticFlag(s, bearer, 'cantAttackBases'), 'the flag is picked up from the upgrade');
+  });
+
+  T.add('expansion: a unit with cantReady is skipped when units ready at regroup', function () {
+    SB.cards['fx-frozen'] = { id: 'fx-frozen', type: 'unit', arena: 'ground', cost: 1, power: 1, hp: 1,
+      aspects: ['vigilance'], staticFlags: ['cantReady'] };
+    try {
+      let s = T.game('fixtureA', 'fixtureB', 'cantready'); const me = 0;
+      const u = T.putOnBoard(s, me, 'fx-frozen', { exhausted: true });
+      const other = T.putOnBoard(s, me, 'fx-grunt', { exhausted: true });
+      s = T.act(s, { type: 'pass' });
+      s = T.act(s, { type: 'pass' }); // pass/pass ends the round
+      s = drive(s); // resolve the regroup resource picks, which trigger the ready step
+      T.ok(SB.findUnit(s, u.uid).exhausted, 'cantReady unit stayed exhausted through regroup');
+      T.ok(!SB.findUnit(s, other.uid).exhausted, 'an ordinary unit readied normally');
+    } finally {
+      delete SB.cards['fx-frozen'];
+    }
+  });
+
+  T.add('expansion: a shield-selector filter (hasShield) keeps only shielded candidates', function () {
+    let s = T.game(); const me = 0;
+    const shielded = T.putOnBoard(s, me, 'fx-grunt', { shields: 1 });
+    const bare = T.putOnBoard(s, me, 'fx-wall');
+    const cands = SB.selectorCandidates(s, me, { who: 'friendly', what: 'unit', hasShield: true }, {});
+    T.ok(cands.some(function (c) { return c.uid === shielded.uid; }), 'the shielded unit is a candidate');
+    T.ok(!cands.some(function (c) { return c.uid === bare.uid; }), 'the unshielded unit is filtered out');
+  });
+
+  T.add('expansion: chooseTwoModes resolves two modes fully, in the order picked', function () {
+    SB.cards['fx-choose4'] = { id: 'fx-choose4', type: 'event', cost: 0, aspects: [],
+      abilities: [{ trigger: 'onPlay', effects: [{ op: 'chooseTwoModes', count: 2, modes: [
+        { effects: [{ op: 'experience', amount: 2, target: { who: 'friendly', what: 'unit' } }] },
+        { effects: [{ op: 'shield', amount: 1, target: { who: 'friendly', what: 'unit' } }] },
+        { effects: [{ op: 'draw', amount: 1 }] },
+        { effects: [{ op: 'healBase', amount: 2 }] },
+      ] }] }] };
+    try {
+      let s = T.game(); const me = 0;
+      const u = T.putOnBoard(s, me, 'fx-grunt');
+      s.players[me].base.damage = 5;
+      s = play(s, me, 'fx-choose4');
+      // Pick mode index 3 (heal base) first, then mode index 1 (shield) second — one
+      // explicit SB.apply per pick, since drive() would otherwise keep going and take
+      // the second pick for us too.
+      let acts = SB.legalActions(s);
+      s = SB.apply(s, acts.find(function (a) { return a.type === 'chooseMode' && a.index === 3; }));
+      acts = SB.legalActions(s);
+      s = SB.apply(s, acts.find(function (a) { return a.type === 'chooseMode' && a.index === 1; }));
+      s = drive(s);
+      T.eq(s.players[me].base.damage, 3, 'the heal-base mode resolved');
+      T.eq(SB.findUnit(s, u.uid).shields, 1, 'the shield mode also resolved');
+      T.eq(SB.findUnit(s, u.uid).experience, 0, 'the un-picked modes did not resolve');
+      T.eq(s.queue.length, 0, 'the whole choice settled — nothing left hanging');
+    } finally {
+      delete SB.cards['fx-choose4'];
+    }
+  });
+
+  T.add('expansion: chooseTwoModes still offers a mode with no legal target — it fizzles instead of hanging', function () {
+    SB.cards['fx-choose4b'] = { id: 'fx-choose4b', type: 'event', cost: 0, aspects: [],
+      abilities: [{ trigger: 'onPlay', effects: [{ op: 'chooseTwoModes', count: 2, modes: [
+        { effects: [{ op: 'defeat', target: { who: 'enemy', what: 'unit' } }] }, // no enemy units exist
+        { effects: [{ op: 'draw', amount: 1 }] },
+        { effects: [{ op: 'draw', amount: 1 }] },
+      ] }] }] };
+    try {
+      let s = T.game(); const me = 0;
+      const handBefore = s.players[me].hand.length;
+      s = play(s, me, 'fx-choose4b');
+      const before = s.players[me].hand.length; // after playing the card itself
+      let acts = SB.legalActions(s);
+      s = SB.apply(s, acts.find(function (a) { return a.type === 'chooseMode' && a.index === 0; }));
+      acts = SB.legalActions(s);
+      s = SB.apply(s, acts.find(function (a) { return a.type === 'chooseMode' && a.index === 1; }));
+      s = drive(s);
+      T.eq(s.queue.length, 0, 'the empty-target mode did not hang the queue');
+      T.eq(s.players[me].hand.length, before + 1, 'the drawn card from the second mode arrived');
+      T.ok(handBefore >= 0, 'sanity');
+    } finally {
+      delete SB.cards['fx-choose4b'];
+    }
+  });
+
+  T.add('expansion: defeatShieldsOn clears every shield, then a chained op can still hit the same unit (jtl-180)', function () {
+    let s = rich(T.game(), 0); const me = 0, foe = 1;
+    s.active = me;
+    const victim = T.putOnBoard(s, foe, 'fx-wall', { shields: 2 });
+    s = play(s, me, 'jtl-180');
+    s = drive(s, function (a) { return a.type === 'choose' && s.queue[0].candidates[a.index].uid === victim.uid; });
+    const u = SB.findUnit(s, victim.uid);
+    T.eq(u.shields, 0, 'both shields defeated');
+    T.eq(u.damage, 3, 'then took 3 damage on the same, now-unshielded unit');
+  });
+
+  T.add('expansion: a notUpgraded selector filter keeps only bare units (jtl-080)', function () {
+    let s = rich(T.game(), 0); const me = 0, foe = 1;
+    s.active = me;
+    const bare = T.putOnBoard(s, foe, 'fx-grunt');
+    const dressed = T.putOnBoard(s, foe, 'fx-wall');
+    dressed.upgrades.push({ uid: s.nextUid++, cardId: 'sor-072', owner: foe });
+    const mine = T.putOnBoard(s, me, 'fx-flyer');
+    s = play(s, me, 'jtl-080');
+    s = drive(s);
+    T.ok(!SB.findUnit(s, bare.uid), 'the un-upgraded enemy unit was defeated');
+    T.ok(SB.findUnit(s, dressed.uid), 'the upgraded enemy unit survived');
+    T.ok(!SB.findUnit(s, mine.uid), 'the un-upgraded friendly unit was defeated too — "each unit"');
+  });
+
+  T.add('expansion: mill with who:"opponent" discards from the opponent\'s deck, not your own', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    const myDeckBefore = s.players[me].deck.length;
+    const foeDeckBefore = s.players[foe].deck.length;
+    SB.queueEffects(s, me, [{ op: 'mill', who: 'opponent', amount: 6 }], {});
+    SB.drainQueue(s);
+    T.eq(s.players[foe].deck.length, foeDeckBefore - 6, 'six cards left the opponent\'s deck');
+    T.eq(s.players[me].deck.length, myDeckBefore, 'your own deck is untouched');
+  });
+
+  T.add('expansion: exhaustUpTo exhausts at most N units and can stop early', function () {
+    let s = T.game(); const me = 0;
+    const a = T.putOnBoard(s, me, 'fx-grunt');
+    const b = T.putOnBoard(s, me, 'fx-wall');
+    const c = T.putOnBoard(s, me, 'fx-flyer');
+    SB.queueEffects(s, me, [{ op: 'exhaustUpTo', amount: 2 }], {});
+    SB.drainQueue(s);
+    let acts = SB.legalActions(s);
+    T.ok(acts.some(function (x) { return x.type === 'exhaustUpTo' && x.uid == null; }), 'stopping is offered');
+    s = SB.apply(s, acts.find(function (x) { return x.type === 'exhaustUpTo' && x.uid === a.uid; }));
+    acts = SB.legalActions(s);
+    s = SB.apply(s, acts.find(function (x) { return x.type === 'exhaustUpTo' && x.uid === b.uid; }));
+    T.eq(s.queue.length, 0, 'after 2 picks the step ends on its own — no forced third pick');
+    T.ok(SB.findUnit(s, a.uid).exhausted && SB.findUnit(s, b.uid).exhausted, 'both chosen units exhausted');
+    T.ok(!SB.findUnit(s, c.uid).exhausted, 'the third unit was left alone');
+  });
+
+  T.add('expansion: minDeckSizeDelta raises a deck’s minimum size (jtl-024)', function () {
+    T.eq(SB.card('jtl-024').minDeckSizeDelta, 10, 'jtl-024 carries the +10 delta');
+    SB.decks['fx-shortdeck'] = { leader: 'law-010', base: 'jtl-024', format: 'premier',
+      cards: (function () { const a = []; for (let i = 0; i < 59; i++) a.push('law-041'); return a; })() };
+    try {
+      T.throws(function () { SB.validateContent(); }, 'a 59-card deck fails the 60-card minimum a jtl-024 base imposes');
+    } finally {
+      delete SB.decks['fx-shortdeck'];
+      SB.validateContent(); // restore a clean world for tests that follow
+    }
+  });
+
+  // ==== tournament cluster c2 (js/ops2.js additions) ==========================
+
+  T.add('expansion c2: a unit\'s power/hp scale with resources controlled, and it keeps Sentinel only while undamaged (ts26-050)', function () {
+    SB.cards['fx-c2res'] = { id: 'fx-c2res', type: 'unit', arena: 'ground', cost: 1, power: 1, hp: 1, aspects: ['command'],
+      abilities: [
+        { trigger: 'constant', scope: { self: true }, grant: { dynamicStat: 'resourcesOwned', dynamicPowerPer: 1, dynamicHpPer: 1 } },
+        { trigger: 'constant', scope: { self: true }, grant: { keywords: [{ k: 'sentinel' }] }, condition: { if: 'selfDamaged', not: true } },
+      ] };
+    try {
+      let s = T.game(); const me = 0;
+      T.giveResources(s, me, 3);
+      const u = T.putOnBoard(s, me, 'fx-c2res');
+      const n = s.players[me].resources.length; // T.game() already resources a few cards during setup
+      T.eq(SB.unitPower(s, u), 1 + n, 'power is base 1 plus the resources controlled');
+      T.eq(SB.unitMaxHp(s, u), 1 + n, 'hp scales the same way');
+      T.ok(SB.hasKeyword(s, u, 'sentinel'), 'undamaged: gains Sentinel');
+      u.damage = 1;
+      T.ok(!SB.hasKeyword(s, u, 'sentinel'), 'damaged: loses Sentinel');
+    } finally { delete SB.cards['fx-c2res']; }
+  });
+
+  T.add('expansion c2: "When you use the Force" fires only when a power token is actually spent, not on a fizzled attempt (lof-101)', function () {
+    SB.cards['fx-c2force'] = { id: 'fx-c2force', type: 'unit', arena: 'ground', cost: 1, power: 1, hp: 1, aspects: ['command'],
+      abilities: [{ trigger: 'onUseForce', effects: [{ op: 'draw', amount: 1 }] }] };
+    try {
+      let s = T.game(); const me = 0;
+      const u = T.putOnBoard(s, me, 'fx-c2force');
+      const before = s.players[me].hand.length;
+      SB.queueEffects(s, me, [{ op: 'useForce' }], { sourceUid: u.uid });
+      SB.drainQueue(s);
+      T.eq(s.players[me].hand.length, before, 'no power token held — useForce fizzles and the trigger does not fire');
+      s.players[me].force = true;
+      SB.queueEffects(s, me, [{ op: 'useForce' }], { sourceUid: u.uid });
+      SB.drainQueue(s);
+      T.eq(s.players[me].hand.length, before + 1, 'spending an actual power token fires the trigger');
+    } finally { delete SB.cards['fx-c2force']; }
+  });
+
+  T.add('expansion c2: a "When Defeated" ability can read/gate on this unit\'s power after it has already left play (sec-035, jtl-104)', function () {
+    SB.cards['fx-c2ret7'] = { id: 'fx-c2ret7', type: 'unit', arena: 'ground', cost: 1, power: 7, hp: 1, aspects: ['command'],
+      abilities: [{ trigger: 'whenDefeated', condition: { if: 'selfPowerWasAtLeast', n: 7 }, effects: [{ op: 'selfDefeatedToHand' }] }] };
+    SB.cards['fx-c2ret3'] = { id: 'fx-c2ret3', type: 'unit', arena: 'ground', cost: 1, power: 3, hp: 1, aspects: ['command'],
+      abilities: [{ trigger: 'whenDefeated', condition: { if: 'selfPowerWasAtLeast', n: 7 }, effects: [{ op: 'selfDefeatedToHand' }] }] };
+    SB.cards['fx-c2dmg'] = { id: 'fx-c2dmg', type: 'unit', arena: 'ground', cost: 1, power: 5, hp: 1, aspects: ['command'],
+      abilities: [{ trigger: 'whenDefeated', effects: [{ op: 'damage', amount: 0, amountRef: 'powerOfDefeatedSource', target: { who: 'any', what: 'unit' } }] }] };
+    try {
+      let s = T.game(); const me = 0, foe = 1;
+      const strong = T.putOnBoard(s, me, 'fx-c2ret7');
+      const weak = T.putOnBoard(s, me, 'fx-c2ret3');
+      SB.defeatUnit(s, strong, {}); SB.drainQueue(s);
+      SB.defeatUnit(s, weak, {}); SB.drainQueue(s);
+      T.ok(s.players[me].hand.some(function (i) { return i.cardId === 'fx-c2ret7'; }), 'the 7-power unit returned to hand');
+      T.ok(!s.players[me].hand.some(function (i) { return i.cardId === 'fx-c2ret3'; }), 'the 3-power unit did not qualify');
+      T.ok(s.players[me].discard.some(function (i) { return i.cardId === 'fx-c2ret3'; }), 'it stayed in the discard pile instead');
+
+      const attacker = T.putOnBoard(s, me, 'fx-c2dmg');
+      const victim = T.putOnBoard(s, foe, 'fx-gritty'); // hp 6, survives 5 damage
+      SB.defeatUnit(s, attacker, {});
+      SB.drainQueue(s);
+      s = drive(s, function (a) { return a.type === 'choose' && s.queue[0].candidates[a.index].uid === victim.uid; });
+      T.eq(SB.findUnit(s, victim.uid).damage, 5, 'the damage equals the defeated unit’s power, read from the snapshot');
+    } finally { delete SB.cards['fx-c2ret7']; delete SB.cards['fx-c2ret3']; delete SB.cards['fx-c2dmg']; }
+  });
+
+  T.add('expansion c2: "control another <trait> card (unit, upgrade, or leader)" checks every zone in play, not just units (jtl-104)', function () {
+    SB.cards['fx-c2sentinel'] = { id: 'fx-c2sentinel', type: 'unit', arena: 'ground', cost: 1, power: 1, hp: 1, aspects: ['command'],
+      abilities: [{ trigger: 'constant', scope: { self: true }, grant: { keywords: [{ k: 'sentinel' }] },
+        condition: { if: 'controlsTraitCardAnywhere', trait: 'tr50' } }] };
+    SB.cards['fx-c2trup'] = { id: 'fx-c2trup', type: 'upgrade', cost: 1, aspects: [], traits: ['tr50'] };
+    try {
+      let s = T.game(); const me = 0;
+      const u = T.putOnBoard(s, me, 'fx-c2sentinel');
+      const other = T.putOnBoard(s, me, 'fx-wall');
+      T.ok(!SB.hasKeyword(s, u, 'sentinel'), 'no matching card anywhere yet');
+      other.upgrades.push({ uid: s.nextUid++, cardId: 'fx-c2trup', owner: me });
+      T.ok(SB.hasKeyword(s, u, 'sentinel'), 'an upgrade of the trait, on ANOTHER unit, satisfies it — not just units in play');
+    } finally { delete SB.cards['fx-c2sentinel']; delete SB.cards['fx-c2trup']; }
+  });
+
+  T.add('expansion c2: "while an opponent controls a unit of trait X" reads the opponent\'s board, not your own (lof-118)', function () {
+    SB.cards['fx-c2amb'] = { id: 'fx-c2amb', type: 'unit', arena: 'ground', cost: 1, power: 1, hp: 1, aspects: ['command'],
+      abilities: [{ trigger: 'constant', scope: { self: true }, grant: { keywords: [{ k: 'ambush' }] },
+        condition: { if: 'opponentControlsUnitWithTrait', trait: 'tr12' } }] };
+    SB.cards['fx-c2forceunit'] = { id: 'fx-c2forceunit', type: 'unit', arena: 'ground', cost: 1, power: 1, hp: 1, aspects: ['command'], traits: ['tr12'] };
+    try {
+      let s = T.game(); const me = 0, foe = 1;
+      const u = T.putOnBoard(s, me, 'fx-c2amb');
+      T.ok(!SB.hasKeyword(s, u, 'ambush'), 'opponent controls no Force unit yet');
+      T.putOnBoard(s, me, 'fx-c2forceunit'); // one of my own — should NOT satisfy "an opponent controls"
+      T.ok(!SB.hasKeyword(s, u, 'ambush'), 'a Force unit under my own control does not count');
+      T.putOnBoard(s, foe, 'fx-c2forceunit');
+      T.ok(SB.hasKeyword(s, u, 'ambush'), 'now the opponent controls one — Ambush granted');
+    } finally { delete SB.cards['fx-c2amb']; delete SB.cards['fx-c2forceunit']; }
+  });
+
+  T.add('expansion c2: an amountRef counting enemy units defeated this phase (sec-035)', function () {
+    let s = rich(T.game(), 0); const me = 0, foe = 1;
+    const a = T.putOnBoard(s, foe, 'fx-grunt');
+    const b = T.putOnBoard(s, foe, 'fx-wall');
+    const mine = T.putOnBoard(s, me, 'fx-flyer');
+    SB.defeatUnit(s, a, {});
+    SB.defeatUnit(s, mine, {}); // a friendly defeat should NOT count
+    SB.defeatUnit(s, b, {});
+    const c = T.putOnBoard(s, me, 'fx-flyer');
+    SB.queueEffects(s, me, [{ op: 'experience', amountRef: 'enemyDefeatedThisPhaseCount', target: { who: 'any', what: 'unit' } }], {});
+    SB.drainQueue(s);
+    s = drive(s, function (a) { return a.type === 'choose' && s.queue[0].candidates[a.index].uid === c.uid; });
+    T.eq(SB.findUnit(s, c.uid).experience, 2, 'counts only the 2 enemy units defeated this phase, not the friendly one');
+  });
+
+  T.add('expansion c2: an amountRef equal to twice the number of units controlled (lof-101)', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    T.putOnBoard(s, me, 'fx-grunt'); // 1 friendly unit controlled -> 2x = 2
+    const victim = T.putOnBoard(s, foe, 'fx-wall'); // hp 5, survives 2 damage
+    SB.queueEffects(s, me, [{ op: 'damage', amountRef: 'doubleControlledUnits', target: { who: 'any', what: 'unit' } }], {});
+    SB.drainQueue(s);
+    s = drive(s, function (a) { return a.type === 'choose' && s.queue[0].candidates[a.index].uid === victim.uid; });
+    T.eq(SB.findUnit(s, victim.uid).damage, 2, 'twice the 1 unit controlled');
+  });
+
+  T.add('expansion c2: returning a unit remembers its cost for a follow-up op, even after it leaves play (ash-038)', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    const returned = T.putOnBoard(s, me, 'jtl-183'); // a real costed card, not a token/fixture
+    const cost = SB.costOf('jtl-183');
+    const victim = T.putOnBoard(s, foe, 'fx-wall'); // hp 5, survives the 2 damage
+    SB.queueEffects(s, me, [
+      { op: 'returnHandSaveCost', target: { who: 'friendly', what: 'unit' }, saveCostAs: 'rc' },
+      { op: 'damage', target: { who: 'any', what: 'unit' }, amountRef: 'stored:rc' },
+    ], {});
+    SB.drainQueue(s);
+    s = drive(s, function (a) {
+      return a.type === 'choose' && s.queue[0].candidates &&
+        (s.queue[0].candidates[a.index].uid === returned.uid || s.queue[0].candidates[a.index].uid === victim.uid);
+    });
+    T.ok(!SB.findUnit(s, returned.uid), 'the unit went back to hand');
+    T.ok(s.players[me].hand.some(function (i) { return i.uid === returned.uid; }), 'confirm it is in hand');
+    T.eq(SB.findUnit(s, victim.uid).damage, cost, 'damage equals the returned unit’s printed cost');
+  });
+
+  T.add('expansion c2: paying resources one at a time onto a chosen (non-self) unit, each one an experience token (sec-040)', function () {
+    let s = rich(T.game(), 0); const me = 0;
+    const before = SB.readyResources(s, me);
+    const chosen = T.putOnBoard(s, me, 'fx-wall');
+    SB.queueEffects(s, me, [{ op: 'payForExperienceOn', target: { who: 'any', what: 'unit', nonLeader: true } }], {});
+    SB.drainQueue(s);
+    let acts = SB.legalActions(s);
+    s = SB.apply(s, acts.find(function (a) { return a.type === 'payXpTargetPick' && a.uid === chosen.uid; }));
+    // Pay twice, then stop.
+    for (let i = 0; i < 2; i++) {
+      acts = SB.legalActions(s);
+      s = SB.apply(s, acts.find(function (a) { return a.type === 'payXp' && a.pay; }));
+    }
+    acts = SB.legalActions(s);
+    s = SB.apply(s, acts.find(function (a) { return a.type === 'payXp' && !a.pay; }));
+    T.eq(SB.findUnit(s, chosen.uid).experience, 2, 'two resources paid, two experience tokens on the chosen unit');
+    T.eq(SB.readyResources(s, me), before - 2, 'two resources were spent');
+  });
+
+  // ---- cluster-c3: eight tournament cards whose triggers didn't exist yet -------
+
+  T.add('cluster-c3: onOwnDraw fires when you draw during the action phase, not on an opponent draw (law-052)', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    rich(s, foe);
+    const u = T.putOnBoard(s, me, 'law-052');
+    s = play(s, me, 'fx-supply'); // draws 2 for me
+    T.eq(SB.findUnit(s, u.uid).shields, 1, 'shielded once for my own draw event, regardless of card count');
+    s = play(s, foe, 'fx-supply'); // draws 2 for the opponent instead
+    T.eq(SB.findUnit(s, u.uid).shields, 1, 'no shield from an opponent draw');
+  });
+
+  T.add('cluster-c3: onDeckDiscard fires only for a discard from the deck, not the hand, once per round (law-176)', function () {
+    let s = T.game(); const me = 0;
+    const u = T.putOnBoard(s, me, 'law-176', { exhausted: true });
+    SB.queueEffects(s, me, [{ op: 'discard', who: 'self' }], {}); // discard from HAND
+    SB.drainQueue(s);
+    s = drive(s);
+    T.ok(SB.findUnit(s, u.uid).exhausted, 'a hand discard does not ready it');
+    SB.queueEffects(s, me, [{ op: 'mill', amount: 1 }], {}); // discard from DECK
+    SB.drainQueue(s);
+    s = drive(s, function (a) { return a.type === 'binary' && a.pick === 'a'; });
+    T.ok(!SB.findUnit(s, u.uid).exhausted, 'readied after a deck discard');
+    SB.findUnit(s, u.uid).exhausted = true;
+    SB.queueEffects(s, me, [{ op: 'mill', amount: 1 }], {});
+    SB.drainQueue(s);
+    s = drive(s, function (a) { return a.type === 'binary' && a.pick === 'a'; });
+    T.ok(SB.findUnit(s, u.uid).exhausted, 'once per round: a second deck discard does nothing more');
+  });
+
+  T.add('cluster-c3: law-053 gains a credit only when the defeated enemy unit was the highest-cost enemy, once per round', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    T.putOnBoard(s, me, 'law-053');
+    const grunt = T.putOnBoard(s, foe, 'fx-grunt');   // cost 1
+    const brute1 = T.putOnBoard(s, foe, 'fx-brute');  // cost 4
+    const brute2 = T.putOnBoard(s, foe, 'fx-brute');  // cost 4 — tied for highest
+    SB.defeatUnit(s, SB.findUnit(s, grunt.uid), {});
+    SB.drainQueue(s);
+    T.eq(s.players[me].credits || 0, 0, 'the cheapest enemy unit dying pays nothing');
+    SB.defeatUnit(s, SB.findUnit(s, brute1.uid), {});
+    SB.drainQueue(s);
+    T.eq(s.players[me].credits || 0, 1, 'the (tied) highest-cost enemy unit dying pays a credit');
+    SB.defeatUnit(s, SB.findUnit(s, brute2.uid), {});
+    SB.drainQueue(s);
+    T.eq(s.players[me].credits || 0, 1, 'once per round: a second highest-cost death this round pays nothing more');
+  });
+
+  T.add('cluster-c3: lof-142 hits the enemy base only when they play an event, not a unit (playedType filter)', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    rich(s, foe);
+    T.putOnBoard(s, me, 'lof-142');
+    const fodder = T.putOnBoard(s, foe, 'fx-grunt'); // fx-bolt's own damage lands here, not the base
+    const before = s.players[foe].base.damage;
+    s = play(s, foe, 'fx-bolt', {}); // an event
+    // Aim fx-bolt's own damage at the spare unit, not the base, so the base-damage
+    // count below isolates lof-142's observer effect.
+    const idx = s.queue[0].candidates.findIndex(function (c) { return c.kind === 'unit' && c.uid === fodder.uid; });
+    s = SB.apply(s, SB.legalActions(s).find(function (a) { return a.type === 'choose' && a.index === idx; }));
+    T.eq(s.players[foe].base.damage, before + 1, 'the observer added exactly 1 base damage for the event');
+    T.ok(!SB.findUnit(s, fodder.uid), 'fx-bolt\'s own 3 damage defeated the spare unit, confirming it took the hit, not the base');
+    const baseAfterEvent = s.players[foe].base.damage;
+    s = play(s, foe, 'fx-grunt'); // a unit, not an event
+    T.eq(s.players[foe].base.damage, baseAfterEvent, 'no extra base damage from a unit play');
+  });
+
+  T.add('cluster-c3: ash-204 gains Advantage from any damage to your base, not only combat (onBaseDamaged)', function () {
+    let s = T.game(); const me = 0;
+    const u = T.putOnBoard(s, me, 'ash-204');
+    SB.damageBase(s, me, 2, 'indirect');
+    SB.drainQueue(s);
+    T.eq(u.advantage || 0, 1, 'non-combat damage to the base still gives the unit Advantage');
+  });
+
+  T.add('cluster-c3: jtl-186 may draw on attack only after playing a Bounty Hunter or Pilot card this phase', function () {
+    let s = T.game(); s.active = 0; const me = 0, foe = 1;
+    const u = T.putOnBoard(s, me, 'jtl-186');
+    const deckBefore = s.players[me].deck.length;
+    s = T.act(s, { type: 'attack', attacker: u.uid, target: { kind: 'base', player: foe } });
+    T.eq(s.queue.length, 0, 'nothing played this phase: the ability does not even offer a choice');
+    T.eq(s.players[me].deck.length, deckBefore, 'no draw happened');
+
+    let s2 = rich(T.game(), 0); s2.active = 0;
+    s2 = play(s2, me, 'shd-254'); // trait tr03 (Bounty Hunter)
+    s2.active = me; // a play passes the turn; take it back for the attack below
+    const u2 = T.putOnBoard(s2, me, 'jtl-186');
+    const deckBefore2 = s2.players[me].deck.length;
+    s2 = T.act(s2, { type: 'attack', attacker: u2.uid, target: { kind: 'base', player: foe } });
+    s2 = drive(s2, function (a) { return a.type === 'binary' && a.pick === 'a'; });
+    T.eq(s2.players[me].deck.length, deckBefore2 - 1, 'drew a card after playing a Bounty Hunter card this phase');
+  });
+
+  T.add('cluster-c3: law-076 shields itself on play only if you discarded a card (hand or deck) this phase', function () {
+    let s = T.game(); const me = 0;
+    const u1 = T.putOnBoard(s, me, 'law-076');
+    T.eq(u1.shields || 0, 0, 'putOnBoard bypasses onPlay entirely — sanity check');
+    let s2 = rich(T.game(), 0); s2.active = 0;
+    SB.queueEffects(s2, me, [{ op: 'mill', amount: 1 }], {}); // a deck discard this phase
+    SB.drainQueue(s2);
+    s2 = play(s2, me, 'law-076');
+    const u2 = unitsOf(s2, me, 'law-076')[0];
+    T.eq(u2.shields, 1, 'shielded: a card was discarded from the deck this phase');
+  });
+
+  T.add('cluster-c3: jtl-223 may return a cheap or exhausted unit to hand when a Pilot attaches to it', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const bearer = T.putOnBoard(s, me, 'jtl-223'); // trait tr46 (Vehicle), no pilot yet
+    const cheap = T.putOnBoard(s, foe, 'fx-grunt'); // cost 1: qualifies even while ready
+    T.putInHand(s, me, 'jtl-057'); // cost 1, keyword piloting (trait tr30)
+    s = T.act(s, { type: 'playCard', cardId: 'jtl-057', asPilot: true, attachTo: bearer.uid });
+    T.ok(SB.hasPilot(s, SB.findUnit(s, bearer.uid)), 'the pilot attached');
+    s = drive(s);
+    T.ok(!SB.findUnit(s, cheap.uid), 'the cheap unit left play');
+    T.ok(s.players[foe].hand.some(function (inst) { return inst.cardId === 'fx-grunt'; }), 'it went back to its owner\'s hand');
+  });
+
+  // ---- cluster-c5 expansion ----------------------------------------------
+
+  T.add('cluster-c5: shd-094 discounts a Force unit 8, any other unit only 6', function () {
+    let s = T.game(); const me = 0;
+    // Fund exactly the event's real cost (aspect penalties may raise it above the
+    // printed 6) plus 1 resource left over, to tell the two discount branches apart.
+    fund(s, me, SB.cardCost(s, me, 'shd-094') + 1);
+    s.players[me].discard.push({ uid: s.nextUid++, cardId: 'law-149' }); // Force (tr12), cost 8, no aspect penalty here
+    s.players[me].discard.push({ uid: s.nextUid++, cardId: 'ash-179' }); // not Force, cost 8, no aspect penalty here
+    s = play(s, me, 'shd-094');
+    const acts = SB.legalActions(s);
+    T.ok(acts.some(function (a) { return a.type === 'playHandCard' && a.cardId === 'law-149'; }),
+      'the Force unit is playable at 1 resource left (8 off)');
+    T.ok(!acts.some(function (a) { return a.type === 'playHandCard' && a.cardId === 'ash-179'; }),
+      'the non-Force unit is not playable at 1 resource left (only 6 off)');
+  });
+
+  T.add('cluster-c5: sor-183 may return an event from either discard pile to its owner\'s hand', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    s.players[foe].discard.push({ uid: s.nextUid++, cardId: 'fx-bolt' }); // opponent's event
+    s = play(s, me, 'sor-183');
+    s = T.act(s, { type: 'returnEventCard', owner: foe, index: 0 });
+    T.ok(s.players[foe].hand.some(function (inst) { return inst.cardId === 'fx-bolt'; }), 'the event returned to its owner\'s hand, not the caster\'s');
+  });
+
+  T.add('cluster-c5: shd-207 returns a unit then its owner may replay it for free', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const g = T.putOnBoard(s, foe, 'fx-grunt'); // cost 1, qualifies (<=6)
+    const before = SB.readyResources(s, foe);
+    s = play(s, me, 'shd-207');
+    // The only legal target auto-resolves (a mandatory return with one candidate) —
+    // the queue head is already the owner's "play it free?" choice.
+    s = T.act(s, { type: 'returnReplay', play: true });
+    const reborn = unitsOf(s, foe, 'fx-grunt')[0];
+    T.ok(reborn, 'the unit came back under its owner\'s control');
+    T.eq(SB.readyResources(s, foe), before, 'replayed for free — no resources spent');
+  });
+
+  T.add('cluster-c5: law-093 returns a cheap unit, replays it free, and it gains Shielded for the phase', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const g = T.putOnBoard(s, foe, 'fx-grunt'); // cost 1 (<=3)
+    s = play(s, me, 'law-093');
+    // The choose step picks the unit (only candidate); the drive then falls through
+    // to the "play it free?" step and takes its first offered action, which is play:true.
+    s = drive(s, function (a) {
+      return a.type === 'choose' && s.queue[0].candidates && s.queue[0].candidates[a.index] && s.queue[0].candidates[a.index].uid === g.uid;
+    }, 2);
+    const reborn = unitsOf(s, foe, 'fx-grunt')[0];
+    T.ok(SB.hasKeyword(s, reborn, 'shielded'), 'the replayed unit gained Shielded for this phase');
+  });
+
+  T.add('cluster-c5: law-096 lets each player pull a unit before defeating everything left', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const mine = T.putOnBoard(s, me, 'fx-grunt');
+    const theirs = T.putOnBoard(s, foe, 'fx-wall');
+    const spared = T.putOnBoard(s, foe, 'fx-flyer');
+    s = play(s, me, 'law-096');
+    // Active player returns `theirs` (an enemy unit is a legal choice), opponent returns `spared`.
+    s = T.act(s, { type: 'mutualReturn', uid: theirs.uid });
+    s = T.act(s, { type: 'mutualReturn', uid: spared.uid });
+    T.ok(s.players[foe].hand.some(function (inst) { return inst.cardId === 'fx-wall'; }), 'the returned enemy unit went to its own owner\'s hand');
+    T.ok(s.players[foe].hand.some(function (inst) { return inst.cardId === 'fx-flyer'; }), 'the second returned unit also went home');
+    T.ok(!SB.findUnit(s, mine.uid), 'every remaining non-leader unit was defeated, including the caster\'s own');
+  });
+
+  T.add('cluster-c5: sor-052 heals a budget spread across units/bases then hits itself for the total', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    const dmg1 = T.putOnBoard(s, me, 'fx-wall', { damage: 3 });
+    s.players[me].base.damage = 4;
+    s = play(s, me, 'sor-052');
+    s = drive(s, function (a) { return a.type === 'healBudgetPoint' && a.kind === 'unit' && a.uid === dmg1.uid; }, 3);
+    s = drive(s, function (a) { return a.type === 'healBudgetPoint' && a.kind === 'base'; }, 4);
+    s = T.act(s, { type: 'healBudgetPoint', kind: 'stop' });
+    const src = unitsOf(s, me, 'sor-052')[0];
+    T.eq(SB.findUnit(s, dmg1.uid).damage, 0, 'the wall was fully healed');
+    T.eq(s.players[me].base.damage, 0, 'the base was fully healed');
+    T.eq(src.damage, 7, 'sor-052 took damage equal to the 7 total it healed');
+  });
+
+  T.add('cluster-c5: sec-073 taxes each enemy unit at the start of the next action phase', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const enemy = T.putOnBoard(s, foe, 'fx-grunt');
+    s = play(s, me, 'sec-073');
+    s = T.act(s, { type: 'pass' }); s = T.act(s, { type: 'pass' });
+    // Walk the regroup phase (both players decline to resource) up to, but not past,
+    // the tax choice the next action phase arms.
+    let guard = 0;
+    while (s.queue.length > 0 && s.queue[0].step !== 'payOrExhaustPick' && guard++ < 10) {
+      s = T.act(s, { type: 'resourceCard', handIndex: -1 });
+    }
+    const acts = SB.legalActions(s);
+    T.ok(acts.some(function (a) { return a.type === 'payOrExhaust' && a.uid === enemy.uid; }), 'the enemy unit must now pay or exhaust');
+    s = T.act(s, { type: 'payOrExhaust', uid: enemy.uid, pay: false });
+    T.ok(SB.findUnit(s, enemy.uid).exhausted, 'declining payment exhausts the unit');
+  });
+
+  T.add('cluster-c5: shd-090 redirects this attack\'s retaliation damage to a chosen friendly Underworld unit', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    const atk = T.putOnBoard(s, me, 'shd-090'); atk.exhausted = false;
+    const guard = T.putOnBoard(s, me, 'sor-183'); // another friendly Underworld (tr45) unit
+    const defender = T.putOnBoard(s, foe, 'fx-wall'); // power 1
+    s = T.act(s, { type: 'attack', attacker: atk.uid, target: { kind: 'unit', uid: defender.uid } });
+    s = drive(s, function (a) { return a.type === 'choose' && a.index >= 0; });
+    T.eq(SB.findUnit(s, atk.uid).damage, 0, 'the attacker took no damage');
+    T.eq(SB.findUnit(s, guard.uid).damage, 1, 'the chosen friendly unit took the retaliation damage instead');
+  });
+
+  T.add('cluster-c5: sec-157 buffs an attack, grants Overwhelm, and strips the defender\'s abilities for it', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const atk = T.putOnBoard(s, me, 'fx-grunt'); atk.exhausted = false; // power 2
+    // twi-083 normally creates a token when attacked; with abilities suppressed for
+    // this attack, that "whenAttacked" ability must not fire.
+    const defender = T.putOnBoard(s, foe, 'twi-083'); // power 4, hp 4
+    s = play(s, me, 'sec-157');
+    s = T.act(s, { type: 'effectAttack', target: { kind: 'unit', uid: defender.uid } });
+    T.eq(SB.allUnits(s, foe).filter(function (u) { return u.cardId === 'tok-gv1'; }).length, 0,
+      'the defender\'s whenAttacked ability was suppressed — no token created');
+    const survivor = SB.findUnit(s, defender.uid);
+    T.ok(survivor && !survivor.abilitiesSuppressedForAttack, 'the suppression clears once the attack it named is over');
+  });
+
+  T.add('cluster-c5: sor-252 bottoms up to 4 chosen cards from a single discard pile', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    const before = s.players[me].deck.length;
+    s.players[me].discard.push({ uid: s.nextUid++, cardId: 'fx-bolt' }, { uid: s.nextUid++, cardId: 'fx-supply' });
+    s = play(s, me, 'sor-252');
+    s = T.act(s, { type: 'bottomDiscard', owner: me, index: 0 });
+    s = T.act(s, { type: 'bottomDiscard', owner: me, index: 0 });
+    s = T.act(s, { type: 'bottomDiscard', index: -1 });
+    T.eq(s.players[me].deck.length, before + 2, 'both chosen cards landed on the bottom of the deck');
+    T.eq(s.players[me].discard.filter(function (i) { return i.cardId === 'fx-bolt' || i.cardId === 'fx-supply'; }).length, 0, 'they left the discard pile');
+  });
+
+  T.add('cluster-c5: jtl-164 may resource the top card only while an opponent controls more resources', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    fund(s, me, 4); fund(s, foe, 6); // opponent now clearly controls more resources
+    const deckTop = s.players[me].deck[0].cardId;
+    s = play(s, me, 'jtl-164');
+    s = drive(s, function (a) { return a.type === 'binary' && a.pick === 'a'; });
+    T.ok(s.players[me].resources.some(function (r) { return r.instance.cardId === deckTop; }), 'the top card became a resource');
+  });
+
+  // ---- shd-109: reveal resources, play every unit revealed for free ---------
+
+  T.add('shd-109: a unit revealed from resources is played for free, a non-unit revealed stays a resource', function () {
+    let s = T.game(); const me = 0;
+    fund(s, me, SB.cardCost(s, me, 'shd-109'));
+    const grunt = { uid: s.nextUid++, cardId: 'fx-grunt' }; // unit
+    const bolt = { uid: s.nextUid++, cardId: 'fx-bolt' }; // event, not a unit
+    s.players[me].resources.push({ instance: grunt, exhausted: false });
+    s.players[me].resources.push({ instance: bolt, exhausted: false });
+    const resourceCountBefore = s.players[me].resources.length;
+    s = play(s, me, 'shd-109');
+    s = T.act(s, { type: 'revealResource', uid: grunt.uid });
+    s = T.act(s, { type: 'revealResource', uid: bolt.uid });
+    s = T.act(s, { type: 'revealResource', uid: null }); // stop revealing
+    s = drive(s); // resolves the forced free play of the revealed unit
+    T.ok(SB.allUnits(s, me).some(function (u) { return u.cardId === 'fx-grunt' && u.enteredRound === s.round; }),
+      'the revealed unit entered play');
+    T.ok(!s.players[me].resources.some(function (r) { return r.instance.uid === grunt.uid; }),
+      'the played unit left the resource row');
+    T.ok(s.players[me].resources.some(function (r) { return r.instance.uid === bolt.uid; }),
+      'the revealed non-unit is still sitting in the resource row');
+    T.eq(s.players[me].resources.length, resourceCountBefore,
+      'the resource row is topped back up from the deck, same as any other card played from resources');
+  });
+
+  T.add('shd-109: stopping early leaves the un-revealed resources untouched', function () {
+    let s = T.game(); const me = 0;
+    fund(s, me, SB.cardCost(s, me, 'shd-109'));
+    const grunt = { uid: s.nextUid++, cardId: 'fx-grunt' };
+    const wall = { uid: s.nextUid++, cardId: 'fx-wall' };
+    s.players[me].resources.push({ instance: grunt, exhausted: false });
+    s.players[me].resources.push({ instance: wall, exhausted: false });
+    s = play(s, me, 'shd-109');
+    s = T.act(s, { type: 'revealResource', uid: null }); // stop before revealing anything
+    T.eq(s.queue.length, 0, 'the ability resolves with nothing revealed');
+    T.ok(s.players[me].resources.some(function (r) { return r.instance.uid === grunt.uid; }),
+      'the un-revealed unit stayed a resource');
+    T.ok(s.players[me].resources.some(function (r) { return r.instance.uid === wall.uid; }),
+      'the other un-revealed unit stayed a resource too');
+    T.ok(!SB.allUnits(s, me).some(function (u) { return u.cardId === 'fx-grunt' || u.cardId === 'fx-wall'; }),
+      'nothing was played');
+  });
+
+  T.add('shd-109: revealing can stop partway through, after some resources are already revealed', function () {
+    let s = T.game(); const me = 0;
+    fund(s, me, SB.cardCost(s, me, 'shd-109'));
+    const grunt = { uid: s.nextUid++, cardId: 'fx-grunt' };
+    const wall = { uid: s.nextUid++, cardId: 'fx-wall' };
+    s.players[me].resources.push({ instance: grunt, exhausted: false });
+    s.players[me].resources.push({ instance: wall, exhausted: false });
+    s = play(s, me, 'shd-109');
+    let acts = SB.legalActions(s);
+    T.ok(acts.some(function (a) { return a.type === 'revealResource' && a.uid == null; }), 'stopping is offered');
+    s = T.act(s, { type: 'revealResource', uid: grunt.uid });
+    s = T.act(s, { type: 'revealResource', uid: null }); // stop after just one reveal
+    s = drive(s);
+    T.ok(SB.allUnits(s, me).some(function (u) { return u.cardId === 'fx-grunt' && u.enteredRound === s.round; }),
+      'the one revealed unit was played');
+    T.ok(s.players[me].resources.some(function (r) { return r.instance.uid === wall.uid; }),
+      'the never-revealed unit was left alone in resources');
+    T.ok(!SB.allUnits(s, me).some(function (u) { return u.cardId === 'fx-wall'; }),
+      'the never-revealed unit was not played');
+  });
+
+  T.add('law-237: On Attack, look at top 3, may discard 1, rest go back on top', function () {
+    let s = T.game(); s.active = 0; const me = 0, foe = 1;
+    const u = T.putOnBoard(s, me, 'law-237', { exhausted: false });
+    const top3 = ['fx-grunt', 'fx-flyer', 'fx-wall'].map(function (cid) { return { uid: s.nextUid++, cardId: cid }; });
+    s.players[me].deck = top3.concat(s.players[me].deck);
+    const deckBefore = s.players[me].deck.length;
+    s = T.act(s, { type: 'attack', attacker: u.uid, target: { kind: 'base', player: foe } });
+    s = T.act(s, { type: 'peekDiscardPick', index: 1 }); // discard the middle card
+    T.eq(s.players[me].deck.length, deckBefore - 1, 'exactly one card left the deck');
+    T.ok(s.players[me].discard.some(function (i) { return i.cardId === 'fx-flyer'; }),
+      'the chosen card went to the discard pile');
+    T.eq(s.players[me].deck[0].cardId, 'fx-grunt', 'the first kept card is back on top');
+    T.eq(s.players[me].deck[1].cardId, 'fx-wall', 'the second kept card follows it');
+  });
+
+  // ---- leader competitive-expansion pass: new vocabulary added for 15 leaders ----
+
+  T.add('jtl-018 leader side: extraAction lets the same player act again', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].leader.cardId = 'jtl-018';
+    s.active = me;
+    T.putOnBoard(s, me, 'fx-grunt', { exhausted: false });
+    s = T.act(s, { type: 'leaderAction' });
+    s = drive(s); // resolve the (single-candidate) suppress target
+    T.eq(s.active, me, 'the extra action keeps the same player active instead of passing the turn');
+    T.ok(s.players[me].leader.exhausted, 'the leader action still exhausted the leader');
+  });
+
+  T.add('jtl-018 unit side: suppressUpTo can suppress more than one unit, then stop', function () {
+    let s = deployed_(0);
+    const me = 0;
+    const a = T.putOnBoard(s, me, 'fx-grunt', { exhausted: false });
+    const b = T.putOnBoard(s, me, 'fx-wall', { exhausted: false });
+    s = T.act(s, { type: 'attack', attacker: s.ground.find(function (u) { return u.cardId === 'jtl-018'; }).uid,
+      target: { kind: 'base', player: 1 } });
+    s = T.act(s, { type: 'suppressUpTo', uid: a.uid });
+    s = T.act(s, { type: 'suppressUpTo', uid: b.uid });
+    s = T.act(s, { type: 'suppressUpTo', uid: null });
+    T.ok(SB.findUnit(s, a.uid).abilitiesSuppressed, 'the first chosen unit lost its abilities');
+    T.ok(SB.findUnit(s, b.uid).abilitiesSuppressed, 'the second chosen unit lost its abilities too');
+  });
+  function deployed_(who) {
+    let s = T.game(); s.active = who; s.initiative = who;
+    const u = deployed(s, who, 'jtl-018');
+    return s;
+  }
+
+  T.add('law-013 leader side: the activation cost defeats one of your own resources', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    s.players[me].leader.cardId = 'law-013';
+    s.active = me;
+    T.giveResources(s, me, 1);
+    const before = s.players[me].resources.length;
+    T.putOnBoard(s, foe, 'fx-grunt', { exhausted: false });
+    s = T.act(s, { type: 'leaderAction' });
+    s = drive(s, function (a) { return a.type === 'choose'; });
+    T.eq(s.players[me].resources.length, before - 1, 'one resource was defeated as part of activating the action');
+    T.eq(s.players[me].credits || 0, 1, 'and a credit token was created');
+  });
+
+  T.add('law-016: the leader action is gated on having created a token this phase', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    s.players[me].leader.cardId = 'law-016';
+    s.active = me;
+    T.putOnBoard(s, foe, 'fx-grunt', { exhausted: false });
+    T.ok(!SB.legalActions(s).some(function (a) { return a.type === 'leaderAction'; }),
+      'no token created yet — the action is not offered');
+    s.players[me].createdTokenThisPhase = true;
+    T.ok(SB.legalActions(s).some(function (a) { return a.type === 'leaderAction'; }),
+      'once a token was created this phase, the action becomes available');
+  });
+
+  T.add('ash-003 leader side: the buff target must be the only unit you control in its arena', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].leader.cardId = 'ash-003';
+    s.active = me;
+    T.giveResources(s, me, 1);
+    const solo = T.putOnBoard(s, me, 'fx-grunt', { exhausted: false });
+    s = T.act(s, { type: 'leaderAction' });
+    s = drive(s);
+    T.eq(SB.findUnit(s, solo.uid).temp.power, 2, 'the lone ground unit was buffed');
+  });
+
+  T.add('ash-003 leader side: fizzles once a second unit shares the arena', function () {
+    let s = T.game(); const me = 0;
+    s.players[me].leader.cardId = 'ash-003';
+    s.active = me;
+    T.giveResources(s, me, 1);
+    const g = T.putOnBoard(s, me, 'fx-grunt', { exhausted: false });
+    const w = T.putOnBoard(s, me, 'fx-wall', { exhausted: false });
+    s = T.act(s, { type: 'leaderAction' });
+    T.eq(SB.findUnit(s, g.uid).temp.power, 0, 'neither ground unit is "the only unit in its arena" — no buff landed');
+    T.eq(SB.findUnit(s, w.uid).temp.power, 0, 'same for the other one');
   });
 })(window.SB = window.SB || {});
