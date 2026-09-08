@@ -118,14 +118,11 @@
         SB.allUnits(state).forEach(function (u) {
           if (card.attachTo === 'friendly' && u.owner !== me) return;
           if (card.attachTo === 'enemy' && u.owner === me) return;
-          if (card.attachArena && SB.arenaOf(state, u) !== card.attachArena) return;
-          if (card.attachFilter) {
-            const f = card.attachFilter;
-            const traits = (SB.unitDef(u).traits || []).concat(SB.card(u.cardId).traits || []);
-            if (f.notTrait && traits.indexOf(f.notTrait) >= 0) return;
-            if (f.trait && traits.indexOf(f.trait) < 0) return;
-            if (f.nonLeader && SB.card(u.cardId).type === 'leader') return;
-          }
+          // One attach-legality rule for every path (SB.attachAllowed in js/ops2.js):
+          // arena, trait / notTrait, uniqueOnly, damaged, nonLeader. The inline copy
+          // that used to live here silently ignored uniqueOnly and damaged, so those
+          // upgrades offered attach targets the rules do not allow.
+          if (!SB.attachAllowed(state, card, u)) return;
           if (card.costModAttach && attachDiscountApplies(card.costModAttach, u)) {
             const c2 = Math.max(0, SB.cardCost(state, me, inst.cardId) + card.costModAttach.delta);
             if (c2 > SB.readyResources(state, me)) return;
@@ -212,14 +209,11 @@
         SB.allUnits(state).forEach(function (u) {
           if (card.attachTo === 'friendly' && u.owner !== me) return;
           if (card.attachTo === 'enemy' && u.owner === me) return;
-          if (card.attachArena && SB.arenaOf(state, u) !== card.attachArena) return;
-          if (card.attachFilter) {
-            const f = card.attachFilter;
-            const traits = (SB.unitDef(u).traits || []).concat(SB.card(u.cardId).traits || []);
-            if (f.notTrait && traits.indexOf(f.notTrait) >= 0) return;
-            if (f.trait && traits.indexOf(f.trait) < 0) return;
-            if (f.nonLeader && SB.card(u.cardId).type === 'leader') return;
-          }
+          // One attach-legality rule for every path (SB.attachAllowed in js/ops2.js):
+          // arena, trait / notTrait, uniqueOnly, damaged, nonLeader. The inline copy
+          // that used to live here silently ignored uniqueOnly and damaged, so those
+          // upgrades offered attach targets the rules do not allow.
+          if (!SB.attachAllowed(state, card, u)) return;
           acts.push({ type: 'smuggle', player: me, resourceIndex: ri, cardId: card.id, attachTo: u.uid });
         });
         return;
@@ -416,7 +410,10 @@
         p.discard.push(inst);
         p.eventsThisRound = (p.eventsThisRound || 0) + 1;
         const ab = (card.abilities || []).find(function (a) { return a.trigger === 'onPlay'; });
-        if (ab) SB.queueEffects(state, me, ab.effects, { cardId: inst.cardId, eventUid: inst.uid });
+        // The ability-level condition travels with the effects: dropping it made
+        // every conditional event resolve as though its condition were met.
+        if (ab) SB.queueEffects(state, me, ab.effects,
+          { cardId: inst.cardId, eventUid: inst.uid, condition: ab.condition });
       } else if (card.type === 'upgrade') {
         const target = SB.findUnit(state, action.attachTo);
         expect(target, action);
@@ -667,7 +664,8 @@
       if (negated) {
         SB.log(state, { type: 'fizzle', why: 'negated', cardId: inst.cardId, fizzled: true, notice: true });
       } else {
-        SB.queueEffects(state, me, collectEffects(card), { cardId: inst.cardId, eventUid: inst.uid });
+        SB.queueEffects(state, me, collectEffects(card),
+          { cardId: inst.cardId, eventUid: inst.uid, condition: eventCondition(card) });
       }
     } else if (card.type === 'upgrade') {
       const target = SB.findUnit(state, action.attachTo);
@@ -701,6 +699,12 @@
     // Events store their effects as a single 'onPlay' ability.
     const ab = (card.abilities || []).find(function (a) { return a.trigger === 'onPlay'; });
     return ab ? ab.effects : [];
+  }
+
+  // ...and the condition guarding them, which the effects cannot carry themselves.
+  function eventCondition(card) {
+    const ab = (card.abilities || []).find(function (a) { return a.trigger === 'onPlay'; });
+    return ab ? ab.condition : null;
   }
 
   function startAttack(state, me, action) {
