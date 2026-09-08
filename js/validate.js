@@ -85,6 +85,41 @@
       }
     });
 
+    // The uniqueness rule (js/rules.js SB.uniqueDuplicates) keys on card identity,
+    // while the printed rule keys on name-plus-subtitle. The two stay equivalent only
+    // while no two identities share a name, so a collision is a content error, not a
+    // naming nit: it would let a player control two copies of what the rules call one
+    // card. Checked against the THEME names, which are the identity the engine is
+    // built on — a loaded source pack is a display layer over them.
+    const byName = {};
+    Object.keys(SB.cards).forEach(function (id) {
+      const n = SB.names.original ? SB.names.original('cards', id) : SB.names.cards[id];
+      if (!n || !n.name) return;
+      const key = n.name + '\u0000' + (n.subtitle || '');
+      if (byName[key]) fail(id, 'shares its name and subtitle with ' + byName[key]);
+      byName[key] = id;
+    });
+
+    // The printed-names pack is a different matter. It maps several ids onto one
+    // printed card — reprints, and cards the community database records under one
+    // title — and where BOTH are unique the engine would let a player control two
+    // copies of what the printed pack calls one card. That is a content decision
+    // (which ids are genuinely one card, and so want `sameCardAs`), not something to
+    // resolve by throwing at load: reported, and listed in DEVIATIONS.md.
+    SB.namePackCollisions = function () {
+      const seen = {}, out = [];
+      Object.keys(SB.cards).forEach(function (id) {
+        const n = SB.names.cards[id];
+        if (!n || !n.name) return;
+        const key = n.name + '\u0000' + (n.subtitle || '');
+        if (seen[key]) out.push([seen[key], id]); else seen[key] = id;
+      });
+      return out.filter(function (pair) {
+        return SB.cards[pair[0]].unique && SB.cards[pair[1]].unique &&
+          SB.cardIdentity(pair[0]) !== SB.cardIdentity(pair[1]);
+      });
+    };
+
     Object.keys(SB.decks || {}).forEach(function (deckId) {
       const d = SB.decks[deckId];
       if (!SB.cards[d.leader] || SB.cards[d.leader].type !== 'leader') fail(deckId, 'bad leader ' + d.leader);

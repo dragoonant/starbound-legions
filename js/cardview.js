@@ -65,6 +65,32 @@
     return svg.cloneNode(true);
   }
 
+  // The insignia a unique card wears on its name plate. Drawn rather than typed: at
+  // board size a glyph in the name's own font is a smudge, and the mark has to read
+  // at a glance — it is the whole reason a player checks before playing a second copy.
+  // Its word is vocabulary (names.js terms), read at render time so the tooltip and
+  // the screen reader follow whichever name set is switched on.
+  function uniqueMark() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'unique-mark');
+    svg.setAttribute('viewBox', '0 0 12 12');
+    svg.setAttribute('role', 'img');
+    const word = (SB.names.terms && SB.names.terms.unique) || 'unique';
+    const label = word.charAt(0).toUpperCase() + word.slice(1) +
+      ' — you may control only one at a time.';
+    svg.setAttribute('aria-label', label);
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    title.textContent = label;
+    svg.appendChild(title);
+    // A four-pointed star with concave sides: distinct from the arena and aspect
+    // shapes already on the face, and still legible at eight pixels.
+    const star = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    star.setAttribute('d', 'M6 0 C6.7 3.6 8.4 5.3 12 6 C8.4 6.7 6.7 8.4 6 12 C5.3 8.4 3.6 6.7 0 6 C3.6 5.3 5.3 3.6 6 0 Z');
+    star.setAttribute('fill', 'currentColor');
+    svg.appendChild(star);
+    return svg;
+  }
+
   function el(tag, cls, text) {
     const e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -199,7 +225,11 @@
     // Layer 2: text plate (in flow, hugs the bottom).
     const plate = el('div', 'card-plate');
     const n = SB.names.cards[cardId] || { name: cardId };
-    plate.appendChild(el('div', 'card-name', n.name + (n.subtitle && size === 'preview' ? ' — ' + n.subtitle : '')));
+    const nameLine = el('div', 'card-name');
+    if (card.unique) nameLine.appendChild(uniqueMark());
+    nameLine.appendChild(el('span', 'card-name-text',
+      n.name + (n.subtitle && size === 'preview' ? ' — ' + n.subtitle : '')));
+    plate.appendChild(nameLine);
 
     const typeLine = el('div', 'card-type');
     const typeLabel = card.type === 'unit' ? (card.arena === 'space' ? 'Space unit' : 'Ground unit') :

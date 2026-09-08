@@ -225,6 +225,15 @@
     pack = null; SB.sourceText = null;
   };
   SB.names.hasSource = function () { return !!pack; };
+  // The name a card carries under the THEME, whichever pack is switched on. The
+  // engine's card identity is the theme's, so anything validating that identity
+  // (js/validate.js) has to read past a loaded pack rather than through it.
+  SB.names.original = function (kind, id) {
+    if (pack && original[kind] && Object.prototype.hasOwnProperty.call(original[kind], id)) {
+      return original[kind][id];
+    }
+    return SB.names[kind][id];
+  };
   SB.names.mode = readMode;
   SB.names.setMode = function (m) {
     mode = (m === 'original') ? 'original' : 'source';

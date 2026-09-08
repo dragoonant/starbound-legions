@@ -83,7 +83,6 @@
       }
       if (cost > SB.readyResources(state, me)) return;
       if (card.type === 'unit') {
-        if (card.unique && SB.allUnits(state, me).some(function (u) { return u.cardId === inst.cardId; })) return;
         const baseCost = SB.cardCost(state, me, inst.cardId);
         if (baseCost <= SB.readyResources(state, me)) {
           acts.push({ type: 'playCard', player: me, handIndex: i, cardId: inst.cardId });
@@ -188,7 +187,6 @@
       if ((p.discardedThisPhase || []).indexOf(inst.uid) < 0) return;
       if (c.type !== 'unit' && c.type !== 'event') return;
       if (SB.cardCost(state, me, inst.cardId) > SB.readyResources(state, me)) return;
-      if (c.type === 'unit' && c.unique && SB.allUnits(state, me).some(function (u) { return u.cardId === inst.cardId; })) return;
       acts.push({ type: 'playDiscardAction', player: me, index: i, cardId: inst.cardId });
     });
 
@@ -201,8 +199,6 @@
       if (!sm) return;
       const cost = SB.smuggleCost(state, me, card, sm);
       if (cost > SB.readyResources(state, me)) return;
-      if (card.type === 'unit' && card.unique &&
-          SB.allUnits(state, me).some(function (u) { return u.cardId === card.id; })) return;
       if (p.deck.length === 0) return; // nothing to replace it with
       if (card.type === 'upgrade') {
         // Same as a normal upgrade play: one smuggle action per legal attach target.
@@ -1050,9 +1046,78 @@
     },
   };
 
+  // The uniqueness rule (js/rules.js SB.uniqueDuplicates). Playing a second copy of a
+  // unique card you control is a legal play; the rule bites afterwards, as a check on
+  // the game state rather than a restriction on the action. The controller chooses
+  // which copy to KEEP — the printed wording — and every other copy is defeated,
+  // firing its "when defeated" abilities normally. That is what makes the play worth
+  // making: the copy that arrived has already resolved its "when played".
+  SB.queueSteps.uniqueDefeat = {
+    actions: function (state, itemStep) {
+      const group = SB.uniqueDuplicates(state, itemStep.player).find(function (g) {
+        return g.cardId === itemStep.identity;
+      });
+      // Something in between (a "when played" that killed a copy, say) already settled
+      // it: the step drains itself.
+      if (!group) return null;
+      return group.copies.map(function (c) {
+        return { type: 'uniqueKeep', player: itemStep.player, uid: c.uid };
+      });
+    },
+    apply: function (state, itemStep, action) {
+      const group = SB.uniqueDuplicates(state, itemStep.player).find(function (g) {
+        return g.cardId === itemStep.identity;
+      });
+      if (!group) return;
+      SB.log(state, { type: 'uniqueRule', player: itemStep.player, cardId: itemStep.cardId,
+        keptUid: action.uid, notice: true });
+      // Defeat every copy but the chosen one. Units and upgrades leave play by their
+      // own routines so last words, bounties and observers all fire as printed.
+      group.copies.forEach(function (c) {
+        if (c.uid === action.uid) return;
+        if (c.kind === 'unit') {
+          const u = SB.findUnit(state, c.uid);
+          if (u) SB.defeatUnit(state, u, {});
+        } else {
+          const bearer = SB.findUnit(state, c.bearerUid);
+          if (!bearer) return;
+          const inst = bearer.upgrades.find(function (i2) { return i2.uid === c.uid; });
+          if (inst) SB.removeUpgrade(state, bearer, inst, 'defeated');
+        }
+      });
+    },
+  };
+
+  // Queue a uniqueness choice for every duplicated card either player controls.
+  // Returns true when it queued anything, so the driver knows to keep going.
+  function queueUniquenessChecks(state) {
+    let queued = false;
+    state.players.forEach(function (_, c) {
+      SB.uniqueDuplicates(state, c).forEach(function (g) {
+        // identity is what the rule matches on; cardId is a real id on the board, so
+        // the prompt and the log can name the card even when the two differ.
+        state.queue.push({ step: 'uniqueDefeat', player: c,
+          identity: g.cardId, cardId: SB.uniqueGroupCardId(g) });
+        queued = true;
+      });
+    });
+    return queued;
+  }
+
   // ---- queue driver -------------------------------------------------------
 
+  // The game-state check rides on the driver: once everything an action set in motion
+  // has resolved and nobody is mid-choice, the uniqueness rule is applied, and the
+  // defeats it causes are themselves drained (a last-words ability can create a fresh
+  // duplicate) until the board is settled.
   function processQueue(state) {
+    drainSteps(state);
+    while (state.queue.length === 0 && state.winner == null && queueUniquenessChecks(state)) {
+      drainSteps(state);
+    }
+  }
+
+  function drainSteps(state) {
     while (state.queue.length > 0 && state.winner == null) {
       const item = state.queue[0];
       if (item.step === 'effect' && item.op && item.op.op === 'ambushAttack') {

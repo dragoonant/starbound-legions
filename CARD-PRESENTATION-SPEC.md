@@ -176,6 +176,31 @@ Four stops, tight to wide. The tight ones give hard glyph separation; the wide o
 local darkening that follows the text instead of a rectangle. This costs zero opacity of the art,
 which is the whole point.
 
+### The unique insignia
+
+A card the rules treat as one of a kind wears a small mark at the head of its name, on every
+size. It is not decoration: the uniqueness rule is the one rule a player must check *before*
+committing a play, and the name alone does not carry it.
+
+```css
+.unique-mark { display: inline-block; width: .82em; height: .82em;
+               vertical-align: -.08em; margin-right: .3em; color: #f4d789;
+               filter: drop-shadow(0 1px 1px rgba(0,0,0,.95)) drop-shadow(0 0 3px rgba(0,0,0,.85)); }
+```
+
+Three things are load-bearing:
+
+* **Drawn, not typed.** An SVG path, not a glyph. At board size a character borrowed from the
+  name's own font is a smudge, and the shape has to survive down to eight pixels.
+* **Inline, not a flex child.** A long name wraps to two lines on a board card. A flex mark
+  centres itself against the whole block; an inline one stays on the first line, where the eye
+  looks for it.
+* **Sized in `em` and coloured with `currentColor`,** so it tracks the name at every card size
+  and inherits the plate's own halo (`filter`, since `text-shadow` does not reach an SVG).
+
+Its label is vocabulary, not a fixed string: the mark reads `SB.names.terms.unique` at render
+time, so the tooltip and the screen-reader label follow whichever name set is switched on.
+
 **Corner pips get a heavier shadow than body text**, because they sit on raw art with no plate and
 no surrounding context to disambiguate a misread number:
 

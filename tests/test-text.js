@@ -221,4 +221,29 @@
     T.eq(SB.names.terms.unique, 'champion', 'every term restored');
   });
 
+  // The uniqueness rule narrates and prompts in the same vocabulary: nothing stores
+  // the insignia's word, so both lines follow the pack the same way the token does.
+  T.add('names: the uniqueness rule reads the insignia word at render time', function () {
+    SB.cards['zz-uniq'] = { id: 'zz-uniq', type: 'unit', arena: 'ground', cost: 1, power: 1, hp: 1,
+      aspects: [], unique: true };
+    SB.names.register('cards', 'zz-uniq', { name: 'Veil Champion' });
+    const entry = { type: 'uniqueRule', player: 0, cardId: 'zz-uniq' };
+    const item = { step: 'uniqueDefeat', player: 0, cardId: 'zz-uniq', identity: 'zz-uniq' };
+    try {
+      T.eq(SB.describeLog(entry),
+        'Veil Champion carries the champion insignia — you may control only one, so your other copy is defeated.',
+        'the theme word in the log');
+      T.ok(SB.targetPrompt({ queue: [item] }, item).indexOf('a champion card') > 0, 'and in the prompt');
+      SB.names.registerSource({ terms: { unique: 'one-of-a-kind' } });
+      T.eq(SB.describeLog(entry).indexOf('carries the one-of-a-kind insignia') > 0, true, 'the pack’s word in the log');
+      T.ok(SB.targetPrompt({ queue: [item] }, item).indexOf('a one-of-a-kind card') > 0, 'and in the prompt');
+      T.eq(SB.describeLog({ type: 'uniqueRule', player: 1, cardId: 'zz-uniq' }).indexOf('the opponent may control only one') > 0,
+        true, 'either seat');
+    } finally {
+      SB.names.clearSource();
+      delete SB.cards['zz-uniq'];
+      delete SB.names.cards['zz-uniq'];
+    }
+  });
+
 })(window.SB = window.SB || {});

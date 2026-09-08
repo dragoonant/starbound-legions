@@ -1162,8 +1162,6 @@
           if (card.type !== 'upgrade' && f.type === 'upgrade') return;
           const cost = Math.max(0, SB.cardCost(state, it.player, inst.cardId) - it.discount);
           if (cost > SB.readyResources(state, it.player)) return;
-          if (card.type === 'unit' && card.unique &&
-              SB.allUnits(state, it.player).some(function (u) { return u.cardId === inst.cardId; })) return;
           if (card.type === 'upgrade') {
             SB.allUnits(state).forEach(function (u) {
               if (card.attachTo === 'friendly' && u.owner !== it.player) return;
@@ -1272,7 +1270,6 @@
         if (f.arena && c.arena !== f.arena) return;
         if (it.budget != null) {
           if ((c.cost || 0) > it.budget) return;
-          if (c.unique && SB.allUnits(state, it.player).some(function (u) { return u.cardId === inst.cardId; })) return;
         }
         if (it.attachToSaved) {
           const b = savedUnit(state, it.ctx, it.attachToSaved);
@@ -1545,7 +1542,6 @@
         if (m !== 'play') { acts.push({ type: 'peekAct', player: it.player, mode: m }); return; }
         const cost = Math.max(0, SB.cardCost(state, it.player, inst.cardId) - it.discount);
         if (cost > SB.readyResources(state, it.player)) return;
-        if (card.type === 'unit' && card.unique && SB.allUnits(state, it.player).some(function (u) { return u.cardId === inst.cardId; })) return;
         if (card.type === 'unit' || card.type === 'event') acts.push({ type: 'peekAct', player: it.player, mode: 'play', cardId: inst.cardId });
         else if (card.type === 'upgrade') SB.allUnits(state).forEach(function (u) {
           if (card.attachTo === 'friendly' && u.owner !== it.player) return;

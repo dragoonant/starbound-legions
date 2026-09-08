@@ -973,6 +973,11 @@
     if (item.step === 'regroupResource') return 'Bank a card as a resource, or decline.';
     if (item.onChoose === 'ambush') return 'Ambush — attack a unit now, or decline.';
     if (item.step === 'triggerOrder') return 'Several abilities triggered at once — choose which one resolves first.';
+    // The insignia's word is vocabulary (names.js terms), read at render time.
+    if (item.step === 'uniqueDefeat') {
+      return 'Two copies of ' + SB.names.card(item.cardId) + ' — a ' + SB.names.terms.unique +
+        ' card is one of a kind. Choose the one to keep; the other is defeated.';
+    }
 
     const source = item.ctx && item.ctx.cardId ? SB.names.card(item.ctx.cardId) : null;
     if (item.step === 'binaryPick') return source ? source + ' — choose one option.' : 'Choose one option.';

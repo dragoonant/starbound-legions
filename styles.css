@@ -319,6 +319,14 @@ button:disabled { opacity: .4; cursor: default; }
 .card-preview .card-plate { padding: .6rem .75rem .65rem; }
 
 .card-name { font-size: .74em; font-weight: 700; line-height: 1.2; }
+/* The unique insignia (CARD-PRESENTATION-SPEC §5). Inline, not a flex child: a long
+   name wraps to two lines on a board card, and a flex mark would float against the
+   middle of the block instead of sitting on the first line where a reader looks for
+   it. Sized in em so it tracks the name at every card size, and given the plate's own
+   halo so it survives bright art. */
+.unique-mark { display: inline-block; width: .82em; height: .82em;
+               vertical-align: -.08em; margin-right: .3em; color: #f4d789;
+               filter: drop-shadow(0 1px 1px rgba(0,0,0,.95)) drop-shadow(0 0 3px rgba(0,0,0,.85)); }
 .card-type { display: flex; gap: .35em; align-items: baseline; flex-wrap: wrap; }
 .type-tag { font-size: .58em; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .traits { font-size: .6em; color: var(--muted); }
@@ -330,6 +338,7 @@ button:disabled { opacity: .4; cursor: default; }
 .stat.hp.damaged { color: #ffcf6b; }
 
 .card-preview .card-name { font-size: 1.05rem; }
+.card-preview .unique-mark { width: .78em; height: .78em; }
 .card-preview .type-tag, .card-preview .traits { font-size: .72em; }
 .card-preview .card-kw { font-size: .78em; }
 .card-preview .card-stats { font-size: 1rem; }

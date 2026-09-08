@@ -105,18 +105,187 @@
     T.eq(s.phase, 'regroup', 'now over');
   });
 
-  T.add('unique rule: second copy unplayable while first in play', function () {
-    let s = T.game();
-    const me = s.active;
+  // ---- the uniqueness rule ------------------------------------------------
+  // Printed rule: a player may not CONTROL two copies of the same unique card. The
+  // second copy is legal to play; the moment it lands the controller keeps one and
+  // the rest are defeated. Players do this on purpose, so the two abilities firing
+  // in one play is the behaviour under test, not a side effect.
+
+  function withUniqueFixtures(fn) {
     SB.cards['fx-uniq'] = { id: 'fx-uniq', type: 'unit', arena: 'ground', cost: 1, power: 1, hp: 1,
+      aspects: [], unique: true,
+      abilities: [{ trigger: 'onPlay', effects: [{ op: 'draw', amount: 1 }] },
+        { trigger: 'whenDefeated', effects: [{ op: 'gainCredits', amount: 1 }] }] };
+    SB.cards['fx-uniq-up'] = { id: 'fx-uniq-up', type: 'upgrade', cost: 1, power: 1, hp: 1,
       aspects: [], unique: true };
+    SB.cards['fx-plain'] = { id: 'fx-plain', type: 'unit', arena: 'ground', cost: 1, power: 1, hp: 1,
+      aspects: [] };
     SB.names.register('cards', 'fx-uniq', { name: 'FX Uniq' });
-    T.putOnBoard(s, me, 'fx-uniq');
-    T.putInHand(s, me, 'fx-uniq');
-    T.giveResources(s, me, 2);
-    const plays = SB.legalActions(s).filter(function (a) { return a.cardId === 'fx-uniq'; });
-    T.eq(plays.length, 0, 'no duplicate unique');
-    delete SB.cards['fx-uniq'];
+    SB.names.register('cards', 'fx-uniq-up', { name: 'FX Uniq Up' });
+    SB.names.register('cards', 'fx-plain', { name: 'FX Plain' });
+    try { fn(); } finally {
+      delete SB.cards['fx-uniq']; delete SB.cards['fx-uniq-up']; delete SB.cards['fx-plain'];
+    }
+  }
+
+  T.add('unique rule: the second copy is playable', function () {
+    withUniqueFixtures(function () {
+      let s = T.game();
+      const me = s.active;
+      T.putOnBoard(s, me, 'fx-uniq');
+      T.putInHand(s, me, 'fx-uniq');
+      T.giveResources(s, me, 2);
+      const plays = SB.legalActions(s).filter(function (a) { return a.cardId === 'fx-uniq'; });
+      T.eq(plays.length, 1, 'the duplicate can be played');
+    });
+  });
+
+  T.add('unique rule: playing the second copy asks which to keep, then defeats the other', function () {
+    withUniqueFixtures(function () {
+      let s = T.game();
+      const me = s.active;
+      const first = T.putOnBoard(s, me, 'fx-uniq');
+      T.putInHand(s, me, 'fx-uniq');
+      T.giveResources(s, me, 2);
+      const handBefore = s.players[me].hand.length;
+      s = T.act(s, { type: 'playCard', cardId: 'fx-uniq' });
+      // Both copies are on the board and the played one's "when played" has resolved.
+      T.eq(SB.allUnits(s, me).filter(function (u) { return u.cardId === 'fx-uniq'; }).length, 2, 'both copies present');
+      T.eq(s.players[me].hand.length, handBefore - 1 + 1, 'when-played drew a card');
+      T.eq(s.queue[0].step, 'uniqueDefeat', 'the rule asks which to keep');
+      const choices = SB.legalActions(s);
+      T.eq(choices.length, 2, 'one choice per copy');
+      const creditsBefore = s.players[me].credits || 0;
+      s = T.act(s, { type: 'uniqueKeep', uid: first.uid });
+      const left = SB.allUnits(s, me).filter(function (u) { return u.cardId === 'fx-uniq'; });
+      T.eq(left.length, 1, 'one copy survives');
+      T.eq(left[0].uid, first.uid, 'the chosen copy is the one kept');
+      T.eq((s.players[me].credits || 0), creditsBefore + 1, 'the defeated copy used its last words');
+      T.eq(s.queue.length, 0, 'the board is settled');
+    });
+  });
+
+  T.add('unique rule: keeping the new copy defeats the old one', function () {
+    withUniqueFixtures(function () {
+      let s = T.game();
+      const me = s.active;
+      const first = T.putOnBoard(s, me, 'fx-uniq');
+      T.putInHand(s, me, 'fx-uniq');
+      T.giveResources(s, me, 2);
+      s = T.act(s, { type: 'playCard', cardId: 'fx-uniq' });
+      const fresh = SB.allUnits(s, me).find(function (u) { return u.cardId === 'fx-uniq' && u.uid !== first.uid; });
+      s = T.act(s, { type: 'uniqueKeep', uid: fresh.uid });
+      const left = SB.allUnits(s, me).filter(function (u) { return u.cardId === 'fx-uniq'; });
+      T.eq(left.length, 1, 'one copy survives');
+      T.eq(left[0].uid, fresh.uid, 'the new copy stayed');
+    });
+  });
+
+  T.add('unique rule: non-unique cards stack freely', function () {
+    withUniqueFixtures(function () {
+      let s = T.game();
+      const me = s.active;
+      T.putOnBoard(s, me, 'fx-plain');
+      T.putInHand(s, me, 'fx-plain');
+      T.giveResources(s, me, 2);
+      s = T.act(s, { type: 'playCard', cardId: 'fx-plain' });
+      T.eq(s.queue.length, 0, 'no uniqueness choice');
+      T.eq(SB.allUnits(s, me).filter(function (u) { return u.cardId === 'fx-plain'; }).length, 2, 'both stay');
+    });
+  });
+
+  T.add('unique rule: the opponent controlling a copy is not your problem', function () {
+    withUniqueFixtures(function () {
+      let s = T.game();
+      const me = s.active;
+      T.putOnBoard(s, SB.other(me), 'fx-uniq');
+      T.putInHand(s, me, 'fx-uniq');
+      T.giveResources(s, me, 2);
+      s = T.act(s, { type: 'playCard', cardId: 'fx-uniq' });
+      T.eq(s.queue.length, 0, 'no uniqueness choice: one copy each');
+      T.eq(SB.allUnits(s).filter(function (u) { return u.cardId === 'fx-uniq'; }).length, 2, 'both stay');
+    });
+  });
+
+  T.add('unique rule: it covers upgrades too', function () {
+    withUniqueFixtures(function () {
+      let s = T.game();
+      const me = s.active;
+      const a = T.putOnBoard(s, me, 'fx-plain');
+      const b = T.putOnBoard(s, me, 'fx-plain');
+      a.upgrades.push({ uid: s.nextUid++, cardId: 'fx-uniq-up', owner: me });
+      b.upgrades.push({ uid: s.nextUid++, cardId: 'fx-uniq-up', owner: me });
+      const dups = SB.uniqueDuplicates(s, me);
+      T.eq(dups.length, 1, 'the duplicated upgrade is found');
+      T.eq(dups[0].copies.length, 2, 'two copies');
+      s = T.act(s, { type: 'pass' });
+      T.eq(s.queue[0].step, 'uniqueDefeat', 'the rule asks which to keep');
+      s = T.act(s, { type: 'uniqueKeep', uid: a.upgrades[0].uid });
+      const held = SB.allUnits(s, me).reduce(function (n2, u) {
+        return n2 + u.upgrades.filter(function (i2) { return i2.cardId === 'fx-uniq-up'; }).length;
+      }, 0);
+      T.eq(held, 1, 'one copy of the upgrade survives');
+    });
+  });
+
+  // A card printed twice is one card wearing two ids. Nothing sets sameCardAs yet
+  // (DEVIATIONS.md says why), so this guards the hook rather than live content.
+  T.add('unique rule: sameCardAs folds two ids into one identity', function () {
+    withUniqueFixtures(function () {
+      SB.cards['fx-uniq-rp'] = { id: 'fx-uniq-rp', type: 'unit', arena: 'ground', cost: 1,
+        power: 1, hp: 1, aspects: [], unique: true, sameCardAs: 'fx-uniq' };
+      SB.names.register('cards', 'fx-uniq-rp', { name: 'FX Uniq Reprint' });
+      try {
+        let s = T.game();
+        const me = s.active;
+        const a = T.putOnBoard(s, me, 'fx-uniq');
+        T.putOnBoard(s, me, 'fx-uniq-rp');
+        const dups = SB.uniqueDuplicates(s, me);
+        T.eq(dups.length, 1, 'the two ids are one card');
+        T.eq(SB.uniqueGroupCardId(dups[0]), 'fx-uniq', 'named after a copy actually on the board');
+        s = T.act(s, { type: 'pass' });
+        T.eq(s.queue[0].step, 'uniqueDefeat', 'the rule bites across the reprint');
+        s = T.act(s, { type: 'uniqueKeep', uid: a.uid });
+        T.eq(SB.allUnits(s, me).filter(function (u) {
+          return SB.cardIdentity(u.cardId) === 'fx-uniq';
+        }).length, 1, 'one copy of the card survives');
+      } finally {
+        delete SB.cards['fx-uniq-rp'];
+        delete SB.names.cards['fx-uniq-rp'];
+      }
+    });
+  });
+
+  // The rule keys on card id; the printed rule keys on name-plus-subtitle. Content
+  // validation is what holds the two equivalent, so it has to actually catch a clash.
+  T.add('unique rule: two ids sharing a name and subtitle fail validation', function () {
+    SB.cards['zz-twin-a'] = { id: 'zz-twin-a', type: 'unit', arena: 'ground', cost: 1, power: 1, hp: 1, aspects: [] };
+    SB.cards['zz-twin-b'] = { id: 'zz-twin-b', type: 'unit', arena: 'ground', cost: 1, power: 1, hp: 1, aspects: [] };
+    SB.names.register('cards', 'zz-twin-a', { name: 'Twin', subtitle: 'Of Two Minds' });
+    SB.names.register('cards', 'zz-twin-b', { name: 'Twin', subtitle: 'Of Two Minds' });
+    try {
+      const e = T.throws(function () { SB.validateContent(); }, 'a shared printed identity is a content error');
+      T.ok(/shares its name and subtitle/.test(String(e)), 'and says so: ' + e);
+    } finally {
+      delete SB.cards['zz-twin-a']; delete SB.cards['zz-twin-b'];
+      delete SB.names.cards['zz-twin-a']; delete SB.names.cards['zz-twin-b'];
+    }
+    SB.validateContent();   // and the real content still passes
+  });
+
+  T.add('unique rule: taking control of a copy you already have trips it', function () {
+    withUniqueFixtures(function () {
+      let s = T.game();
+      const me = s.active;
+      const mine = T.putOnBoard(s, me, 'fx-uniq');
+      const theirs = T.putOnBoard(s, SB.other(me), 'fx-uniq');
+      T.eq(SB.uniqueDuplicates(s, me).length, 0, 'one each is fine');
+      theirs.owner = me;                       // as takeControl does
+      s = T.act(s, { type: 'pass' });
+      T.eq(s.queue[0].step, 'uniqueDefeat', 'now the rule bites');
+      s = T.act(s, { type: 'uniqueKeep', uid: mine.uid });
+      T.eq(SB.allUnits(s, me).filter(function (u) { return u.cardId === 'fx-uniq'; }).length, 1, 'one left');
+    });
   });
 
   T.add('deck-out: failing to draw damages own base 3 per card', function () {

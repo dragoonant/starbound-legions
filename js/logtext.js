@@ -193,6 +193,12 @@
       return name(l, s) + ' was captured by ' + nameOf(l.by, s, null, l.byCardId) + '!';
     },
     controlTaken: function (l, s) { return them(l.by) + ' seized control of ' + name(l, s) + '!'; },
+    // The uniqueness rule. The insignia's word is vocabulary (names.js terms), read
+    // here so the line follows whichever name set is switched on.
+    uniqueRule: function (l) {
+      return cardName(l.cardId) + ' carries the ' + SB.names.terms.unique + ' insignia — ' +
+        them(l.player) + ' may control only one, so ' + theirs(l.player) + ' other copy is defeated.';
+    },
     controlExchanged: function (l, s) {
       return nameOf(l.a, s, null, l.aCardId) + ' and ' + nameOf(l.b, s, null, l.bCardId) + ' changed sides.';
     },

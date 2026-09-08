@@ -350,6 +350,30 @@
     return u ? SB.names.card(u.cardId) : '?';
   }
 
+  // Two copies of one card share a name, so the name alone cannot be the label.
+  // Say what actually differs between them: where it is, what it is carrying, and
+  // how hurt it is.
+  function uniqueCopyLabel(s, uid) {
+    const u = SB.findUnit(s, uid);
+    if (u) {
+      const bits = [];
+      const rem = SB.unitRemainingHp(s, u);
+      bits.push(SB.unitPower(s, u) + '/' + rem);
+      if (u.upgrades && u.upgrades.length) {
+        bits.push(u.upgrades.length + ' upgrade' + (u.upgrades.length === 1 ? '' : 's'));
+      }
+      if (u.exhausted) bits.push(SB.names.ui.exhausted.toLowerCase());
+      return SB.names.card(u.cardId) + ' (' + bits.join(', ') + ')';
+    }
+    // Not a unit: an upgrade copy, named by the unit carrying it.
+    const bearer = SB.allUnits(s).find(function (b) {
+      return (b.upgrades || []).some(function (i2) { return i2.uid === uid; });
+    });
+    if (!bearer) return '?';
+    const inst = bearer.upgrades.find(function (i2) { return i2.uid === uid; });
+    return SB.names.card(inst.cardId) + ' (on ' + SB.names.card(bearer.cardId) + ')';
+  }
+
   // The mat paints a slot for every zone, so each of these draws the real card face
   // into its slot rather than a text summary. Live values (base HP, leader readiness,
   // pile depth) ride on top as badges — the card art stays the thing you recognise.
@@ -490,8 +514,18 @@
   }
 
   function choiceFor(s, acts, targetLike) {
-    if (s.queue.length === 0 || !s.queue[0].candidates) return null;
+    if (s.queue.length === 0) return null;
     if (whoActs(s) !== UI.humanSeat) return null;
+    // The uniqueness rule asks which copy to keep. Both copies are units on the board
+    // and share a name, so a list of two identical verbs is exactly the unreadable
+    // button bar §17 warns about: the answer is the card itself. Upgrade copies have
+    // no slot of their own and stay in the popup below.
+    if (s.queue[0].step === 'uniqueDefeat' && targetLike.kind === 'unit') {
+      return acts.find(function (a) {
+        return a.type === 'uniqueKeep' && a.uid === targetLike.uid;
+      }) || null;
+    }
+    if (!s.queue[0].candidates) return null;
     const idx = s.queue[0].candidates.findIndex(function (c) {
       return JSON.stringify(c) === JSON.stringify(targetLike);
     });
@@ -817,6 +851,7 @@
         bottomBoth: 'Bottom both' }[a.mode] || a.mode;
       case 'moveUpgrade': return a.from == null ? SB.names.ui.decline : 'Move upgrade to ' + unitName(s, a.to);
       case 'defeatUpgrade': return 'Defeat upgrade on ' + unitName(s, a.uid);
+      case 'uniqueKeep': return 'Keep: ' + uniqueCopyLabel(s, a.uid);
       case 'auctionPick': return 'Reveal ' + (a.who === UI.humanSeat ? 'your' : 'their') + ' deck';
       case 'auctionPlay': return a.play ? 'Play it free' : SB.names.ui.decline;
       // competitive expansion steps (js/ops2.js)
@@ -916,6 +951,15 @@
       case 'bottomCard': return p.hand[a.handIndex].cardId;
       case 'returnEventCard': return a.index >= 0 ? s.players[a.owner].discard[a.index].cardId : null;
       case 'returnReplay': return a.play ? a.cardId : null;
+      case 'uniqueKeep': {
+        const u = SB.findUnit(s, a.uid);
+        if (u) return u.cardId;
+        const bearer = SB.allUnits(s).find(function (b) {
+          return (b.upgrades || []).some(function (i2) { return i2.uid === a.uid; });
+        });
+        if (!bearer) return null;
+        return bearer.upgrades.find(function (i2) { return i2.uid === a.uid; }).cardId;
+      }
       case 'discardCard':
         return s.players[a.targetPlayer != null ? a.targetPlayer : a.player].hand[a.handIndex].cardId;
       default: return null;
@@ -923,12 +967,14 @@
   }
 
   // A card face + its action button, previewable like any board card.
-  function choiceChip(s, cardId, label, action) {
+  function choiceChip(s, cardId, label, action, unit) {
     const chip = el('div', 'choice-chip');
     if (label) chip.appendChild(el('div', 'choice-chip-label', label));
-    const face = SB.renderCard({ cardId: cardId }, { size: 'hand', state: s });
+    const face = SB.renderCard({ cardId: cardId, unit: unit || null }, { size: 'hand', state: s });
     face.tabIndex = 0;
-    SB.preview && SB.preview.attach(face, cardId, null, function () { return UI.state; });
+    SB.preview && SB.preview.attach(face, cardId,
+      unit ? function () { return SB.findUnit(UI.state, unit.uid); } : null,
+      function () { return UI.state; });
     chip.appendChild(face);
     if (action) {
       chip.appendChild(actionButton(s, action, actionLabel(s, action)));
@@ -1002,9 +1048,13 @@
     const btns = el('div', 'choice-modal-buttons');
     generic.slice(0, 24).forEach(function (a) {
       const cid = actionCardId(s, a);
-      if (cid && !shown[cid]) {
-        shown[cid] = true;
-        cards.appendChild(choiceChip(s, cid, null, a));
+      // Faces are deduped so one card is not drawn twice — but when the choice is
+      // BETWEEN two copies of a card (the uniqueness rule), the instance is the thing
+      // being chosen, so the uid keys the dedupe and both faces are drawn.
+      const key = a.uid != null ? 'u' + a.uid : cid;
+      if (cid && !shown[key]) {
+        shown[key] = true;
+        cards.appendChild(choiceChip(s, cid, null, a, a.uid != null ? SB.findUnit(s, a.uid) : null));
       } else {
         btns.appendChild(actionButton(s, a, actionLabel(s, a)));
       }

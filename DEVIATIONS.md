@@ -51,7 +51,9 @@ missing mechanic):
 - **"Deal 1 damage to any number of bases"** is one yes/no per base.
 - **The clone unit** copies the printed definition (stats, keywords, abilities) of the
   chosen unit; it keeps its own card identity for uniqueness and naming.
-- **Deck-size bases** ("minimum deck size +10") have no effect: decks are prebuilt.
+- **Deck-size bases** ("minimum deck size +10") have no effect *during play*: decks are
+  prebuilt. The requirement itself is real — `minDeckSizeDelta` raises the minimum deck
+  size that `SB.validateContent` enforces on any deck carrying a `format`.
 
 ## From CARD-LOG-AND-TARGETING-SPEC.md
 
@@ -83,3 +85,22 @@ missing mechanic):
   Sentinel"), some of them conditionally; none of that is in the card data yet, so a pilot
   currently lends stats only.
 
+## Uniqueness
+
+The uniqueness rule itself is implemented as printed (js/rules.js `SB.uniqueDuplicates`,
+js/engine.js `uniqueDefeat`): the second copy is playable, both copies coexist long enough
+for the played one's "when played" to resolve, and the controller then keeps one and defeats
+the rest. It applies to units and upgrades, keys on control rather than ownership, and one
+copy each side is legal. One divergence remains, and it is a content question rather than a
+rules one:
+
+- **Two ids can be one printed card.** The rule keys on card identity — our card id, held
+  equivalent to the printed name-plus-subtitle by a check in js/validate.js. That equivalence
+  holds exactly under the theme's own names. Under the optional printed-names pack
+  (`data/names-source.js`) it does not: 83 groups of ids collapse onto one printed name, and
+  in one of them (`sor-080` / `shd-081`) both cards are unique, so the engine would allow two
+  copies of what that pack calls one card. `SB.cardIdentity` reads a `sameCardAs` field (ids
+  only, never a printed name) that would fold such a pair into one identity; no card sets it
+  yet, because deciding which collisions are genuine reprints is a content call — several
+  groups differ mechanically, so the pack's mapping is not by itself evidence.
+  `SB.namePackCollisions()` lists the affected pairs.

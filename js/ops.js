@@ -810,9 +810,6 @@
     actions: function (state, itemStep) {
       const p = state.players[itemStep.player];
       if (p.deck.length === 0 || p.deck[0].cardId !== itemStep.cardId) return null;
-      const card = SB.card(itemStep.cardId);
-      if (card.type === 'unit' && card.unique &&
-          SB.allUnits(state, itemStep.player).some(function (u) { return u.cardId === itemStep.cardId; })) return null;
       return [
         { type: 'auctionPlay', player: itemStep.player, play: true },
         { type: 'auctionPlay', player: itemStep.player, play: false },
@@ -1034,8 +1031,6 @@
         if (p.deck.length === 0) return;
         const cost = Math.max(0, SB.cardCost(state, itemStep.player, card.id) - (p.plotDiscount || 0));
         if (cost > SB.readyResources(state, itemStep.player)) return;
-        if (card.type === 'unit' && card.unique &&
-            SB.allUnits(state, itemStep.player).some(function (u) { return u.cardId === card.id; })) return;
         acts.push({ type: 'plotPlay', player: itemStep.player, resourceIndex: ri, cardId: card.id });
       });
       return acts.length > 1 ? acts : null;
@@ -1278,7 +1273,6 @@
           if (c.type !== 'unit') return;
           const cost = Math.max(0, SB.cardCost(state, itemStep.player, inst.cardId) - (itemStep.playDiscount || 0));
           if (cost > SB.readyResources(state, itemStep.player)) return;
-          if (c.unique && SB.allUnits(state, itemStep.player).some(function (u) { return u.cardId === inst.cardId; })) return;
         }
         matches.push({ type: 'searchTake', player: itemStep.player, deckIndex: i });
       });
@@ -1743,8 +1737,6 @@
         }
         const cost = Math.max(0, SB.cardCost(state, itemStep.player, inst.cardId) - disc);
         if (cost > SB.readyResources(state, itemStep.player)) return;
-        if (card.type === 'unit' && card.unique &&
-            SB.allUnits(state, itemStep.player).some(function (u) { return u.cardId === inst.cardId; })) return;
         acts.push({ type: 'playHandCard', player: itemStep.player, handIndex: i, cardId: inst.cardId, zone: zone });
       }
       (itemStep.zones || ['hand']).forEach(function (z) {

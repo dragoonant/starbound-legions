@@ -42,7 +42,7 @@ its own copy limit with `copyLimit: N`.
 { id, type: 'unit', cost, power, hp, arena: 'ground'|'space',
   aspects: ['command', ...],         // [] = neutral
   traits: ['tr17', ...],             // neutral trait ids; display via names
-  unique?: true, token?: true,
+  unique?: true, token?: true, sameCardAs?: 'other-id',
   keywords?: [{k:'raid', n:2}, {k:'smuggle', cost:6, aspects:[...]},
               {k:'piloting', cost:2, aspects:[...]}, {k:'exploit', n:2}, ...],
   staticFlags?: ['firstStrike'|'negateFirstEvent'|'attackOnlyDamaged'|
