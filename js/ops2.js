@@ -1251,6 +1251,7 @@
     if (f.trait && traits.indexOf(f.trait) < 0) return false;
     if (f.uniqueOnly && !SB.card(u.cardId).unique) return false;
     if (f.damaged && u.damage === 0) return false;
+    if (f.nonLeader && SB.card(u.cardId).type === 'leader') return false;
     return true;
   };
 

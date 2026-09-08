@@ -1841,6 +1841,49 @@
     T.eq(zero.length, 0, 'a piloting cost of 0 attaches the pilot to a vehicle for free: ' + zero.join(', '));
   });
 
+  // An event's condition lives on the ability, not on its ops: the play paths have
+  // to hand it to the queue or the whole event resolves unconditionally.
+  T.add('audit jtl-209 event: its ability-level condition is honoured', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    const mine = T.putOnBoard(s, me, 'lof-098', { exhausted: true });
+    // The condition asks for the opponent to hold MORE space units. They hold none.
+    s = play(s, me, 'jtl-209');
+    s = drive(s);
+    T.ok(SB.findUnit(s, mine.uid).exhausted, 'the condition failed, so nothing readied');
+  });
+
+  T.add('audit jtl-209 event: it still resolves when the condition is met', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const mine = T.putOnBoard(s, me, 'lof-098', { exhausted: true });
+    T.putOnBoard(s, foe, 'ash-071');
+    T.putOnBoard(s, foe, 'ash-078');
+    s = play(s, me, 'jtl-209');
+    s = drive(s);
+    T.ok(!SB.findUnit(s, mine.uid).exhausted, 'the opponent holds space, so it readied');
+  });
+
+  // Attach legality has one home (SB.attachAllowed). The engine's own copy used to
+  // ignore uniqueOnly, offering attach targets the rules do not allow.
+  T.add('audit sec-256 upgrade: uniqueOnly offers no non-unique bearer', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    const plain = T.putOnBoard(s, me, 'ash-071');   // not unique
+    T.putInHand(s, me, 'sec-256');
+    const offered = SB.legalActions(s).filter(function (a) {
+      return a.type === 'playCard' && a.cardId === 'sec-256' && a.attachTo === plain.uid;
+    });
+    T.eq(offered.length, 0, 'a non-unique unit is not a legal bearer');
+  });
+
+  T.add('audit sec-256 upgrade: a unique bearer is still offered', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    const champ = T.putOnBoard(s, me, 'lof-098');   // unique
+    T.putInHand(s, me, 'sec-256');
+    const offered = SB.legalActions(s).filter(function (a) {
+      return a.type === 'playCard' && a.cardId === 'sec-256' && a.attachTo === champ.uid;
+    });
+    T.eq(offered.length, 1, 'the unique unit is the legal bearer');
+  });
+
   T.add('audit: every leader a registered deck uses has a leader-side ability', function () {
     const seen = {};
     Object.keys(SB.decks).forEach(function (d) { seen[SB.decks[d].leader] = true; });
