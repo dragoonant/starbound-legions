@@ -570,6 +570,34 @@
     T.ok(!SB.findUnit(s, cheap.uid), 'the 3-cost unit died');
   });
 
+  T.add('expansion: a two-hit event still finds its second target after the first hit kills the saved unit', function () {
+    // sec-180: 3 damage to a unit, then (with initiative) 2 damage to another unit
+    // in the same arena. The 3 damage defeated the first target, so the "same
+    // arena as the chosen unit" lookup found nothing and the 2 damage fizzled
+    // with an enemy still sitting in that arena.
+    let s = T.game();
+    s.active = 1; s.initiative = 1;
+    const first = T.putOnBoard(s, 0, 'fx-flyer');     // space, hp 2: dies to the 3
+    const second = T.putOnBoard(s, 0, 'fx-flyer');    // space: the legal follow-up
+    const grounded = T.putOnBoard(s, 0, 'fx-grunt');  // ground: never legal for the 2
+    s = rich(s, 1);
+    s = play(s, 1, 'sec-180');
+    const pick = function (st, uid) {
+      const i = st.queue[0].candidates.findIndex(function (c) { return c.uid === uid; });
+      T.ok(i >= 0, 'unit ' + uid + ' is offered');
+      return T.act(st, { type: 'choose', index: i });
+    };
+    s = pick(s, first.uid);
+    T.ok(!SB.findUnit(s, first.uid), 'the first hit killed its target');
+    T.eq(s.queue[0] && s.queue[0].step, 'effect', 'the second hit is asking for a target');
+    const uids = s.queue[0].candidates.map(function (c) { return c.uid; });
+    T.deepEq(uids, [second.uid], 'the other space unit is the one legal target');
+    T.ok(uids.indexOf(grounded.uid) < 0, 'the ground unit is not offered');
+    s = pick(s, second.uid);
+    T.ok(!SB.findUnit(s, second.uid), 'and the 2 damage defeats it (hp 2)');
+    T.ok(SB.findUnit(s, grounded.uid), 'the ground unit was never touched');
+  });
+
   T.add("expansion: the opponent, not the hand owner, picks the card discarded by ash-220", function () {
     let s = rich(T.game(), 1);
     T.putInHand(s, 0, "sor-045");
@@ -1864,4 +1892,53 @@
     });
     T.eq(bare.length, 0, 'a leader with no leader-side ability does nothing until it deploys: ' + bare.join(', '));
   });
+  // ---- pilots: the printed piloting cost, and the box the ship actually gets --------
+
+  T.add('a pilot UNIT lends the ship its pilot box, not its own body', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    const ship = T.putOnBoard(s, me, 'sor-044');   // a plain vehicle with no pilot
+    const bareP = SB.unitPower(s, ship), bareH = SB.unitMaxHp(s, ship);
+    const pilot = SB.card('jtl-142');              // 7/7 as a unit, 3/3 in its pilot box
+    s = play(s, me, 'jtl-142', { asPilot: true, attachTo: ship.uid });
+    const flown = SB.findUnit(s, ship.uid);
+    T.eq(SB.unitPower(s, flown) - bareP, pilot.pilotSide.power, 'power comes from the pilot box');
+    T.eq(SB.unitMaxHp(s, flown) - bareH, pilot.pilotSide.hp, 'and so does HP');
+    T.ok(pilot.pilotSide.power !== pilot.power, 'which is a smaller number than its unit body');
+  });
+
+  T.add('the aura-free power reading uses the pilot box too', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    const ship = T.putOnBoard(s, me, 'sor-044');
+    const bare = SB.unitPowerNoAura(s, ship);
+    s = play(s, me, 'jtl-142', { asPilot: true, attachTo: ship.uid });
+    const flown = SB.findUnit(s, ship.uid);
+    T.eq(SB.unitPowerNoAura(s, flown) - bare, SB.card('jtl-142').pilotSide.power,
+      'the path aura conditions read agrees with SB.unitPower');
+  });
+
+  T.add('jtl-210 is played as a pilot for its printed cost, on one aspect', function () {
+    const kw = SB.card('jtl-210').keywords.find(function (k) { return k.k === 'piloting'; });
+    T.eq(kw.cost, 2, 'the printed piloting cost');
+    T.eq(kw.aspects.join(','), 'cunning', 'one aspect, not two — a doubled one taxes it twice');
+    // Aspect penalties are charged per unmatched icon, so the duplicate was worth 2 resources.
+    let s = T.game(); const me = 0;
+    const card = SB.card('jtl-210');
+    T.eq(SB.smuggleCost(s, me, card, kw), SB.smuggleCost(s, me, card, { cost: 2, aspects: ['cunning'] }),
+      'and it prices exactly as the printed bracket reads');
+  });
+
+  T.add('a pilot shows what it costs to fly and what it gives the ship', function () {
+    const lines = SB.cardText('jtl-057').join(' / ');
+    T.ok(/Piloting \[2, Vigilance\]/.test(lines), 'the printed piloting cost is on the card: ' + lines);
+    T.ok(/attached unit gets \+1\/\+3/.test(lines), 'and so is the pilot box: ' + lines);
+  });
+
+  T.add('content: every pilot carries the box it lends its ship', function () {
+    const missing = Object.keys(SB.cards).filter(function (id) {
+      const c = SB.cards[id];
+      return (c.keywords || []).some(function (k) { return k.k === 'piloting'; }) && !c.pilotSide;
+    });
+    T.eq(missing.join(' '), '', 'pilots with no pilot box, which would lend their unit body instead');
+  });
+
 })(window.SB = window.SB || {});
