@@ -148,6 +148,14 @@
       if (live) finish(false);              // fresh press proves the old gesture is over (§10)
       live = { node: node, spec: spec, startX: e.clientX, startY: e.clientY,
         moved: false, pointerId: e.pointerId };
+      // A press that may become a drag must not paint a text selection across the
+      // board on the way (desktop Chrome/Safari select as the pointer sweeps). The
+      // class is set on the press, not on the first move: by the time we know it is a
+      // drag the browser has already started selecting. Cleared in finish(), so
+      // ordinary selection (log text, inspector) still works between gestures.
+      document.documentElement.classList.add('is-dragging');
+      const sel = window.getSelection && window.getSelection();
+      if (sel && !sel.isCollapsed) sel.removeAllRanges();
       try { node.setPointerCapture(e.pointerId); } catch (err) {}
       node.addEventListener('pointermove', onMove);
       node.addEventListener('pointerup', onUp);
@@ -205,6 +213,7 @@
       live.node.removeEventListener('pointerup', onUp);
       live.node.removeEventListener('pointercancel', onCancel);
       live.node.classList.remove('is-dragging-source');
+      document.documentElement.classList.remove('is-dragging');
       if (live.clone) live.clone.remove();
       // Clearing the aiming arrow must restore the declared one if a battle is live.
       if (live.arrow) { SB.arrow.clear(); if (UI.state) SB.redrawDeclaredArrow(UI.state, UI.humanSeat); }

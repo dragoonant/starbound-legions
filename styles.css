@@ -403,6 +403,10 @@ button:disabled { opacity: .4; cursor: default; }
 .role-hinted { box-shadow: 0 0 0 3px var(--role-selected), 0 0 18px rgba(91,157,255,.5); }
 .drop-ok  { box-shadow: 0 0 0 2px var(--role-picked); }
 .drop-hot { box-shadow: 0 0 0 3px var(--role-picked), 0 0 16px var(--role-picked); }
+/* While a press that may become a drag is live, nothing on the page is selectable:
+   dragging a unit to declare an attack otherwise sweeps a text selection across the
+   board. Set on pointerdown, cleared when the gesture ends (js/ui.js Drag). */
+.is-dragging, .is-dragging * { user-select: none; -webkit-user-select: none; }
 .is-dragging-source { opacity: .28; }
 .is-draggable { touch-action: none; user-select: none; -webkit-user-drag: none; cursor: grab; }
 .is-draggable img { pointer-events: none; }
