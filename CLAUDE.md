@@ -11,6 +11,8 @@ Read these before doing anything:
 5. **CARD-LOG-AND-TARGETING-SPEC.md** — how the game narrates what happened and asks
    who to hit. Binding for js/logtext.js, js/logpanel.js, js/targeting.js, and anything
    that creates a queue choice. Divergences go in DEVIATIONS.md.
+6. **CARD-GAME-LESSONS-2.md** — the retrospective of this project: what it added to
+   CARD-GAME-LESSONS.md, the IP playbook, and the starter guide for the next card game.
 
 ## Hard rules
 

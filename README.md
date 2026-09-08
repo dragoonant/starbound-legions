@@ -77,3 +77,5 @@ lists anything a deck can show that is missing or untracked. See PAGES-PLAN.md.
 - `names.js` every piece of display text
 - `tools/` generators for art, sound, names, and the test runner
 - `docs/` schema, AI weights, board and art-prompt rules
+- `CARD-GAME-LESSONS.md`, `CARD-GAME-LESSONS-2.md` lessons from the previous project and
+  from this one, written to be dropped into the next card game's repo
