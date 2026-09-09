@@ -97,7 +97,11 @@
     peekBottomed: function (l) { return player(l.player) + ' buried the card that was peeked at.'; },
     revealedTop: function (l) { return possessive(l.player) + ' top card is ' + cardName(l.cardId) + '.'; },
     lookedTopBoth: function (l) {
-      return 'Top cards: ' + (l.p0CardId ? cardName(l.p0CardId) : '(empty)') + ' and ' + (l.p1CardId ? cardName(l.p1CardId) : '(empty)') + '.';
+      // Two cards from two decks: say which is whose, or the line is a pair of
+      // names the reader cannot place.
+      const name = function (id) { return id ? cardName(id) : '(empty deck)'; };
+      const who = l.player != null ? player(l.player) + ' looked at the top cards — ' : 'Top cards — ';
+      return who + theirs(0) + ' is ' + name(l.p0CardId) + ', ' + theirs(1) + ' is ' + name(l.p1CardId) + '.';
     },
     resourceDefeated: function (l) { return possessive(l.player) + ' resource was defeated.'; },
     resourceDefeatArmed: function (l) { return 'At the start of the next action phase, ' + player(l.player) + ' must defeat a resource.'; },

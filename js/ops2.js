@@ -2778,7 +2778,10 @@
   // — public information only, no state change beyond the log line.
   O.lookTopBothDecks = function (state, item) {
     const a = state.players[0].deck[0], b = state.players[1].deck[0];
-    SB.log(state, { type: 'lookedTopBoth', p0CardId: a ? a.cardId : null, p1CardId: b ? b.cardId : null, notice: true });
+    // `player` is who LOOKED: the ability is information, so the UI has to know
+    // whose screen the two faces belong on (js/ui.js renderRevealNotice).
+    SB.log(state, { type: 'lookedTopBoth', player: item.controller,
+      p0CardId: a ? a.cardId : null, p1CardId: b ? b.cardId : null, notice: true });
   };
   SB.fireActionPhaseStartTriggers = function (state) {
     [0, 1].forEach(function (pl) {

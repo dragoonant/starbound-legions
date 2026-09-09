@@ -1,0 +1,461 @@
+{
+ "format": "sb-bugreport/1",
+ "when": "2026-09-08T22:20:00.021Z",
+ "setup": {
+  "seed": "g15038821",
+  "deck0": "deck-c49",
+  "deck1": "deck-c22",
+  "difficulty": "competition",
+  "humanSeat": 0,
+  "initiative": 1
+ },
+ "env": {
+  "page": "/starbound-legions/",
+  "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+  "viewport": [
+   2752,
+   1018
+  ],
+  "namesMode": "source",
+  "animMode": "full"
+ },
+ "events": [
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "mulligan",
+    "player": 1,
+    "keep": true
+   },
+   "at": {
+    "round": 1,
+    "phase": "setup",
+    "active": 1,
+    "initiative": 1,
+    "queue": 4,
+    "step": "setupResources"
+   },
+   "legal": true,
+   "log": [],
+   "after": {
+    "seats": [
+     {
+      "hand": 5,
+      "deck": 48,
+      "discard": 0,
+      "resources": 0,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 6,
+      "deck": 44,
+      "discard": 0,
+      "resources": 0,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 0,
+    "space": 0
+   },
+   "n": 0,
+   "t": 486
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "mulligan",
+    "player": 0,
+    "keep": false
+   },
+   "at": {
+    "round": 1,
+    "phase": "setup",
+    "active": 1,
+    "initiative": 1,
+    "queue": 3,
+    "step": "setupResources"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "mulligan",
+     "player": 0
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 5,
+      "deck": 48,
+      "discard": 0,
+      "resources": 0,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 6,
+      "deck": 44,
+      "discard": 0,
+      "resources": 0,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 0,
+    "space": 0
+   },
+   "n": 1,
+   "t": 8776
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "resourceCard",
+    "player": 1,
+    "handIndex": 0
+   },
+   "at": {
+    "round": 1,
+    "phase": "setup",
+    "active": 1,
+    "initiative": 1,
+    "queue": 2,
+    "step": "setupResources"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "resourced",
+     "player": 1
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 5,
+      "deck": 48,
+      "discard": 0,
+      "resources": 0,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 5,
+      "deck": 44,
+      "discard": 0,
+      "resources": 1,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 0,
+    "space": 0
+   },
+   "n": 2,
+   "t": 9244
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "resourceCard",
+    "player": 1,
+    "handIndex": 0
+   },
+   "at": {
+    "round": 1,
+    "phase": "setup",
+    "active": 1,
+    "initiative": 1,
+    "queue": 2,
+    "step": "setupResources"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "resourced",
+     "player": 1
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 5,
+      "deck": 48,
+      "discard": 0,
+      "resources": 0,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 44,
+      "discard": 0,
+      "resources": 2,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 0,
+    "space": 0
+   },
+   "n": 3,
+   "t": 9715
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "resourceCard",
+    "player": 0,
+    "handIndex": 1
+   },
+   "at": {
+    "round": 1,
+    "phase": "setup",
+    "active": 1,
+    "initiative": 1,
+    "queue": 1,
+    "step": "setupResources"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "resourced",
+     "player": 0
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 48,
+      "discard": 0,
+      "resources": 1,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 44,
+      "discard": 0,
+      "resources": 2,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 0,
+    "space": 0
+   },
+   "n": 4,
+   "t": 11053
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "resourceCard",
+    "player": 0,
+    "handIndex": 2
+   },
+   "at": {
+    "round": 1,
+    "phase": "setup",
+    "active": 1,
+    "initiative": 1,
+    "queue": 1,
+    "step": "setupResources"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "resourced",
+     "player": 0
+    },
+    {
+     "type": "actionPhase",
+     "round": 1
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 3,
+      "deck": 48,
+      "discard": 0,
+      "resources": 2,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 44,
+      "discard": 0,
+      "resources": 2,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 0,
+    "space": 0
+   },
+   "n": 5,
+   "t": 12066
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "leaderTrigger",
+    "player": 0,
+    "use": true
+   },
+   "at": {
+    "round": 1,
+    "phase": "action",
+    "active": 1,
+    "initiative": 1,
+    "queue": 1,
+    "step": "leaderTriggerOffer"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "lookedTopBoth",
+     "p0CardId": "ash-053",
+     "p1CardId": "lof-093",
+     "notice": true,
+     "via": "sor-016"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 3,
+      "deck": 48,
+      "discard": 0,
+      "resources": 2,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 44,
+      "discard": 0,
+      "resources": 2,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 0,
+    "space": 0
+   },
+   "n": 6,
+   "t": 22232
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "playCard",
+    "player": 1,
+    "handIndex": 0,
+    "cardId": "lof-045"
+   },
+   "at": {
+    "round": 1,
+    "phase": "action",
+    "active": 1,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "playCard",
+     "player": 1,
+     "cardId": "lof-045",
+     "cost": 2,
+     "sound": "play"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 3,
+      "deck": 48,
+      "discard": 0,
+      "resources": 2,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 3,
+      "deck": 44,
+      "discard": 0,
+      "resources": 2,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 1,
+    "space": 0
+   },
+   "n": 7,
+   "t": 22710
+  },
+  {
+   "kind": "note",
+   "text": "Grand Admiral Thrawn - Patient and Insightful leader ability does nothing, can't see the cards in either player's top of draw deck.  ",
+   "at": {
+    "round": 1,
+    "phase": "action",
+    "active": 0,
+    "initiative": 1,
+    "queue": 0
+   },
+   "n": 8,
+   "t": 77256
+  }
+ ],
+ "truncated": false,
+ "finishedAt": "2026-09-08T22:21:17.363Z",
+ "final": {
+  "at": {
+   "round": 1,
+   "phase": "action",
+   "active": 0,
+   "initiative": 1,
+   "queue": 0
+  },
+  "tally": {
+   "seats": [
+    {
+     "hand": 3,
+     "deck": 48,
+     "discard": 0,
+     "resources": 2,
+     "baseDamage": 0,
+     "leader": "undeployed"
+    },
+    {
+     "hand": 3,
+     "deck": 44,
+     "discard": 0,
+     "resources": 2,
+     "baseDamage": 0,
+     "leader": "undeployed"
+    }
+   ],
+   "ground": 1,
+   "space": 0
+  },
+  "winner": null,
+  "logLength": 9
+ }
+}
