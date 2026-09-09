@@ -755,6 +755,23 @@
     SB.log(state, { type: 'shieldsDefeated', uid: u.uid, amount: n, sound: 'shield' });
   };
   // Return this upgrade card (just defeated) from its owner's discard pile to hand.
+  // Return the upgrade this ability came from to its owner's hand, from play. The
+  // instance is named by ctx.upgradeInstUid, which SB.fireTriggers stamps whenever the
+  // ability spoke from an upgrade rather than from the unit's own card.
+  O.returnSelfUpgrade = function (state, item) {
+    const uid = item.ctx && item.ctx.upgradeInstUid;
+    if (uid == null) return;
+    const bearer = SB.findUnit(state, item.ctx.sourceUid);
+    if (!bearer) return;
+    const inst = bearer.upgrades.find(function (i2) { return i2.uid === uid; });
+    if (!inst) return;
+    bearer.upgrades.splice(bearer.upgrades.indexOf(inst), 1);
+    const owner = SB.upgradeOwner(bearer, inst);
+    if (!SB.card(inst.cardId).token) state.players[owner].hand.push(inst);
+    SB.log(state, { type: 'returnedToHand', player: owner, cardId: inst.cardId });
+    if (SB.findUnit(state, bearer.uid) && SB.unitRemainingHp(state, bearer) <= 0) SB.defeatUnit(state, bearer, item.ctx);
+  };
+
   O.selfUpgradeToHand = function (state, item) {
     const uid = item.ctx && item.ctx.upgradeInstUid;
     const who = item.controller;
@@ -1382,6 +1399,7 @@
         u.upgrades.forEach(function (inst, ui) {
           if (it.nonLeaderOnly && inst.leaderPilot) return;
           if (it.nonUniqueOnly && SB.card(inst.cardId).unique) return;
+          if (it.maxCost != null && (SB.card(inst.cardId).cost || 0) > it.maxCost) return;
           acts.push({ type: 'defeatUpgrade', player: it.player, uid: u.uid, index: ui });
         });
       });
@@ -1404,7 +1422,8 @@
   O.defeatUpgrade = function (state, item) {
     state.queue.unshift({ step: 'defeatUpgradePick', player: item.controller, friendlyOnly: !!item.op.friendlyOnly,
       nonLeaderOnly: !!item.op.nonLeaderOnly, nonUniqueOnly: !!item.op.nonUniqueOnly, optional: !!item.op.optional,
-      saveBearerAs: item.op.saveBearerAs, saveAs: item.op.saveAs, bearerArena: item.op.bearerArena, ctx: item.ctx });
+      saveBearerAs: item.op.saveBearerAs, saveAs: item.op.saveAs, bearerArena: item.op.bearerArena,
+      maxCost: item.op.maxCost, ctx: item.ctx });
   };
 
   // discardChoice: aspect-sharing filter, optional decline, success flag.
@@ -1946,6 +1965,16 @@
   };
 
   // ---- fireTriggers: the combined ability list, pilot sides, silence --------------
+  // Which upgrade on this unit contributed an ability, by object identity. An ability
+  // that acts on the upgrade it came from (jtl-197 returning itself to hand) cannot
+  // find it any other way: SB.unitAllAbilities flattens every source into one list.
+  function contributingInst(unit, ab) {
+    return unit.upgrades.find(function (inst) {
+      const c = SB.card(inst.cardId);
+      return ((c.abilities || []).indexOf(ab) >= 0) ||
+        (((c.pilotSide && c.pilotSide.abilities) || []).indexOf(ab) >= 0);
+    });
+  }
   SB.fireTriggers = function (state, trigger, unit, ctx) {
     SB.unitAllAbilities(state, unit).forEach(function (ab) {
       if (ab.trigger !== trigger) return;
@@ -1972,6 +2001,8 @@
         defeatedPower: ctx && ctx.defeatedPower, playedCardCost: ctx && ctx.playedCardCost,
         controller: unit.owner, formerUpgrades: ctx && ctx.formerUpgrades,
       };
+      const fromInst = contributingInst(unit, ab);
+      effectCtx.upgradeInstUid = fromInst ? fromInst.uid : (ctx && ctx.upgradeInstUid);
       if (ab.oncePerRoundTrigger) {
         if (unit.triggerUsedRound === state.round) return;
         // A trigger paired with a condition (law-053) only spends its once-per-round

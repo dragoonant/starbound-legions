@@ -30,9 +30,13 @@
     const grants = [];
     SB.allUnits(state).forEach(function (src) {
       const def = SB.unitDef(src);
-      let abilities = (def.abilities || []).slice();
+      // A pilot box's constants apply while it is attached; the unit side's while it
+      // is in play as a unit. Same split as SB.fireTriggers.
+      let abilities = (def.abilities || []).filter(function (ab) { return !ab.asPilotOnly; });
       src.upgrades.forEach(function (inst) {
-        abilities = abilities.concat(SB.card(inst.cardId).abilities || []);
+        abilities = abilities.concat((SB.card(inst.cardId).abilities || []).filter(function (ab) {
+          return !ab.asUnitOnly;
+        }));
       });
       abilities.forEach(function (ab) {
         if (ab.trigger !== 'constant' || !ab.grant) return;

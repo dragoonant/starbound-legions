@@ -1941,4 +1941,111 @@
     T.eq(missing.join(' '), '', 'pilots with no pilot box, which would lend their unit body instead');
   });
 
+  // ---- what a pilot's box hands the ship, beyond its stats -------------------------
+
+  function fly(s, me, pilotId, ship) {
+    return play(s, me, pilotId, { asPilot: true, attachTo: ship.uid });
+  }
+
+  T.add('a pilot box grants the ship a keyword, and only while it is aboard', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    const ship = T.putOnBoard(s, me, 'sor-044'); // a space fighter with no keywords
+    T.ok(!SB.hasKeyword(s, ship, 'sentinel'), 'the ship has no sentinel of its own');
+    s = fly(s, me, 'jtl-058', ship);
+    T.ok(SB.hasKeyword(s, SB.findUnit(s, ship.uid), 'sentinel'), 'aboard, the box hands sentinel over');
+    T.ok(SB.card('jtl-058').pilotSide.grantKeywords.length, 'and it came from the box, not the unit side');
+  });
+
+  T.add('a numeric keyword from a pilot box carries its number', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    const ship = T.putOnBoard(s, me, 'sor-044');
+    s = fly(s, me, 'jtl-211', ship);
+    T.eq(SB.keywordTotal(s, SB.findUnit(s, ship.uid), 'raid'), 1, 'raid 1 from the box');
+  });
+
+  T.add('a conditional box grant waits for its condition', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    const ship = T.putOnBoard(s, me, 'sor-044');   // a space fighter
+    s = fly(s, me, 'jtl-109', ship);
+    T.ok(!SB.hasKeyword(s, SB.findUnit(s, ship.uid), 'sentinel'), 'nothing on the ground yet, so no sentinel');
+    T.putOnBoard(s, me, 'fx-grunt');
+    T.ok(SB.hasKeyword(s, SB.findUnit(s, ship.uid), 'sentinel'), 'one in each arena and the box speaks');
+  });
+
+  T.add('a box that reads the ship it is bolted to', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    const ship = T.putOnBoard(s, me, 'sor-044');
+    const before = SB.unitMaxHp(s, ship);
+    s = fly(s, me, 'jtl-150', ship);
+    const flown = SB.findUnit(s, ship.uid);
+    const box = SB.card('jtl-150').pilotSide;
+    const transport = SB.unitTraits(s, flown).indexOf('tr41') >= 0;
+    T.eq(SB.unitMaxHp(s, flown), before + box.hp + (transport ? 1 : 0),
+      'the transport clause applies only to a transport');
+    T.eq(SB.hasKeyword(s, flown, 'overwhelm'), SB.unitTraits(s, flown).indexOf('tr10') >= 0,
+      'and the fighter clause only to a fighter');
+  });
+
+  T.add('a box ability fires from the ship, not from the pilot on the ground', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    // jtl-035's box gives an enemy in the arena -1/-1 when the ship attacks.
+    const lone = T.putOnBoard(s, me, 'jtl-035');   // in play as a unit: box stays quiet
+    const mark = T.putOnBoard(s, foe, 'fx-wall');
+    s.active = me;
+    s = T.act(s, { type: 'attack', attacker: lone.uid, target: { kind: 'unit', uid: mark.uid } });
+    s = drive(s);
+    T.eq(SB.findUnit(s, mark.uid) ? SB.findUnit(s, mark.uid).temp.power : 0, 0,
+      'the pilot attacking on its own does not use its box');
+  });
+
+  T.add('a pilot attaching fires its box effect', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    const ship = T.putOnBoard(s, me, 'sor-044');
+    s = fly(s, me, 'jtl-036', ship);              // box: shield the ship as it attaches
+    s = drive(s);
+    T.eq(SB.findUnit(s, ship.uid).shields, 1, 'the ship came away with a shield');
+  });
+
+  T.add('jtl-210 keeps its unit side and its box apart', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const ship = T.putOnBoard(s, me, 'sor-044');  // space
+    const enemy = T.putOnBoard(s, foe, 'fx-flyer');
+    T.putOnBoard(s, foe, 'fx-grunt');            // a ground unit its box must not reach
+    s = fly(s, me, 'jtl-210', ship);
+    s = drive(s);
+    T.ok(SB.findUnit(s, enemy.uid).exhausted, 'the box exhausted an enemy in the ship’s arena');
+  });
+
+  T.add('a pilot may bail out when the ship it flies finishes an attack', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const ship = T.putOnBoard(s, me, 'sor-044');
+    T.putOnBoard(s, foe, 'fx-grunt');
+    s = fly(s, me, 'jtl-197', ship);
+    s = drive(s);
+    const flown = SB.findUnit(s, ship.uid);
+    T.eq(flown.upgrades.length, 1, 'aboard to start with');
+    s.active = me;
+    s = T.act(s, { type: 'attack', attacker: flown.uid, target: { kind: 'base', player: foe } });
+    s = drive(s, function (a) { return a.type !== 'binary' || a.pick === 'a'; });
+    const after = SB.findUnit(s, ship.uid);
+    T.eq(after.upgrades.length, 0, 'and back in hand once the attack ended');
+    T.ok(s.players[me].hand.some(function (i) { return i.cardId === 'jtl-197'; }), 'in its owner’s hand, not the discard');
+  });
+
+  T.add('content: every pilot box ability is marked as one', function () {
+    // An ability that belongs to the box must say so, or it fires while the pilot is
+    // standing on the ground as a unit.
+    const bad = [];
+    Object.keys(SB.cards).forEach(function (id) {
+      const c = SB.cards[id];
+      if (!(c.keywords || []).some(function (k) { return k.k === 'piloting'; })) return;
+      (c.abilities || []).forEach(function (ab) {
+        if (ab.trigger === 'onPlayAsPilot' || ab.asPilotOnly || ab.asUnitOnly) return;
+        if (ab.trigger === 'onPlay') return; // the unit side's own when-played
+        bad.push(id + ':' + ab.trigger);
+      });
+    });
+    T.eq(bad.join(' '), '', 'pilot abilities that belong to neither side');
+  });
+
 })(window.SB = window.SB || {});

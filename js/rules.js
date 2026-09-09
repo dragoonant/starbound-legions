@@ -41,8 +41,9 @@
     // stack for numeric ones (raid, restore) and are redundant for boolean ones.
     let kws = (SB.unitDef(unit).keywords || []).slice();
     upgradeDefs(unit).forEach(function (u) {
-      // A leader aboard a ship grants from its pilot box, not from the card's root.
-      const from = u.type === 'leader' && u.pilotSide ? u.pilotSide : u;
+      // Anything aboard a ship grants from its pilot box, not from the card's root —
+      // the same rule SB.upgradeStats uses for the numbers.
+      const from = u.pilotSide || u;
       kws = kws.concat(from.grantKeywords || []);
     });
     return kws;
