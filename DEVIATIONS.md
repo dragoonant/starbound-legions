@@ -77,9 +77,11 @@ missing mechanic):
   free-text picker over the whole pool has no counterpart in the targeting model and
   would let a player fish for information the rules never give them. The lockout and the
   cost tax themselves behave as printed once a name is chosen.
-- **What a pilot's box grants beyond stats.** A pilot unit aboard a ship now hands over
-  the power and HP printed in its pilot box, and is played for its printed piloting cost.
-  Twenty-six of the thirty pilot boxes also grant the ship a keyword ("attached unit gains
-  Sentinel"), some of them conditionally; none of that is in the card data yet, so a pilot
-  currently lends stats only.
-
+- **What a pilot's box does.** A pilot unit aboard a ship hands over the power and HP
+  printed in its pilot box, is played for its printed piloting cost, and now carries what
+  else its box prints: keywords it grants the ship (flat and conditional), abilities it
+  lends it, and effects that fire as it attaches. Two readings are approximate. jtl-066
+  heals 1 damage from a unit and then 1 from another, where the card spreads 2 total over
+  any number of units — the same repeated-single-pick shape the engine uses elsewhere for
+  "up to N". jtl-094 moves to the ground arena instead of being defeated as an upgrade,
+  which the card offers as a choice and the `ejectOnDefeat` flag takes automatically.

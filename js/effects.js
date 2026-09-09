@@ -298,11 +298,18 @@
   SB.fireTriggers = function (state, trigger, unit, ctx) {
     if (unit.abilitiesSuppressed || unit.abilitiesSuppressedForAttack) return;
     const def = SB.unitDef(unit);
-    const sources = [def].concat(unit.upgrades.map(function (i) { return SB.card(i.cardId); }));
-    if (unit.tempAbilities) sources.push({ abilities: unit.tempAbilities });
+    // Each source is paired with the upgrade instance it came from, or null for the
+    // unit's own card: a pilot's box only speaks while it is attached, its unit side
+    // only while it is in play as a unit, and an ability that came off an upgrade needs
+    // to know WHICH upgrade so it can act on itself.
+    const sources = [{ card: def, inst: null }]
+      .concat(unit.upgrades.map(function (i) { return { card: SB.card(i.cardId), inst: i }; }));
+    if (unit.tempAbilities) sources.push({ card: { abilities: unit.tempAbilities }, inst: null });
     sources.forEach(function (src) {
-      (src.abilities || []).forEach(function (ab) {
+      (src.card.abilities || []).forEach(function (ab) {
         if (ab.trigger !== trigger) return;
+        if (!src.inst && ab.asPilotOnly) return;
+        if (src.inst && ab.asUnitOnly) return;
         if (ab.playedTrait && (!ctx || !ctx.playedCardId ||
             (SB.card(ctx.playedCardId).traits || []).indexOf(ab.playedTrait) < 0)) return;
         if (ab.playedUnique && (!ctx || !ctx.playedCardId || !SB.card(ctx.playedCardId).unique)) return;
@@ -317,6 +324,7 @@
           // lines to it instead of printing them as if the player chose each one.
           viaTrigger: true,
           sourceUid: unit.uid, cardId: unit.cardId, condition: ab.condition,
+          upgradeInstUid: src.inst ? src.inst.uid : (ctx && ctx.upgradeInstUid),
           playedCardId: ctx && ctx.playedCardId, bearerUid: ctx && ctx.bearerUid,
           attackerUid: ctx && ctx.attackerUid, attackTarget: ctx && ctx.attackTarget,
           damagedUid: ctx && ctx.damagedUid, paidCost: ctx && ctx.paidCost,
@@ -488,6 +496,8 @@
       return !SB.checkCondition(state, controller, Object.assign({}, cond, { not: false }), ctx);
     }
     switch (cond.if) {
+      case 'all':
+        return (cond.of || []).every(function (c2) { return SB.checkCondition(state, controller, c2, ctx); });
       case 'savedHasTrait': {
         const t = SB.efx(state, ctx)[cond.name];
         const u = t && t.kind === 'unit' ? SB.findUnit(state, t.uid) : null;
@@ -621,6 +631,10 @@
         const mine = state.space.filter(function (u) { return u.owner === controller; }).length;
         const theirs = state.space.filter(function (u) { return u.owner !== controller; }).length;
         return theirs > mine;
+      }
+      case 'milledCostAtMost': {
+        const st2 = SB.efx(state, ctx);
+        return (st2.milledCosts || []).some(function (c2) { return c2 != null && c2 <= cond.n; });
       }
       case 'milledOddCost': {
         const st = SB.efx(state, ctx);

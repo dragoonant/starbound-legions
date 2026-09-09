@@ -404,10 +404,12 @@
     moveUpgrade: function () { return 'move an upgrade to another eligible unit with the same controller'; },
     defeatUpgrade: function (op) {
       let s = 'defeat ' + (op.nonUniqueOnly ? 'a basic' : op.nonLeaderOnly ? 'a non-leader' : 'an') + ' upgrade';
+      if (op.maxCost != null) s += ' that costs ' + op.maxCost + ' or less';
       if (op.friendlyOnly) s += ' on a friendly unit';
       if (op.bearerArena) s += ' on a ' + op.bearerArena + ' unit';
       return op.optional ? 'you may ' + s : s;
     },
+    returnSelfUpgrade: function () { return 'return this upgrade to its owner\u2019s hand'; },
     upgradeFromDiscard: function () { return 'you may return an upgrade from your discard pile to your hand'; },
     playUpgradesFromDiscard: function () { return 'play any number of upgrades from your discard pile on this unit, one at a time, paying their costs'; },
     defeatOwnedNotControlled: function (op) { return 'defeat any number of units you own but do not control' + ((op.perDefeat || []).length ? ' — for each, ' + op.perDefeat.map(describeOpChain).join(', then ') : ''); },
@@ -787,6 +789,8 @@
     milledOddCost: function () { return 'if the discarded card has an odd cost'; },
     controlOtherSpaceUnit: function () { return 'if you control another space unit'; },
     discardedUnit: function () { return 'if the discarded card was a unit'; },
+    all: function (c) { return c.of.map(conditionClause).join(' and '); },
+    milledCostAtMost: function (c) { return 'if that card costs ' + c.n + ' or less'; },
     discardedType: function (c) { return 'if the discarded card was a' + (/^[aeiou]/.test(c.t) ? 'n ' : ' ') + c.t; },
     enemyDefeatedThisPhase: function () { return 'if an enemy unit was defeated this phase'; },
     canDiscardCost: function (c) { return 'if you can discard a card that costs ' + c.minCost + ' or more'; },
@@ -1134,7 +1138,10 @@
         // What it hands the ship it flies: its pilot box, not its own body.
         if (card.pilotSide) {
           const st = SB.upgradeStats(card);
-          lines.push('While piloting, the attached unit gets ' + statPair(st.power, st.hp) + '.');
+          let line = 'While piloting, the attached unit gets ' + statPair(st.power, st.hp);
+          const gk = card.pilotSide.grantKeywords || [];
+          if (gk.length) line += ' and gains ' + gk.map(describeKeyword).join(' and ');
+          lines.push(line + '.');
         }
       }
     }
