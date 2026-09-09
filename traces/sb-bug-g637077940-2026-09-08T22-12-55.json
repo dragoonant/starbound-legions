@@ -1,0 +1,2364 @@
+{
+ "format": "sb-bugreport/1",
+ "when": "2026-09-08T22:12:55.156Z",
+ "setup": {
+  "seed": "g637077940",
+  "deck0": "deck-c39",
+  "deck1": "deck-c22",
+  "difficulty": "competition",
+  "humanSeat": 0,
+  "initiative": 0
+ },
+ "env": {
+  "page": "/starbound-legions/",
+  "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+  "viewport": [
+   2752,
+   1018
+  ],
+  "namesMode": "source",
+  "animMode": "full"
+ },
+ "events": [
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "mulligan",
+    "player": 0,
+    "keep": true
+   },
+   "at": {
+    "round": 1,
+    "phase": "setup",
+    "active": 0,
+    "initiative": 0,
+    "queue": 4,
+    "step": "setupResources"
+   },
+   "legal": true,
+   "log": [],
+   "after": {
+    "seats": [
+     {
+      "hand": 6,
+      "deck": 54,
+      "discard": 0,
+      "resources": 0,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 6,
+      "deck": 44,
+      "discard": 0,
+      "resources": 0,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 0,
+    "space": 0
+   },
+   "n": 0,
+   "t": 3683
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "mulligan",
+    "player": 1,
+    "keep": false
+   },
+   "at": {
+    "round": 1,
+    "phase": "setup",
+    "active": 0,
+    "initiative": 0,
+    "queue": 3,
+    "step": "setupResources"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "mulligan",
+     "player": 1
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 6,
+      "deck": 54,
+      "discard": 0,
+      "resources": 0,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 6,
+      "deck": 44,
+      "discard": 0,
+      "resources": 0,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 0,
+    "space": 0
+   },
+   "n": 1,
+   "t": 4154
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "resourceCard",
+    "player": 0,
+    "handIndex": 3
+   },
+   "at": {
+    "round": 1,
+    "phase": "setup",
+    "active": 0,
+    "initiative": 0,
+    "queue": 2,
+    "step": "setupResources"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "resourced",
+     "player": 0
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 5,
+      "deck": 54,
+      "discard": 0,
+      "resources": 1,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 6,
+      "deck": 44,
+      "discard": 0,
+      "resources": 0,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 0,
+    "space": 0
+   },
+   "n": 2,
+   "t": 5349
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "resourceCard",
+    "player": 0,
+    "handIndex": 1
+   },
+   "at": {
+    "round": 1,
+    "phase": "setup",
+    "active": 0,
+    "initiative": 0,
+    "queue": 2,
+    "step": "setupResources"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "resourced",
+     "player": 0
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 54,
+      "discard": 0,
+      "resources": 2,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 6,
+      "deck": 44,
+      "discard": 0,
+      "resources": 0,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 0,
+    "space": 0
+   },
+   "n": 3,
+   "t": 38949
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "resourceCard",
+    "player": 1,
+    "handIndex": 0
+   },
+   "at": {
+    "round": 1,
+    "phase": "setup",
+    "active": 0,
+    "initiative": 0,
+    "queue": 1,
+    "step": "setupResources"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "resourced",
+     "player": 1
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 54,
+      "discard": 0,
+      "resources": 2,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 5,
+      "deck": 44,
+      "discard": 0,
+      "resources": 1,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 0,
+    "space": 0
+   },
+   "n": 4,
+   "t": 39440
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "resourceCard",
+    "player": 1,
+    "handIndex": 0
+   },
+   "at": {
+    "round": 1,
+    "phase": "setup",
+    "active": 0,
+    "initiative": 0,
+    "queue": 1,
+    "step": "setupResources"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "resourced",
+     "player": 1
+    },
+    {
+     "type": "actionPhase",
+     "round": 1
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 54,
+      "discard": 0,
+      "resources": 2,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 44,
+      "discard": 0,
+      "resources": 2,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 0,
+    "space": 0
+   },
+   "n": 5,
+   "t": 39916
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "playCard",
+    "player": 0,
+    "handIndex": 0,
+    "cardId": "lof-192"
+   },
+   "at": {
+    "round": 1,
+    "phase": "action",
+    "active": 0,
+    "initiative": 0,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "playCard",
+     "player": 0,
+     "cardId": "lof-192",
+     "cost": 2,
+     "sound": "play"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 3,
+      "deck": 54,
+      "discard": 0,
+      "resources": 2,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 44,
+      "discard": 0,
+      "resources": 2,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 0,
+    "space": 1
+   },
+   "n": 6,
+   "t": 40865
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "claimInitiative",
+    "player": 1
+   },
+   "at": {
+    "round": 1,
+    "phase": "action",
+    "active": 1,
+    "initiative": 0,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "claimInitiative",
+     "player": 1,
+     "sound": "claim"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 3,
+      "deck": 54,
+      "discard": 0,
+      "resources": 2,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 44,
+      "discard": 0,
+      "resources": 2,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 0,
+    "space": 1
+   },
+   "n": 7,
+   "t": 41354
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "pass",
+    "player": 0
+   },
+   "at": {
+    "round": 1,
+    "phase": "action",
+    "active": 0,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "pass",
+     "player": 0
+    },
+    {
+     "type": "regroup",
+     "round": 1
+    },
+    {
+     "type": "draw",
+     "player": 0
+    },
+    {
+     "type": "draw",
+     "player": 0
+    },
+    {
+     "type": "draw",
+     "player": 1
+    },
+    {
+     "type": "draw",
+     "player": 1
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 5,
+      "deck": 52,
+      "discard": 0,
+      "resources": 2,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 6,
+      "deck": 42,
+      "discard": 0,
+      "resources": 2,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 0,
+    "space": 1
+   },
+   "n": 8,
+   "t": 43369
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "resourceCard",
+    "player": 1,
+    "handIndex": 0
+   },
+   "at": {
+    "round": 1,
+    "phase": "regroup",
+    "active": 0,
+    "initiative": 1,
+    "queue": 3,
+    "step": "endRegroup"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "resourced",
+     "player": 1
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 5,
+      "deck": 52,
+      "discard": 0,
+      "resources": 2,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 5,
+      "deck": 42,
+      "discard": 0,
+      "resources": 3,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 0,
+    "space": 1
+   },
+   "n": 9,
+   "t": 43843
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "resourceCard",
+    "player": 0,
+    "handIndex": 4
+   },
+   "at": {
+    "round": 1,
+    "phase": "regroup",
+    "active": 0,
+    "initiative": 1,
+    "queue": 2,
+    "step": "endRegroup"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "resourced",
+     "player": 0
+    },
+    {
+     "type": "actionPhase",
+     "round": 2
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 52,
+      "discard": 0,
+      "resources": 3,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 5,
+      "deck": 42,
+      "discard": 0,
+      "resources": 3,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 0,
+    "space": 1
+   },
+   "n": 10,
+   "t": 45874
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "playCard",
+    "player": 1,
+    "handIndex": 0,
+    "cardId": "lof-093"
+   },
+   "at": {
+    "round": 2,
+    "phase": "action",
+    "active": 1,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "playCard",
+     "player": 1,
+     "cardId": "lof-093",
+     "cost": 2,
+     "sound": "play"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 52,
+      "discard": 0,
+      "resources": 3,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 42,
+      "discard": 0,
+      "resources": 3,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 1,
+    "space": 1
+   },
+   "n": 11,
+   "t": 46385
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "attack",
+    "player": 0,
+    "attacker": 37,
+    "target": {
+     "kind": "base",
+     "player": 1
+    }
+   },
+   "at": {
+    "round": 2,
+    "phase": "action",
+    "active": 0,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "attackDeclared",
+     "attacker": 37,
+     "target": {
+      "kind": "base",
+      "player": 1
+     },
+     "sound": "attack",
+     "attackerCardId": "lof-192"
+    },
+    {
+     "type": "baseDamage",
+     "player": 1,
+     "amount": 3,
+     "why": "attack",
+     "source": 37,
+     "combat": true,
+     "sound": "hit",
+     "sourceCardId": "lof-192"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 52,
+      "discard": 0,
+      "resources": 3,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 42,
+      "discard": 0,
+      "resources": 3,
+      "baseDamage": 3,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 1,
+    "space": 1
+   },
+   "n": 12,
+   "t": 48269
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "leaderTrigger",
+    "player": 0,
+    "use": true
+   },
+   "at": {
+    "round": 2,
+    "phase": "action",
+    "active": 1,
+    "initiative": 1,
+    "queue": 1,
+    "step": "leaderTriggerOffer"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "leaderAction",
+     "player": 0,
+     "sound": "ability"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 52,
+      "discard": 0,
+      "resources": 3,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 42,
+      "discard": 0,
+      "resources": 3,
+      "baseDamage": 3,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 1,
+    "space": 1
+   },
+   "n": 13,
+   "t": 50499
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "peekDiscardPick",
+    "player": 0,
+    "index": 1
+   },
+   "at": {
+    "round": 2,
+    "phase": "action",
+    "active": 1,
+    "initiative": 1,
+    "queue": 1,
+    "step": "peekTopDiscardUpTo"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "discarded",
+     "player": 1,
+     "cardId": "lof-079",
+     "sound": "discard"
+    },
+    {
+     "type": "arrangedTop",
+     "player": 1
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 52,
+      "discard": 0,
+      "resources": 3,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 41,
+      "discard": 1,
+      "resources": 3,
+      "baseDamage": 3,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 1,
+    "space": 1
+   },
+   "n": 14,
+   "t": 52199
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "claimInitiative",
+    "player": 1
+   },
+   "at": {
+    "round": 2,
+    "phase": "action",
+    "active": 1,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "claimInitiative",
+     "player": 1,
+     "sound": "claim"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 52,
+      "discard": 0,
+      "resources": 3,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 41,
+      "discard": 1,
+      "resources": 3,
+      "baseDamage": 3,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 1,
+    "space": 1
+   },
+   "n": 15,
+   "t": 53512
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "playCard",
+    "player": 0,
+    "handIndex": 2,
+    "cardId": "jtl-096"
+   },
+   "at": {
+    "round": 2,
+    "phase": "action",
+    "active": 0,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "playCard",
+     "player": 0,
+     "cardId": "jtl-096",
+     "cost": 3,
+     "sound": "play"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 3,
+      "deck": 52,
+      "discard": 0,
+      "resources": 3,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 41,
+      "discard": 1,
+      "resources": 3,
+      "baseDamage": 3,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 1,
+    "space": 2
+   },
+   "n": 16,
+   "t": 55247
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "binary",
+    "player": 0,
+    "pick": "b"
+   },
+   "at": {
+    "round": 2,
+    "phase": "action",
+    "active": 0,
+    "initiative": 1,
+    "queue": 2,
+    "step": "effect"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "binaryChosen",
+     "player": 0,
+     "pick": "b"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 3,
+      "deck": 52,
+      "discard": 0,
+      "resources": 3,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 41,
+      "discard": 1,
+      "resources": 3,
+      "baseDamage": 3,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 1,
+    "space": 2
+   },
+   "n": 17,
+   "t": 56532
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "pass",
+    "player": 0
+   },
+   "at": {
+    "round": 2,
+    "phase": "action",
+    "active": 0,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "pass",
+     "player": 0
+    },
+    {
+     "type": "regroup",
+     "round": 2
+    },
+    {
+     "type": "draw",
+     "player": 0
+    },
+    {
+     "type": "draw",
+     "player": 0
+    },
+    {
+     "type": "draw",
+     "player": 1
+    },
+    {
+     "type": "draw",
+     "player": 1
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 5,
+      "deck": 50,
+      "discard": 0,
+      "resources": 3,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 6,
+      "deck": 39,
+      "discard": 1,
+      "resources": 3,
+      "baseDamage": 3,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 1,
+    "space": 2
+   },
+   "n": 18,
+   "t": 60093
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "resourceCard",
+    "player": 1,
+    "handIndex": 0
+   },
+   "at": {
+    "round": 2,
+    "phase": "regroup",
+    "active": 0,
+    "initiative": 1,
+    "queue": 3,
+    "step": "endRegroup"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "resourced",
+     "player": 1
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 5,
+      "deck": 50,
+      "discard": 0,
+      "resources": 3,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 5,
+      "deck": 39,
+      "discard": 1,
+      "resources": 4,
+      "baseDamage": 3,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 1,
+    "space": 2
+   },
+   "n": 19,
+   "t": 60582
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "resourceCard",
+    "player": 0,
+    "handIndex": 4
+   },
+   "at": {
+    "round": 2,
+    "phase": "regroup",
+    "active": 0,
+    "initiative": 1,
+    "queue": 2,
+    "step": "endRegroup"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "resourced",
+     "player": 0
+    },
+    {
+     "type": "actionPhase",
+     "round": 3
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 50,
+      "discard": 0,
+      "resources": 4,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 5,
+      "deck": 39,
+      "discard": 1,
+      "resources": 4,
+      "baseDamage": 3,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 1,
+    "space": 2
+   },
+   "n": 20,
+   "t": 80779
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "playCard",
+    "player": 1,
+    "handIndex": 3,
+    "cardId": "lof-048"
+   },
+   "at": {
+    "round": 3,
+    "phase": "action",
+    "active": 1,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "playCard",
+     "player": 1,
+     "cardId": "lof-048",
+     "cost": 4,
+     "sound": "play"
+    },
+    {
+     "type": "shield",
+     "uid": 69,
+     "sound": "shield",
+     "cardId": "lof-048"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 50,
+      "discard": 0,
+      "resources": 4,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 39,
+      "discard": 1,
+      "resources": 4,
+      "baseDamage": 3,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 2,
+    "space": 2
+   },
+   "n": 21,
+   "t": 81320
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "binary",
+    "player": 1,
+    "pick": "b"
+   },
+   "at": {
+    "round": 3,
+    "phase": "action",
+    "active": 0,
+    "initiative": 1,
+    "queue": 1,
+    "step": "binaryPick"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "binaryChosen",
+     "player": 1,
+     "pick": "b"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 50,
+      "discard": 0,
+      "resources": 4,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 39,
+      "discard": 1,
+      "resources": 4,
+      "baseDamage": 3,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 2,
+    "space": 2
+   },
+   "n": 22,
+   "t": 81821
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "attack",
+    "player": 0,
+    "attacker": 37,
+    "target": {
+     "kind": "base",
+     "player": 1
+    }
+   },
+   "at": {
+    "round": 3,
+    "phase": "action",
+    "active": 0,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "attackDeclared",
+     "attacker": 37,
+     "target": {
+      "kind": "base",
+      "player": 1
+     },
+     "sound": "attack",
+     "attackerCardId": "lof-192"
+    },
+    {
+     "type": "baseDamage",
+     "player": 1,
+     "amount": 3,
+     "why": "attack",
+     "source": 37,
+     "combat": true,
+     "sound": "hit",
+     "sourceCardId": "lof-192"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 50,
+      "discard": 0,
+      "resources": 4,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 39,
+      "discard": 1,
+      "resources": 4,
+      "baseDamage": 6,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 2,
+    "space": 2
+   },
+   "n": 23,
+   "t": 91878
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "leaderTrigger",
+    "player": 0,
+    "use": true
+   },
+   "at": {
+    "round": 3,
+    "phase": "action",
+    "active": 1,
+    "initiative": 1,
+    "queue": 1,
+    "step": "leaderTriggerOffer"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "leaderAction",
+     "player": 0,
+     "sound": "ability"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 50,
+      "discard": 0,
+      "resources": 4,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 39,
+      "discard": 1,
+      "resources": 4,
+      "baseDamage": 6,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 2,
+    "space": 2
+   },
+   "n": 24,
+   "t": 93948
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "peekDiscardPick",
+    "player": 0,
+    "index": 0
+   },
+   "at": {
+    "round": 3,
+    "phase": "action",
+    "active": 1,
+    "initiative": 1,
+    "queue": 1,
+    "step": "peekTopDiscardUpTo"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "discarded",
+     "player": 1,
+     "cardId": "lof-261",
+     "sound": "discard"
+    },
+    {
+     "type": "arrangedTop",
+     "player": 1
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 50,
+      "discard": 0,
+      "resources": 4,
+      "baseDamage": 0,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 38,
+      "discard": 2,
+      "resources": 4,
+      "baseDamage": 6,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 2,
+    "space": 2
+   },
+   "n": 25,
+   "t": 94995
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "attack",
+    "player": 1,
+    "attacker": 64,
+    "target": {
+     "kind": "base",
+     "player": 0
+    }
+   },
+   "at": {
+    "round": 3,
+    "phase": "action",
+    "active": 1,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "attackDeclared",
+     "attacker": 64,
+     "target": {
+      "kind": "base",
+      "player": 0
+     },
+     "sound": "attack",
+     "attackerCardId": "lof-093"
+    },
+    {
+     "type": "forceGained",
+     "player": 1,
+     "sound": "buff"
+    },
+    {
+     "type": "baseDamage",
+     "player": 0,
+     "amount": 2,
+     "why": "attack",
+     "source": 64,
+     "combat": true,
+     "sound": "hit",
+     "sourceCardId": "lof-093"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 50,
+      "discard": 0,
+      "resources": 4,
+      "baseDamage": 2,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 38,
+      "discard": 2,
+      "resources": 4,
+      "baseDamage": 6,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 2,
+    "space": 2
+   },
+   "n": 26,
+   "t": 96319
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "attack",
+    "player": 0,
+    "attacker": 26,
+    "target": {
+     "kind": "base",
+     "player": 1
+    }
+   },
+   "at": {
+    "round": 3,
+    "phase": "action",
+    "active": 0,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "attackDeclared",
+     "attacker": 26,
+     "target": {
+      "kind": "base",
+      "player": 1
+     },
+     "sound": "attack",
+     "attackerCardId": "jtl-096"
+    },
+    {
+     "type": "baseDamage",
+     "player": 1,
+     "amount": 3,
+     "why": "attack",
+     "source": 26,
+     "combat": true,
+     "sound": "hit",
+     "sourceCardId": "jtl-096"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 50,
+      "discard": 0,
+      "resources": 4,
+      "baseDamage": 2,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 38,
+      "discard": 2,
+      "resources": 4,
+      "baseDamage": 9,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 2,
+    "space": 2
+   },
+   "n": 27,
+   "t": 98335
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "leaderAction",
+    "player": 1,
+    "abilityIndex": 0
+   },
+   "at": {
+    "round": 3,
+    "phase": "action",
+    "active": 1,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "forceUsed",
+     "player": 1,
+     "sound": "ability"
+    },
+    {
+     "type": "leaderAction",
+     "player": 1,
+     "sound": "ability"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 50,
+      "discard": 0,
+      "resources": 4,
+      "baseDamage": 2,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 38,
+      "discard": 2,
+      "resources": 4,
+      "baseDamage": 9,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 2,
+    "space": 2
+   },
+   "n": 28,
+   "t": 99852
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "choose",
+    "player": 1,
+    "index": 0
+   },
+   "at": {
+    "round": 3,
+    "phase": "action",
+    "active": 0,
+    "initiative": 1,
+    "queue": 1,
+    "step": "effect"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "experience",
+     "uid": 64,
+     "amount": 1,
+     "sound": "buff",
+     "cardId": "lof-093"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 50,
+      "discard": 0,
+      "resources": 4,
+      "baseDamage": 2,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 38,
+      "discard": 2,
+      "resources": 4,
+      "baseDamage": 9,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 2,
+    "space": 2
+   },
+   "n": 29,
+   "t": 100343
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "playCard",
+    "player": 0,
+    "handIndex": 2,
+    "cardId": "law-222"
+   },
+   "at": {
+    "round": 3,
+    "phase": "action",
+    "active": 0,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "playCard",
+     "player": 0,
+     "cardId": "law-222",
+     "cost": 4,
+     "sound": "play"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 3,
+      "deck": 50,
+      "discard": 0,
+      "resources": 4,
+      "baseDamage": 2,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 38,
+      "discard": 2,
+      "resources": 4,
+      "baseDamage": 9,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 2,
+    "space": 3
+   },
+   "n": 30,
+   "t": 102486
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "claimInitiative",
+    "player": 1
+   },
+   "at": {
+    "round": 3,
+    "phase": "action",
+    "active": 1,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "claimInitiative",
+     "player": 1,
+     "sound": "claim"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 3,
+      "deck": 50,
+      "discard": 0,
+      "resources": 4,
+      "baseDamage": 2,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 4,
+      "deck": 38,
+      "discard": 2,
+      "resources": 4,
+      "baseDamage": 9,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 2,
+    "space": 3
+   },
+   "n": 31,
+   "t": 102996
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "pass",
+    "player": 0
+   },
+   "at": {
+    "round": 3,
+    "phase": "action",
+    "active": 0,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "pass",
+     "player": 0
+    },
+    {
+     "type": "regroup",
+     "round": 3
+    },
+    {
+     "type": "draw",
+     "player": 0
+    },
+    {
+     "type": "draw",
+     "player": 0
+    },
+    {
+     "type": "draw",
+     "player": 1
+    },
+    {
+     "type": "draw",
+     "player": 1
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 5,
+      "deck": 48,
+      "discard": 0,
+      "resources": 4,
+      "baseDamage": 2,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 6,
+      "deck": 36,
+      "discard": 2,
+      "resources": 4,
+      "baseDamage": 9,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 2,
+    "space": 3
+   },
+   "n": 32,
+   "t": 104115
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "resourceCard",
+    "player": 1,
+    "handIndex": 0
+   },
+   "at": {
+    "round": 3,
+    "phase": "regroup",
+    "active": 0,
+    "initiative": 1,
+    "queue": 3,
+    "step": "endRegroup"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "resourced",
+     "player": 1
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 5,
+      "deck": 48,
+      "discard": 0,
+      "resources": 4,
+      "baseDamage": 2,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 5,
+      "deck": 36,
+      "discard": 2,
+      "resources": 5,
+      "baseDamage": 9,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 2,
+    "space": 3
+   },
+   "n": 33,
+   "t": 104634
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "resourceCard",
+    "player": 0,
+    "handIndex": 2
+   },
+   "at": {
+    "round": 3,
+    "phase": "regroup",
+    "active": 0,
+    "initiative": 1,
+    "queue": 2,
+    "step": "endRegroup"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "resourced",
+     "player": 0
+    },
+    {
+     "type": "actionPhase",
+     "round": 4
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 48,
+      "discard": 0,
+      "resources": 5,
+      "baseDamage": 2,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 5,
+      "deck": 36,
+      "discard": 2,
+      "resources": 5,
+      "baseDamage": 9,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 2,
+    "space": 3
+   },
+   "n": 34,
+   "t": 122324
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "attack",
+    "player": 1,
+    "attacker": 69,
+    "target": {
+     "kind": "base",
+     "player": 0
+    }
+   },
+   "at": {
+    "round": 4,
+    "phase": "action",
+    "active": 1,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "attackDeclared",
+     "attacker": 69,
+     "target": {
+      "kind": "base",
+      "player": 0
+     },
+     "sound": "attack",
+     "attackerCardId": "lof-048"
+    },
+    {
+     "type": "forceGained",
+     "player": 1,
+     "sound": "buff"
+    },
+    {
+     "type": "baseDamage",
+     "player": 0,
+     "amount": 4,
+     "why": "attack",
+     "source": 69,
+     "combat": true,
+     "sound": "hit",
+     "sourceCardId": "lof-048"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 48,
+      "discard": 0,
+      "resources": 5,
+      "baseDamage": 6,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 5,
+      "deck": 36,
+      "discard": 2,
+      "resources": 5,
+      "baseDamage": 9,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 2,
+    "space": 3
+   },
+   "n": 35,
+   "t": 122942
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "attack",
+    "player": 0,
+    "attacker": 41,
+    "target": {
+     "kind": "base",
+     "player": 1
+    }
+   },
+   "at": {
+    "round": 4,
+    "phase": "action",
+    "active": 0,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "attackDeclared",
+     "attacker": 41,
+     "target": {
+      "kind": "base",
+      "player": 1
+     },
+     "sound": "attack",
+     "attackerCardId": "law-222"
+    },
+    {
+     "type": "baseDamage",
+     "player": 1,
+     "amount": 4,
+     "why": "attack",
+     "source": 41,
+     "combat": true,
+     "sound": "hit",
+     "sourceCardId": "law-222"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 48,
+      "discard": 0,
+      "resources": 5,
+      "baseDamage": 6,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 5,
+      "deck": 36,
+      "discard": 2,
+      "resources": 5,
+      "baseDamage": 13,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 2,
+    "space": 3
+   },
+   "n": 36,
+   "t": 131172
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "leaderTrigger",
+    "player": 0,
+    "use": true
+   },
+   "at": {
+    "round": 4,
+    "phase": "action",
+    "active": 1,
+    "initiative": 1,
+    "queue": 1,
+    "step": "leaderTriggerOffer"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "leaderAction",
+     "player": 0,
+     "sound": "ability"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 48,
+      "discard": 0,
+      "resources": 5,
+      "baseDamage": 6,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 5,
+      "deck": 36,
+      "discard": 2,
+      "resources": 5,
+      "baseDamage": 13,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 2,
+    "space": 3
+   },
+   "n": 37,
+   "t": 133236
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "peekDiscardPick",
+    "player": 0,
+    "index": 0
+   },
+   "at": {
+    "round": 4,
+    "phase": "action",
+    "active": 1,
+    "initiative": 1,
+    "queue": 1,
+    "step": "peekTopDiscardUpTo"
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "discarded",
+     "player": 1,
+     "cardId": "lof-079",
+     "sound": "discard"
+    },
+    {
+     "type": "arrangedTop",
+     "player": 1
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 48,
+      "discard": 0,
+      "resources": 5,
+      "baseDamage": 6,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 5,
+      "deck": 35,
+      "discard": 3,
+      "resources": 5,
+      "baseDamage": 13,
+      "leader": "undeployed"
+     }
+    ],
+    "ground": 2,
+    "space": 3
+   },
+   "n": 38,
+   "t": 134115
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "deployLeader",
+    "player": 1
+   },
+   "at": {
+    "round": 4,
+    "phase": "action",
+    "active": 1,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "deployLeader",
+     "player": 1,
+     "cardId": "lof-008",
+     "sound": "deploy"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 48,
+      "discard": 0,
+      "resources": 5,
+      "baseDamage": 6,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 5,
+      "deck": 35,
+      "discard": 3,
+      "resources": 5,
+      "baseDamage": 13,
+      "leader": "deployed"
+     }
+    ],
+    "ground": 3,
+    "space": 3
+   },
+   "n": 39,
+   "t": 135549
+  },
+  {
+   "kind": "action",
+   "source": "human",
+   "action": {
+    "type": "attack",
+    "player": 0,
+    "attacker": 26,
+    "target": {
+     "kind": "base",
+     "player": 1
+    }
+   },
+   "at": {
+    "round": 4,
+    "phase": "action",
+    "active": 0,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "attackDeclared",
+     "attacker": 26,
+     "target": {
+      "kind": "base",
+      "player": 1
+     },
+     "sound": "attack",
+     "attackerCardId": "jtl-096"
+    },
+    {
+     "type": "baseDamage",
+     "player": 1,
+     "amount": 3,
+     "why": "attack",
+     "source": 26,
+     "combat": true,
+     "sound": "hit",
+     "sourceCardId": "jtl-096"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 48,
+      "discard": 0,
+      "resources": 5,
+      "baseDamage": 6,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 5,
+      "deck": 35,
+      "discard": 3,
+      "resources": 5,
+      "baseDamage": 16,
+      "leader": "deployed"
+     }
+    ],
+    "ground": 3,
+    "space": 3
+   },
+   "n": 40,
+   "t": 136735
+  },
+  {
+   "kind": "action",
+   "source": "ai",
+   "action": {
+    "type": "attack",
+    "player": 1,
+    "attacker": 64,
+    "target": {
+     "kind": "base",
+     "player": 0
+    }
+   },
+   "at": {
+    "round": 4,
+    "phase": "action",
+    "active": 1,
+    "initiative": 1,
+    "queue": 0
+   },
+   "legal": true,
+   "log": [
+    {
+     "type": "attackDeclared",
+     "attacker": 64,
+     "target": {
+      "kind": "base",
+      "player": 0
+     },
+     "sound": "attack",
+     "attackerCardId": "lof-093"
+    },
+    {
+     "type": "baseDamage",
+     "player": 0,
+     "amount": 3,
+     "why": "attack",
+     "source": 64,
+     "combat": true,
+     "sound": "hit",
+     "sourceCardId": "lof-093"
+    }
+   ],
+   "after": {
+    "seats": [
+     {
+      "hand": 4,
+      "deck": 48,
+      "discard": 0,
+      "resources": 5,
+      "baseDamage": 9,
+      "leader": "undeployed"
+     },
+     {
+      "hand": 5,
+      "deck": 35,
+      "discard": 3,
+      "resources": 5,
+      "baseDamage": 16,
+      "leader": "deployed"
+     }
+    ],
+    "ground": 3,
+    "space": 3
+   },
+   "n": 41,
+   "t": 138352
+  },
+  {
+   "kind": "note",
+   "text": "When playing Sabe's leader ability, the popup to pick the card to discard from the opponent's hand doesn't have any description of the card, rendering it useless.  ",
+   "at": {
+    "round": 4,
+    "phase": "action",
+    "active": 0,
+    "initiative": 1,
+    "queue": 0
+   },
+   "n": 42,
+   "t": 174731
+  }
+ ],
+ "truncated": false,
+ "finishedAt": "2026-09-08T22:15:50.045Z",
+ "final": {
+  "at": {
+   "round": 4,
+   "phase": "action",
+   "active": 0,
+   "initiative": 1,
+   "queue": 0
+  },
+  "tally": {
+   "seats": [
+    {
+     "hand": 4,
+     "deck": 48,
+     "discard": 0,
+     "resources": 5,
+     "baseDamage": 9,
+     "leader": "undeployed"
+    },
+    {
+     "hand": 5,
+     "deck": 35,
+     "discard": 3,
+     "resources": 5,
+     "baseDamage": 16,
+     "leader": "deployed"
+    }
+   ],
+   "ground": 3,
+   "space": 3
+  },
+  "winner": null,
+  "logLength": 76
+ }
+}

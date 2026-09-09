@@ -985,6 +985,17 @@
     if (item.step === 'peekDecide') return 'Look at the top card of your deck — what do you do with it?';
     if (item.step === 'enemyDeckPeek') return 'Look at the top of your opponent\u2019s deck — which card is discarded?';
     if (item.step === 'arrangeTop2') return 'Look at the top two cards of your deck — arrange them.';
+    if (item.step === 'peekTopDiscardUpTo') {
+      const whose = item.deckPlayer != null && item.deckPlayer !== item.player ? 'the opponent’s' : 'your';
+      return 'Look at the top ' + item.depth + ' cards of ' + whose + ' deck — ' +
+        (item.required ? 'discard one of them.' : 'discard one of them, or decline.');
+    }
+    if (item.step === 'discardChoice') {
+      const whose = item.forcedBy != null && item.forcedBy !== item.player
+        ? 'the opponent’s hand' : 'your hand';
+      const ask = 'Choose a card to discard from ' + whose + (item.optional ? ', or decline.' : '.');
+      return source ? source + ' — ' + lowerFirst(ask) : ask;
+    }
     let ask;
     if (item.op && item.op.op && opText[item.op.op]) {
       // Reuse the card's own clause so the prompt says what the effect will DO,

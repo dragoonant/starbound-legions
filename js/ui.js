@@ -304,7 +304,7 @@
     renderPrompt(s, acts);
     // §13: the modal owns input whenever the board cannot show the options.
     const modalOpen = SB.renderChoiceModal(s, acts, UI.humanSeat, whoActs(s), UI.doAction);
-    renderGenericChoicePopup(s, acts, modalOpen);
+    renderRevealNotice(s, modalOpen || renderGenericChoicePopup(s, acts, modalOpen));
     renderArenaEcho(s);
     // §14: a battle that stopped to ask a question keeps its arrow up.
     SB.redrawDeclaredArrow(s, UI.humanSeat);
@@ -753,7 +753,12 @@
     const cardName = function (id) { return SB.names.card(id); };
     switch (a.type) {
       case 'mulligan': return a.keep ? SB.names.ui.keep : SB.names.ui.mulligan;
-      case 'discardCard': return 'Discard: ' + cardName(s.players[a.targetPlayer != null ? a.targetPlayer : a.player].hand[a.handIndex].cardId);
+      case 'discardCard': {
+        // handIndex -1 is the decline an optional discard offers; there is no card.
+        if (a.handIndex === -1) return SB.names.ui.decline;
+        const inst = s.players[a.targetPlayer != null ? a.targetPlayer : a.player].hand[a.handIndex];
+        return 'Discard: ' + (inst ? cardName(inst.cardId) : '?');
+      }
       case 'playHandCard': return a.handIndex === -1 ? SB.names.ui.decline
         : 'Play: ' + cardName(a.cardId) + (a.attachTo != null ? ' on ' + unitName(s, a.attachTo) : '');
       case 'searchTake': return a.deckIndex === -1 ? SB.names.ui.decline : 'Take: ' + cardName(s.players[a.player].deck[a.deckIndex].cardId);
@@ -770,6 +775,11 @@
       case 'effectAttack': return a.target ? (a.target.kind === 'base' ? 'Attack the base' : 'Attack ' + unitName(s, a.target.uid)) : SB.names.ui.decline;
       case 'exploitUnit': return 'Sacrifice: ' + unitName(s, a.uid);
       case 'peekDiscard': return 'Discard card ' + (a.deckIndex + 1);
+      case 'peekDiscardPick': {
+        if (a.index === -1) return SB.names.ui.decline;
+        const cid = peekedDeckCardId(s, a.index);
+        return cid ? 'Discard: ' + cardName(cid) : 'Discard card ' + (a.index + 1);
+      }
       case 'peekAct': return a.mode === 'play' ? 'Play: ' + cardName(a.cardId)
         : { bottom: 'Put it on the bottom of the deck', leave: 'Leave it on top',
             discard: 'Discard it' }[a.mode] || ('Top card: ' + a.mode);
@@ -818,6 +828,18 @@
       case 'moveUpgrade': return a.from == null ? SB.names.ui.decline : 'Move upgrade to ' + unitName(s, a.to);
       case 'defeatUpgrade': return 'Defeat upgrade on ' + unitName(s, a.uid);
       case 'auctionPick': return 'Reveal ' + (a.who === UI.humanSeat ? 'your' : 'their') + ' deck';
+      case 'peekTopDiscardUpTo': {
+        // The whole ability is looking at these cards: a numbered button list
+        // ("Discard card 2") asks about cards the player was never shown.
+        const owner = it.deckPlayer != null ? it.deckPlayer : it.player;
+        const pile = owner != null ? s.players[owner].deck : null;
+        const whose = owner === UI.humanSeat ? 'Your card ' : 'Their card ';
+        const seen = [];
+        for (let i = 0; pile && i < Math.min(it.depth, pile.length); i++) {
+          seen.push({ cardId: pile[i].cardId, label: whose + (i + 1) });
+        }
+        return seen;
+      }
       case 'auctionPlay': return a.play ? 'Play it free' : SB.names.ui.decline;
       // competitive expansion steps (js/ops2.js)
       case 'advantageTo': return a.uid == null ? 'Stop' : 'Advantage to: ' + unitName(s, a.uid);
@@ -874,6 +896,15 @@
 
   // Cards a queue step lets you LOOK at that no button carries (peeked deck tops).
   // Spec §13: a choice about a card the board does not draw must show the card face.
+  // The deck peekTopDiscardUpTo is looking into is not always the chooser's own.
+  function peekedDeckCardId(s, i) {
+    const it = s.queue[0];
+    if (!it || it.step !== 'peekTopDiscardUpTo') return null;
+    const owner = it.deckPlayer != null ? it.deckPlayer : it.player;
+    const deck = owner != null ? s.players[owner].deck : null;
+    return deck && deck[i] ? deck[i].cardId : null;
+  }
+
   function revealedCards(s) {
     if (s.queue.length === 0) return [];
     const it = s.queue[0];
@@ -892,6 +923,18 @@
         if (deck && deck[0]) out.push({ cardId: deck[0].cardId, label: 'First (top)' });
         if (deck && deck[1]) out.push({ cardId: deck[1].cardId, label: 'Second' });
         return out;
+      }
+      case 'peekTopDiscardUpTo': {
+        // The whole ability is looking at these cards: a numbered button list
+        // ("Discard card 2") asks about cards the player was never shown.
+        const owner = it.deckPlayer != null ? it.deckPlayer : it.player;
+        const pile = owner != null ? s.players[owner].deck : null;
+        const whose = owner === UI.humanSeat ? 'Your card ' : 'Their card ';
+        const seen = [];
+        for (let i = 0; pile && i < Math.min(it.depth, pile.length); i++) {
+          seen.push({ cardId: pile[i].cardId, label: whose + (i + 1) });
+        }
+        return seen;
       }
       case 'auctionPlay':
         return it.cardId ? [{ cardId: it.cardId, label: 'Revealed' }] : [];
@@ -913,11 +956,15 @@
       case 'playHandCard': return a.handIndex === -1 ? null : (a.cardId || null);
       case 'peekAct': return a.mode === 'play' ? a.cardId : null;
       case 'plotPlay': return a.resourceIndex === -1 ? null : (a.cardId || null);
-      case 'bottomCard': return p.hand[a.handIndex].cardId;
+      case 'bottomCard': return p.hand[a.handIndex] ? p.hand[a.handIndex].cardId : null;
+      case 'peekDiscardPick': return a.index >= 0 ? peekedDeckCardId(s, a.index) : null;
       case 'returnEventCard': return a.index >= 0 ? s.players[a.owner].discard[a.index].cardId : null;
       case 'returnReplay': return a.play ? a.cardId : null;
-      case 'discardCard':
-        return s.players[a.targetPlayer != null ? a.targetPlayer : a.player].hand[a.handIndex].cardId;
+      case 'discardCard': {
+        if (a.handIndex === -1) return null;      // decline: no card to show
+        const inst = s.players[a.targetPlayer != null ? a.targetPlayer : a.player].hand[a.handIndex];
+        return inst ? inst.cardId : null;
+      }
       default: return null;
     }
   }
@@ -980,11 +1027,11 @@
   // so the player can study the board mid-decision. Called after
   // SB.renderChoiceModal so the candidate modal keeps priority.
   function renderGenericChoicePopup(s, acts, candidateModalOpen) {
-    if (candidateModalOpen) return;
-    if (whoActs(s) !== UI.humanSeat) return;
-    if (s.queue.length > 0 && s.queue[0].candidates) return;   // board/modal owns it
+    if (candidateModalOpen) return false;
+    if (whoActs(s) !== UI.humanSeat) return false;
+    if (s.queue.length > 0 && s.queue[0].candidates) return false;   // board/modal owns it
     const generic = acts.filter(function (a) { return !SPATIAL[a.type]; });
-    if (generic.length === 0) return;
+    if (generic.length === 0) return false;
     const it = s.queue[0] || null;
     const nodes = [];
     if (it) nodes.push(el('div', 'choice-modal-prompt', SB.targetPrompt(s, it)));
@@ -993,22 +1040,23 @@
     // Faces of any cards this choice is about (peeked tops first, then one face
     // per card-referencing action) — a button list must never ask the player to
     // decide about a card they cannot see.
-    const shown = {};
-    const cards = el('div', 'choice-modal-cards');
-    revealedCards(s).forEach(function (r) {
-      shown[r.cardId] = true;
-      cards.appendChild(choiceChip(s, r.cardId, r.label, null));
+    // A revealed card and the action about it are the same card: pair them so the
+    // face carries its own button, rather than dropping the action's face as a
+    // duplicate and burying it in the button list. Copies of one card pair in
+    // order, so a deck with three of something still shows three faces.
+    const slots = revealedCards(s).map(function (r) {
+      return { cardId: r.cardId, label: r.label, action: null };
     });
     const btns = el('div', 'choice-modal-buttons');
     generic.slice(0, 24).forEach(function (a) {
       const cid = actionCardId(s, a);
-      if (cid && !shown[cid]) {
-        shown[cid] = true;
-        cards.appendChild(choiceChip(s, cid, null, a));
-      } else {
-        btns.appendChild(actionButton(s, a, actionLabel(s, a)));
-      }
+      if (!cid) { btns.appendChild(actionButton(s, a, actionLabel(s, a))); return; }
+      const slot = slots.find(function (x) { return x.cardId === cid && !x.action; });
+      if (slot) slot.action = a;
+      else slots.push({ cardId: cid, label: null, action: a });
     });
+    const cards = el('div', 'choice-modal-cards');
+    slots.forEach(function (r) { cards.appendChild(choiceChip(s, r.cardId, r.label, r.action)); });
     if (cards.childNodes.length) nodes.push(cards);
     if (btns.childNodes.length) nodes.push(btns);
     const key = 'g|' + (it ? it.step : '') + '|' + generic.map(function (a) {
@@ -1017,6 +1065,48 @@
       return a.type + ':' + bit;
     }).join(',');
     SB.renderGenericModal(key, nodes);
+    return true;
+  }
+
+  // An ability whose whole effect is information ("look at the top card of each
+  // player's deck") asks for nothing, so it never reaches a choice popup — and a
+  // log line the drawer may not even be showing is not "seeing" a card. Show the
+  // faces once, until the player says they have read them.
+  const seenReveals = {};
+  function revealNotice(s) {
+    for (let i = s.log.length - 1; i >= 0 && i >= s.log.length - 12; i--) {
+      const l = s.log[i];
+      if (l.type !== 'lookedTopBoth') continue;
+      if (l.player != null && l.player !== UI.humanSeat) continue;   // their private look
+      const key = 'reveal|' + i + '|' + l.p0CardId + '|' + l.p1CardId;
+      if (seenReveals[key]) return null;
+      const mine = l[UI.humanSeat === 0 ? 'p0CardId' : 'p1CardId'];
+      const theirs = l[UI.humanSeat === 0 ? 'p1CardId' : 'p0CardId'];
+      const cards = [];
+      if (mine) cards.push({ cardId: mine, label: 'Your top card' });
+      if (theirs) cards.push({ cardId: theirs, label: 'Their top card' });
+      return cards.length ? { key: key, cards: cards } : null;
+    }
+    return null;
+  }
+
+  function renderRevealNotice(s, taken) {
+    if (taken) return;                     // a pending question owns the panel
+    if (SB.anim && SB.anim.busy()) return;
+    const rev = revealNotice(s);
+    if (!rev) return;
+    const nodes = [el('div', 'choice-modal-prompt', 'You look at the top of each deck.')];
+    nodes.push(el('div', 'choice-modal-hint',
+      'Hover a card to read it in full, or hide this to check the board.'));
+    const cards = el('div', 'choice-modal-cards');
+    rev.cards.forEach(function (c) { cards.appendChild(choiceChip(s, c.cardId, c.label, null)); });
+    nodes.push(cards);
+    const btns = el('div', 'choice-modal-buttons');
+    const ok = el('button', 'action-btn', 'Got it');
+    ok.onclick = function () { seenReveals[rev.key] = true; UI.render(); };
+    btns.appendChild(ok);
+    nodes.push(btns);
+    SB.renderGenericModal(rev.key, nodes, 'Show the cards');
   }
 
   // §16: always say what the game is waiting for. The card supplies WHAT (generated
