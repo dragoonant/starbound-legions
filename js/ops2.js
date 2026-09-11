@@ -1658,6 +1658,45 @@
     apply: prevIndirectPoint.apply,
   };
 
+  // Pick one upgrade anywhere in play and return it to its OWNER's hand (ash-042).
+  // saveUidAs remembers the instance so a follow-up can offer to replay it, and
+  // saveMineAs is set only when it landed in the controller's own hand.
+  O.returnUpgradeToHand = function (state, item) {
+    state.queue.unshift({ step: 'returnUpgradePick', player: item.controller, ctx: item.ctx,
+      optional: item.op.optional !== false, saveUidAs: item.op.saveUidAs, saveMineAs: item.op.saveMineAs });
+  };
+  SB.queueSteps.returnUpgradePick = {
+    actions: function (state, it) {
+      const acts = [];
+      SB.allUnits(state).forEach(function (u) {
+        u.upgrades.forEach(function (inst, ui) {
+          if (inst.leaderPilot) return;              // a leader aboard a ship is not an upgrade to bounce
+          if (SB.card(inst.cardId).token) return;
+          acts.push({ type: 'returnUpgrade', player: it.player, uid: u.uid, index: ui });
+        });
+      });
+      if (!acts.length) return null;
+      if (it.optional) acts.push({ type: 'returnUpgrade', player: it.player, uid: null });
+      return acts;
+    },
+    apply: function (state, it, action) {
+      if (action.uid == null) return;
+      const u = SB.findUnit(state, action.uid);
+      if (!u) return;
+      const inst = u.upgrades.splice(action.index, 1)[0];
+      if (!inst) return;
+      const owner = SB.upgradeOwner(u, inst);
+      state.players[owner].hand.push(inst);
+      SB.log(state, { type: 'returnedToHand', player: owner, cardId: inst.cardId });
+      if (it.ctx) {
+        const st = SB.efx(state, it.ctx);
+        if (it.saveUidAs) st[it.saveUidAs] = inst.uid;
+        if (it.saveMineAs && owner === it.player) st[it.saveMineAs] = 1;
+      }
+      if (SB.findUnit(state, u.uid) && SB.unitRemainingHp(state, u) <= 0) SB.defeatUnit(state, u, it.ctx || {});
+    },
+  };
+
   // ---- upgrade defeat plumbing ----------------------------------------------------
   // Every path that removes an upgrade goes through here so "When Defeated" on the
   // upgrade itself, ejecting pilots, and "when a friendly upgrade is defeated"

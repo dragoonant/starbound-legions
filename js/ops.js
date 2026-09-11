@@ -153,6 +153,10 @@
     if (item.op.bonusIfTrait && SB.unitTraits(state, u).indexOf(item.op.bonusIfTrait.trait) >= 0) {
       bonus += item.op.bonusIfTrait.amount;
     }
+    if (item.op.bonusPerEnemyInArena) {
+      const arena = SB.arenaOf(state, u);
+      bonus += state[arena].filter(function (e) { return e.owner !== u.owner; }).length * item.op.bonusPerEnemyInArena;
+    }
     if (item.op.bonusIfOddCostsDiffer) {
       const rc = SB.efx(state, item.ctx).revealedCost;
       const uc = SB.card(u.cardId).cost;
@@ -331,7 +335,7 @@
       });
     }
     for (let i = 0; i < amount; i++) {
-      state.queue.unshift({ step: 'indirectPoint', player: who, dealer: item.controller });
+      state.queue.unshift({ step: 'indirectPoint', player: who, dealer: item.controller, ctx: item.ctx });
     }
   };
 
@@ -719,7 +723,8 @@
   // Exchange control of a chosen friendly and enemy non-leader unit; the player
   // receiving the cheaper unit gains credits equal to the cost difference.
   O.exchangeControl = function (state, item) {
-    state.queue.unshift({ step: 'swapPickEnemy', player: item.controller, ctx: item.ctx });
+    state.queue.unshift({ step: 'swapPickEnemy', player: item.controller, ctx: item.ctx,
+      compensate: !!item.op.compensate });
     state.queue.unshift({ step: 'swapPickFriendly', player: item.controller, ctx: item.ctx });
   };
   SB.queueSteps.swapPickFriendly = {
@@ -753,7 +758,8 @@
       mine.owner = b; theirs.owner = a;
       SB.log(state, { type: 'controlExchanged', a: mine.uid, b: theirs.uid, notice: true });
       const cm = SB.costOf(mine.cardId), ct = SB.costOf(theirs.cardId);
-      if (cm !== ct) {
+      // Only the card that prints the compensation pays it (shd-132 swaps flat).
+      if (itemStep.compensate && cm !== ct) {
         // Whoever received the cheaper unit gains the difference in credits.
         const receiverOfCheaper = cm < ct ? b : a;
         const diff = Math.abs(cm - ct);
@@ -1236,7 +1242,12 @@
       return acts;
     },
     apply: function (state, itemStep, action) {
-      if (action.target.kind === 'base') SB.damageBase(state, action.target.player, 1, 'indirect');
+      if (action.target.kind === 'base') {
+        SB.damageBase(state, action.target.player, 1, 'indirect');
+        // "If a base is damaged this way": the assignment is the opponent's, so the
+        // card that dealt it can only find out by watching where the points landed.
+        if (itemStep.ctx) SB.efx(state, itemStep.ctx).indirectHitBase = 1;
+      }
       else {
         const u = SB.findUnit(state, action.target.uid);
         if (u) {

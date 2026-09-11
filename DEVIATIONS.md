@@ -85,3 +85,10 @@ missing mechanic):
   any number of units — the same repeated-single-pick shape the engine uses elsewhere for
   "up to N". jtl-094 moves to the ground arena instead of being defeated as an upgrade,
   which the card offers as a choice and the `ejectOnDefeat` flag takes automatically.
+- **law-117 has no counterpart.** The card takes the abilities away from an opponent's
+  credit tokens. A credit here is a number in `state.players[i].credits`, not an object
+  with abilities of its own (see the cluster-c4 note in js/ops2.js), so there is nothing
+  for the card to switch off. It is in play as a vanilla 2/4 rather than carrying an
+  ability that could never fire; giving credits object identity is the change that would
+  let it be written.
+

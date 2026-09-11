@@ -67,7 +67,9 @@
     let s = fresh();
     board(s, 0, 'ash-161');
     const bearer = board(s, 0, 'fx-grunt');
-    s = play(s, 0, 'jtl-120', { attachTo: bearer.uid }); // a plain upgrade, no bounty to muddy the base pick
+    // A plain upgrade with no bounty to muddy the base pick. jtl-120 used to serve here,
+    // until it was given the attach restriction its card prints (a Vehicle only).
+    s = play(s, 0, 'fx-blade', { attachTo: bearer.uid });
     s = drive(s);
     T.eq(SB.findUnit(s, bearer.uid).upgrades.length, 1, 'upgrade attached');
     const before = s.players[1].base.damage;
