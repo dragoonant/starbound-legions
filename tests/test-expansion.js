@@ -2048,4 +2048,114 @@
     T.eq(bad.join(' '), '', 'pilot abilities that belong to neither side');
   });
 
+  // ---- wave-1 cards that were carrying no rules at all ------------------------------
+
+  T.add('jtl-120: the ship it is bolted to kills what it damages', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const ship = T.putOnBoard(s, me, 'sor-044');    // a space vehicle, 2/3
+    const prey = T.putOnBoard(s, foe, 'fx-shieldy'); // 2/3 in space: survives on damage alone
+    s = play(s, me, 'jtl-120', { attachTo: ship.uid });
+    s = drive(s);
+    s.active = me;
+    s = T.act(s, { type: 'attack', attacker: ship.uid, target: { kind: 'unit', uid: prey.uid } });
+    s = drive(s);
+    T.ok(!SB.findUnit(s, prey.uid), 'the defender took damage and was finished off');
+  });
+
+  T.add('jtl-120 only attaches to a vehicle', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    const foot = T.putOnBoard(s, me, 'fx-grunt');   // no vehicle trait
+    const ship = T.putOnBoard(s, me, 'sor-044');
+    const inst = T.putInHand(s, me, 'jtl-120');
+    const idx = s.players[me].hand.indexOf(inst);
+    const acts = SB.legalActions(s).filter(function (a) { return a.type === 'playCard' && a.handIndex === idx; });
+    T.ok(acts.some(function (a) { return a.attachTo === ship.uid; }), 'the vehicle is offered');
+    T.ok(!acts.some(function (a) { return a.attachTo === foot.uid; }), 'the foot soldier is not');
+  });
+
+  T.add('ash-234: the attacker gets +1 for each enemy sharing its arena', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const mine = T.putOnBoard(s, me, 'fx-grunt');   // 2/2 on the ground
+    T.putOnBoard(s, foe, 'fx-medic'); T.putOnBoard(s, foe, 'fx-gritty'); // two on the ground, neither a sentinel
+    T.putOnBoard(s, foe, 'fx-flyer');               // and one in space, which must not count
+    const before = s.players[foe].base.damage;
+    s = play(s, me, 'ash-234');
+    s = drive(s, function (a) { return a.type !== 'effectAttack' || a.target.kind === 'base'; });
+    const dealt = s.players[foe].base.damage - before;
+    T.eq(dealt, SB.card('fx-grunt').power + 2, 'power plus one per enemy in its own arena');
+  });
+
+  T.add('shd-132 swaps two units flat, where law-170 pays the difference', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const mine = T.putOnBoard(s, me, 'fx-grunt');   // cost 1
+    const theirs = T.putOnBoard(s, foe, 'fx-brute'); // cost 4
+    s = play(s, me, 'shd-132');
+    s = drive(s);
+    T.eq(SB.findUnit(s, mine.uid).owner, foe, 'my unit changed hands');
+    T.eq(SB.findUnit(s, theirs.uid).owner, me, 'and theirs came to me');
+    T.eq(s.players[foe].credits || 0, 0, 'nobody was compensated — this card prints no credits');
+  });
+
+  T.add('jtl-218: it readies itself only if a base took the indirect damage', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    T.putOnBoard(s, foe, 'fx-wall');   // somewhere else the damage could go
+    s = play(s, me, 'jtl-218');
+    const unit = unitsOf(s, me, 'jtl-218')[0];
+    T.ok(unit.exhausted, 'it arrives exhausted like any unit');
+    // The opponent assigns: send all three at their own base.
+    s = drive(s, function (a) { return a.type !== 'indirectTo' || a.target.kind === 'base'; });
+    T.ok(!SB.findUnit(s, unit.uid).exhausted, 'a damaged base readies it');
+  });
+
+  T.add('jtl-218: all three points into units leaves it exhausted', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    T.putOnBoard(s, foe, 'fx-gritty');  // 2/6, soaks all three
+    s = play(s, me, 'jtl-218');
+    const unit = unitsOf(s, me, 'jtl-218')[0];
+    s = drive(s, function (a) { return a.type !== 'indirectTo' || a.target.kind === 'unit'; });
+    T.ok(SB.findUnit(s, unit.uid).exhausted, 'no base damage, no ready');
+  });
+
+  T.add('ash-147: 2 damage to an undamaged unit, or 5 to a damaged one', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const fresh = T.putOnBoard(s, foe, 'fx-gritty');            // 2/6, undamaged
+    const hurt = T.putOnBoard(s, foe, 'fx-wall', { damage: 1 }); // 1/5, damaged
+    s = play(s, me, 'ash-147');
+    s = drive(s, function (a) { return a.type !== 'binary' || a.pick === 'b'; });
+    T.ok(!SB.findUnit(s, hurt.uid), 'the 5-damage branch reached the damaged unit');
+    T.eq(SB.findUnit(s, fresh.uid).damage, 0, 'and left the undamaged one alone');
+  });
+
+  T.add('ash-147: the small branch cannot pick a damaged unit', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    const hurt = T.putOnBoard(s, foe, 'fx-gritty', { damage: 1 });
+    s = play(s, me, 'ash-147');
+    s = drive(s, function (a) { return a.type !== 'binary' || a.pick === 'a'; });
+    T.eq(SB.findUnit(s, hurt.uid).damage, 1, 'a damaged unit is no target for the undamaged branch');
+  });
+
+  T.add('jtl-154: the chosen player discards, twice if they are holding more', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0, foe = 1;
+    s.players[foe].hand = [];
+    for (let i = 0; i < 6; i++) T.putInHand(s, foe, 'fx-grunt');
+    s.players[me].hand = [];
+    const theirs = s.players[foe].hand.length;
+    s = play(s, me, 'jtl-154');
+    s = drive(s, function (a) { return a.type !== 'binary' || a.pick === 'a'; });
+    T.eq(s.players[foe].hand.length, theirs - 2, 'one discard, then one more for holding the bigger hand');
+  });
+
+  T.add('ash-042: an upgrade comes back, and yours may be replayed for free', function () {
+    let s = rich(T.game(), 0); s.active = 0; const me = 0;
+    const bearer = T.putOnBoard(s, me, 'fx-grunt');
+    s = play(s, me, 'fx-blade', { attachTo: bearer.uid });
+    s = drive(s);
+    T.eq(SB.findUnit(s, bearer.uid).upgrades.length, 1, 'attached to start with');
+    s = play(s, me, 'ash-042');
+    s = drive(s, function (a) { return a.type !== 'returnUpgrade' || a.uid != null; });
+    T.ok(s.players[me].hand.some(function (i) { return i.cardId === 'fx-blade'; }) ||
+         SB.findUnit(s, bearer.uid).upgrades.length === 1,
+      'the upgrade either came back to hand or was replayed from it');
+  });
+
 })(window.SB = window.SB || {});

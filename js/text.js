@@ -74,6 +74,7 @@
     if (sel.powerLteSaved) s += ' with power no greater than the chosen unit’s';
     if (sel.costGtLastDiscarded) s += ' that costs more than the discarded card';
     if (sel.damaged) s += ' that is damaged';       // engine: selectorCandidates .damaged
+    if (sel.notDamaged) s += ' with no damage on it';
     if (sel.notTrait) s += ' that isn’t ' + an((SB.names.traits[sel.notTrait] || sel.notTrait) + ' unit');
     if (sel.playedThisRound) s += ' that entered play this round';
     // Keys added by js/ops2.js (SB.extraSelector).
@@ -305,6 +306,9 @@
         perks.push(conditionClause(op.bonusIfCond.cond) + ', it gets ' + statPair(op.bonusIfCond.power, op.bonusIfCond.hp) + ' for this attack');
       }
       if (op.defenderLosesAbilitiesIfUnit) perks.push('if it attacks a unit, the defender loses all abilities for this attack');
+      if (op.bonusPerEnemyInArena) {
+        perks.push('it gets +' + op.bonusPerEnemyInArena + '/+0 for this attack for each enemy unit in its arena');
+      }
       if (perks.length) s += ' — ' + perks.join(' and ');
       return s;
     },
@@ -410,6 +414,7 @@
       return op.optional ? 'you may ' + s : s;
     },
     returnSelfUpgrade: function () { return 'return this upgrade to its owner\u2019s hand'; },
+    returnUpgradeToHand: function (op) { return (op.optional === false ? 'return' : 'you may return') + ' an upgrade to its owner\u2019s hand'; },
     upgradeFromDiscard: function () { return 'you may return an upgrade from your discard pile to your hand'; },
     playUpgradesFromDiscard: function () { return 'play any number of upgrades from your discard pile on this unit, one at a time, paying their costs'; },
     defeatOwnedNotControlled: function (op) { return 'defeat any number of units you own but do not control' + ((op.perDefeat || []).length ? ' — for each, ' + op.perDefeat.map(describeOpChain).join(', then ') : ''); },
@@ -486,7 +491,7 @@
     buffPerOwnAspects: function (op) { return 'give ' + targetText(op) + ' +1/+1 for this round for each different aspect it has'; },
     arrangeTop2: function () { return 'look at the top 2 cards of your deck — bottom any number and keep the rest on top in any order'; },
     bottomUnitFromDiscardPower: function () { return 'put a unit from your discard pile on the bottom of your deck'; },
-    exchangeControl: function () { return 'exchange control of a chosen friendly and enemy non-leader unit — whoever receives the cheaper unit creates credits equal to the cost difference'; },
+    exchangeControl: function (op) { return 'exchange control of a chosen friendly and enemy non-leader unit' + (op.compensate ? ' \u2014 whoever receives the cheaper unit creates credits equal to the cost difference' : ''); },
     oppChoosesUnitDamage: function (op) { return 'the opponent chooses one of their ' + (op.arena ? op.arena + ' ' : '') + 'units — you may deal ' + op.amount + ' damage to it'; },
     giveAdvantage: function (op) {
       if (op.amountRef === 'otherFriendlyCount') return 'give an advantage token to ' + targetText(op) + ' for each other friendly unit';
@@ -791,6 +796,8 @@
     discardedUnit: function () { return 'if the discarded card was a unit'; },
     all: function (c) { return c.of.map(conditionClause).join(' and '); },
     milledCostAtMost: function (c) { return 'if that card costs ' + c.n + ' or less'; },
+    opponentHandLarger: function () { return 'if your opponent holds more cards than you'; },
+    indirectHitBase: function () { return 'if a base took any of it'; },
     discardedType: function (c) { return 'if the discarded card was a' + (/^[aeiou]/.test(c.t) ? 'n ' : ' ') + c.t; },
     enemyDefeatedThisPhase: function () { return 'if an enemy unit was defeated this phase'; },
     canDiscardCost: function (c) { return 'if you can discard a card that costs ' + c.minCost + ' or more'; },

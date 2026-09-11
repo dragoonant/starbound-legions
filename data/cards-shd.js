@@ -66,7 +66,7 @@
   "shd-079": {"id":"shd-079","type":"event","aspects":["vigilance"],"traits":["tr39"],"cost":6,"abilities":[{"trigger":"onPlay","effects":[{"op":"defeat","target":{"who":"any","what":"unit"}}]}]},
   "shd-098": {"id":"shd-098","type":"unit","aspects":["command","heroism"],"traits":["tr25","tr43"],"cost":3,"power":1,"hp":5,"arena":"ground","keywords":[{"k":"raid","n":2},{"k":"restore","n":2}]},
   "shd-109": {"id":"shd-109","type":"event","aspects":["command","command"],"traits":["tr38"],"cost":14,"abilities":[{"trigger":"onPlay","effects":[{"op":"revealResourcesPlayUnits"}]}]},
-  "shd-132": {"id":"shd-132","type":"event","aspects":["command"],"traits":["tr31"],"cost":7},
+  "shd-132": {"id":"shd-132","type":"event","aspects":["command"],"traits":["tr31"],"cost":7,"abilities":[{"trigger":"onPlay","effects":[{"op":"exchangeControl"}]}]},
   "shd-135": {"id":"shd-135","type":"unit","aspects":["aggression","villainy"],"traits":["tr11","tr46","tr10"],"unique":true,"cost":2,"power":3,"hp":2,"arena":"space","discardAction":true},
   "shd-172": {"id":"shd-172","type":"unit","aspects":["aggression"],"traits":["tr07"],"cost":9,"power":10,"hp":10,"arena":"ground","keywords":[{"k":"overwhelm"}],"abilities":[{"trigger":"onOpponentPlaysCard","effects":[{"op":"binaryChoice","chooser":"self","a":{"effects":[{"op":"damage","amount":0,"target":{"who":"enemy","what":"unitOrBase","arena":"ground"},"amountRef":"playedCardCost"}]},"b":{"effects":[]}}]}]},
   "shd-194": {"id":"shd-194","type":"event","aspects":["cunning","villainy"],"traits":["tr39"],"cost":3,"abilities":[{"trigger":"onPlay","effects":[{"op":"searchDeck","depth":7,"filter":{"type":"unit","trait":"tr46"},"playIt":true,"playDiscount":5,"entersReady":true,"returnAtRegroup":true}]}]},

@@ -117,6 +117,7 @@
           if (c == null || (SB.card(u.cardId).cost || 0) <= c) return;
         }
         if (sel.damaged && u.damage === 0) return;
+        if (sel.notDamaged && u.damage > 0) return;
         if (sel.notSelf && u.uid === ctx.sourceUid) return;
         if (sel.aspect && (SB.card(u.cardId).aspects || []).indexOf(sel.aspect) < 0) return;
         if (sel.notTrait && SB.unitTraits(state, u).indexOf(sel.notTrait) >= 0) return;
@@ -524,6 +525,10 @@
       case 'hasInitiative': return state.initiative === controller;
       case 'baseDamaged': return state.players[controller].base.damage > 0;
       case 'enemyBaseDamaged': return state.players[SB.other(controller)].base.damage > 0;
+      case 'indirectHitBase':
+        return !!SB.efx(state, ctx).indirectHitBase;
+      case 'opponentHandLarger':
+        return state.players[SB.other(controller)].hand.length > state.players[controller].hand.length;
       case 'resourcesAtLeast': return state.players[controller].resources.length >= cond.n;
       case 'playedAspectThisPhase':
         return (state.players[controller].playedThisPhase || []).some(function (cid) {
