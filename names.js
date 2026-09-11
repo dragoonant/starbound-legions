@@ -121,6 +121,14 @@
       leaderClose: 'Close', leaderNoActions: 'Nothing to do with your leader right now.',
       theirLeader: 'Opponent leader', baseEpicAction: 'Base epic action',
       theirHand: 'Opponent hand',
+      // The "you looked at something" panel (js/ui.js): an ability whose whole
+      // effect is information asks for nothing, so it needs a panel of its own.
+      revealTops: 'You look at the top of each deck.',
+      revealHand: 'You look at the opponent’s hand.',
+      revealHandEmpty: 'Their hand is empty.',
+      revealHint: 'Hover a card to read it in full, or hide this to check the board.',
+      revealSeen: 'Got it',
+      revealShow: 'Show the cards',
       // The Current token, in its own slot between the leader and the draw deck.
       get forceHeld() { return T().forceLabel + ' — held, ready to spend'; },
       get forceSpent() { return T().forceLabel + ' — not held'; },

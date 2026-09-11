@@ -302,9 +302,13 @@
     SB.logPanel.renderRecent(s, $('recent'), UI.humanSeat);
     SB.logPanel.renderLog(s, $('log'));
     renderPrompt(s, acts);
-    // §13: the modal owns input whenever the board cannot show the options.
-    const modalOpen = SB.renderChoiceModal(s, acts, UI.humanSeat, whoActs(s), UI.doAction);
-    renderRevealNotice(s, modalOpen || renderGenericChoicePopup(s, acts, modalOpen));
+    // §13: the modal owns input whenever the board cannot show the options — unless
+    // a hand the player has not read yet is waiting, which takes the slot first.
+    const handReveal = UI.pendingHandReveal(s);
+    const modalOpen = !handReveal &&
+      SB.renderChoiceModal(s, acts, UI.humanSeat, whoActs(s), UI.doAction);
+    renderRevealNotice(s, !handReveal &&
+      (modalOpen || renderGenericChoicePopup(s, acts, modalOpen)));
     renderArenaEcho(s);
     // §14: a battle that stopped to ask a question keeps its arrow up.
     SB.redrawDeclaredArrow(s, UI.humanSeat);
@@ -1069,44 +1073,89 @@
   }
 
   // An ability whose whole effect is information ("look at the top card of each
-  // player's deck") asks for nothing, so it never reaches a choice popup — and a
-  // log line the drawer may not even be showing is not "seeing" a card. Show the
-  // faces once, until the player says they have read them.
+  // player's deck", "look at the opponent's hand") asks for nothing, so it never
+  // reaches a choice popup — and a log line the drawer may not even be showing is
+  // not "seeing" a card. Show the faces once, until the player says they have read
+  // them.
   const seenReveals = {};
-  function revealNotice(s) {
-    for (let i = s.log.length - 1; i >= 0 && i >= s.log.length - 12; i--) {
-      const l = s.log[i];
-      if (l.type !== 'lookedTopBoth') continue;
-      if (l.player != null && l.player !== UI.humanSeat) continue;   // their private look
-      const key = 'reveal|' + i + '|' + l.p0CardId + '|' + l.p1CardId;
-      if (seenReveals[key]) return null;
+  // A reveal outlives the log window it was spotted in: a pending question may own
+  // the panel for several redraws, and the reveal must still be there afterwards.
+  const pendingReveals = [];
+
+  function revealOf(s, l, i) {
+    if (l.type === 'lookedTopBoth') {
+      if (l.player != null && l.player !== UI.humanSeat) return null;   // their private look
       const mine = l[UI.humanSeat === 0 ? 'p0CardId' : 'p1CardId'];
       const theirs = l[UI.humanSeat === 0 ? 'p1CardId' : 'p0CardId'];
       const cards = [];
       if (mine) cards.push({ cardId: mine, label: 'Your top card' });
       if (theirs) cards.push({ cardId: theirs, label: 'Their top card' });
-      return cards.length ? { key: key, cards: cards } : null;
+      if (!cards.length) return null;
+      return { key: 'reveal|' + i + '|' + l.p0CardId + '|' + l.p1CardId, at: i, type: l.type,
+        prompt: SB.names.ui.revealTops, cards: cards };
+    }
+    if (l.type === 'handRevealed') {
+      // The log entry names the hand's OWNER: the card that revealed it was played
+      // by the other seat, so a line about your own hand is news for them, not you.
+      if (l.player === UI.humanSeat) return null;
+      const cards = (l.cards || []).map(function (cid) { return { cardId: cid, label: null }; });
+      return { key: 'hand|' + i + '|' + (l.cards || []).join(','), at: i, type: l.type,
+        prompt: SB.names.ui.revealHand, cards: cards,
+        empty: cards.length === 0 };
     }
     return null;
   }
+
+  // Undo rewinds the log out from under a queued reveal, so a queued one is only
+  // still real while its entry is still sitting where it was found.
+  function revealStale(s, rev) {
+    const l = s.log[rev.at];
+    if (!l || l.type !== rev.type) return true;
+    const now = revealOf(s, l, rev.at);
+    return !now || now.key !== rev.key;
+  }
+
+  function revealNotice(s) {
+    for (let i = Math.max(0, s.log.length - 12); i < s.log.length; i++) {
+      const rev = revealOf(s, s.log[i], i);
+      if (!rev || seenReveals[rev.key]) continue;
+      if (pendingReveals.some(function (q) { return q.key === rev.key; })) continue;
+      pendingReveals.push(rev);
+    }
+    while (pendingReveals.length &&
+      (seenReveals[pendingReveals[0].key] || revealStale(s, pendingReveals[0]))) {
+      pendingReveals.shift();
+    }
+    return pendingReveals[0] || null;
+  }
+
+  // A hand reveal is the whole point of the card that caused it, and the ability
+  // that revealed it often asks a question next ("name a card") that cannot be
+  // answered without seeing the hand — so it goes FIRST, ahead of the choice panel
+  // it shares a slot with. UI.render suppresses the choice panels while this is up.
+  UI.pendingHandReveal = function (s) {
+    if (SB.anim && SB.anim.busy()) return null;      // the stale panel would outlive the answer
+    const rev = revealNotice(s);
+    return rev && rev.type === 'handRevealed' ? rev : null;
+  };
 
   function renderRevealNotice(s, taken) {
     if (taken) return;                     // a pending question owns the panel
     if (SB.anim && SB.anim.busy()) return;
     const rev = revealNotice(s);
     if (!rev) return;
-    const nodes = [el('div', 'choice-modal-prompt', 'You look at the top of each deck.')];
+    const nodes = [el('div', 'choice-modal-prompt', rev.prompt)];
     nodes.push(el('div', 'choice-modal-hint',
-      'Hover a card to read it in full, or hide this to check the board.'));
+      rev.empty ? SB.names.ui.revealHandEmpty : SB.names.ui.revealHint));
     const cards = el('div', 'choice-modal-cards');
     rev.cards.forEach(function (c) { cards.appendChild(choiceChip(s, c.cardId, c.label, null)); });
-    nodes.push(cards);
+    if (cards.childNodes.length) nodes.push(cards);
     const btns = el('div', 'choice-modal-buttons');
-    const ok = el('button', 'action-btn', 'Got it');
+    const ok = el('button', 'action-btn', SB.names.ui.revealSeen);
     ok.onclick = function () { seenReveals[rev.key] = true; UI.render(); };
     btns.appendChild(ok);
     nodes.push(btns);
-    SB.renderGenericModal(rev.key, nodes, 'Show the cards');
+    SB.renderGenericModal(rev.key, nodes, SB.names.ui.revealShow);
   }
 
   // §16: always say what the game is waiting for. The card supplies WHAT (generated

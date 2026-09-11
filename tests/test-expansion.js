@@ -1245,6 +1245,24 @@
     T.ok(s.players[me].resources.some(function (r) { return r.instance.cardId === deckTop; }), 'the top card became a resource');
   });
 
+  // ---- looking at the opponent's hand --------------------------------------
+  // The whole effect of these cards is information, so the log entry has to CARRY
+  // the hand: the UI panel that shows the faces (js/ui.js) has nothing else to read.
+
+  T.add('revealHand: the log entry names every card in the opponent\u2019s hand', function () {
+    let s = T.game(); const me = 0, foe = 1;
+    s.players[foe].hand.length = 0;
+    T.putInHand(s, foe, 'fx-grunt');
+    T.putInHand(s, foe, 'fx-bolt');
+    fund(s, me, SB.cardCost(s, me, 'sec-239'));
+    const before = s.log.length;
+    s = play(s, me, 'sec-239');
+    const entry = s.log.slice(before).find(function (l) { return l.type === 'handRevealed'; });
+    T.ok(!!entry, 'the reveal was logged');
+    T.eq(entry.player, foe, 'the entry names whose hand it was');
+    T.eq((entry.cards || []).join(','), 'fx-grunt,fx-bolt', 'the entry carries the hand itself');
+  });
+
   // ---- shd-109: reveal resources, play every unit revealed for free ---------
 
   T.add('shd-109: a unit revealed from resources is played for free, a non-unit revealed stays a resource', function () {
