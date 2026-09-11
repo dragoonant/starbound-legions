@@ -128,9 +128,14 @@
   };
 
   function spotlightNewPlays(fromLog) {
-    UI.state.log.slice(fromLog).forEach(function (l) {
+    UI.state.log.slice(fromLog).forEach(function (l, i) {
       if ((l.type === 'playCard' || l.type === 'smuggled' || l.type === 'plotPlayed') && SB.spotlight) {
         SB.spotlight(l.cardId, null);
+        // The unit's one-liner rides the spotlight: same beat, same anchor, and it
+        // leaves with it. Cosmetic only, and silent on about half of plays — the
+        // log index is the salt, so a replayed match says the same things
+        // (js/voice.js). A card that says nothing simply does not get a bubble.
+        if (SB.voice) SB.voice.speak(l.cardId, { salt: fromLog + i });
       }
     });
   }

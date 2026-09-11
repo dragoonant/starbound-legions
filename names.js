@@ -225,6 +225,12 @@
     pack = null; SB.sourceText = null;
   };
   SB.names.hasSource = function () { return !!pack; };
+  // The theme entry for a card, whatever the pack is currently displaying. Used by
+  // js/voice.js: its bubble lines were written for the theme's characters, so they
+  // are chosen by the theme name even while the printed names are on screen.
+  SB.names.themeCard = function (cardId) {
+    return (pack && original.cards[cardId]) || SB.names.cards[cardId];
+  };
   SB.names.mode = readMode;
   SB.names.setMode = function (m) {
     mode = (m === 'original') ? 'original' : 'source';
