@@ -26,6 +26,15 @@ What the project contains, and where:
 - **Original names** for every card, leader, base, faction and setting live in
   `data/names-*.js` and `names.js` (theme: THEME.md). They are always loaded and are the
   fallback for anything the source file does not cover.
+- **The one-liners a unit says as it is played** (`data/voicelines.js`) are original
+  expression written for this project's setting. They are not quoted, adapted or
+  paraphrased from any film, show or published game; they aim at the archetypal beats
+  of the genre — a pilot checking in, a knight steadying himself, a droid complaining —
+  in this project's own words. They are chosen from a few dozen pools keyed by
+  character and by trait, never stored per card, and they follow the theme's
+  characters rather than the printed card names. Where a line names the power token,
+  it is built at render time from the vocabulary described above, so it never stores
+  either set's word for it.
 - **Card rules text is generated at runtime from mechanical effect data** whenever the
   printed text is switched off or absent. No published wording is stored anywhere except
   the generated file above.
