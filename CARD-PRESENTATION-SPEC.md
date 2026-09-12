@@ -452,7 +452,14 @@ The whole gesture vocabulary, and nothing more:
 | **Tap / click** | Inspect (never changes game state) |
 | **Hover (300ms)** | Preview |
 | **Right-click** | Secondary/contextual (e.g. remove one copy in the builder) |
-| **Long-press** | **Not used.** Deliberately. |
+| **Long-press (450ms, touch/pen only)** | Inspect — the enlargement, where there is no hover |
+
+Long-press is the one gesture that *is* time-based, and only because touch leaves no
+alternative: with `@media (hover: none)` suppressing the preview, a touch user otherwise
+reaches the enlargement only on cards whose tap is not already spoken for by an action.
+It is armed on touch and pen pointers only (mouse keeps hover), cancelled by any drift past
+10px so the drag — the gesture that can commit — always wins, and on firing it cancels the
+live drag and swallows the following click so the release cannot also play the card.
 
 **Use Pointer Events only.** One code path covers mouse, touch, pen, and gaze-and-pinch. No
 platform branching, no `touchstart`/`mousedown` pairs.
