@@ -165,7 +165,7 @@
            return 'Some decks channel ' + T().force + ': attacking with ' + an((SB.names.traits.tr12 || 'Attuned') + ' unit') +
              ' grants ' + T().forceToken + ', spent to fuel potent abilities. Other decks mint credit tokens (each pays 1 resource when spent) or advantage tokens (+1 power that expires after the unit fights).';
          }],
-        ['Reading the board', 'Numbers on a unit are power/remaining HP. A tilted card is exhausted. Blue-edged cards can act; red-glowing things are legal targets after you select an attacker or card. When an effect needs a decision, a panel opens in the middle of the screen with a button for every legal choice; hide it to study the board, then bring it back. Hover a card in hand to read its full rules text, and open the battle log from the tab on the left edge.'],
+        ['Reading the board', 'Numbers on a unit are power/remaining HP. A tilted card is exhausted. Blue-edged cards can act; red-glowing things are legal targets after you select an attacker or card. When an effect needs a decision, a panel opens in the middle of the screen with a button for every legal choice; hide it to study the board, then bring it back. Hover a card in hand to read its full rules text — on a touchscreen, press and hold any card to zoom it instead — and open the battle log from the tab on the left edge.'],
         ['Tips', 'Bank spare cards as resources early — economy wins long games. Do not feed weak attackers into big defenders; hit the base when their board cannot punish you. Watch the initiative: claiming it before a big round can matter more than one extra play.'],
       ],
     },

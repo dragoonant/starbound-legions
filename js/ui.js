@@ -281,6 +281,11 @@
       begin: begin,
       active: function () { return !!(live && live.moved); },
       justDragged: justDragged,
+      // A long press (preview.js) takes the gesture away from the drag: the finger is
+      // still down, but the press has already been spent on the inspector, so the
+      // eventual pointerup must not also land as a tap.
+      cancel: function () { finish(false); },
+      swallowClick: armClickSwallow,
     };
   })();
 

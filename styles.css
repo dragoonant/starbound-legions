@@ -238,6 +238,9 @@ button:disabled { opacity: .4; cursor: default; }
   border-radius: 9px; overflow: hidden; border: 2px solid #33415e;
   background: #0b0f18; color: #eef2f9;
   transition: transform .12s, box-shadow .12s, border-color .12s;
+  /* A hold on a card is the touch stand-in for hover (js/preview.js): iOS must not
+     answer it with its own callout or a text selection over the card face. */
+  -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
 }
 .card-board   { width: var(--card-board-w);   aspect-ratio: 5 / 7; }
 .card-hand    { width: var(--card-hand-w);    aspect-ratio: 5 / 7; }
