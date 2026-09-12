@@ -13,6 +13,12 @@
 // three tiers at rising playback rates — the same recording, growing frenzied.
 // At 0 HP the score resolves: sfx/end-win.mp3 / end-loss.mp3 if present, else a
 // synthesized D-major (victory) or D-minor (defeat) swell.
+//
+// iPadOS needs three things this file does and a desktop browser does not care
+// about: the page must hold a media audio session (a silent looping <audio>
+// element) or the whole graph is silenced by Silent mode and rides the ringer
+// volume; the graph must be unlocked from a real gesture; and a context parked by
+// an audio-session interruption has to be REBUILT, because resume() stops taking.
 (function (SB) {
   'use strict';
 
@@ -73,10 +79,20 @@
     if (sfxBuffers[name] || sfxLoading[name]) return sfxLoading[name];
     sfxLoading[name] = fetch('sfx/' + name + '.mp3')
       .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.arrayBuffer(); })
-      .then(function (ab) { return ctx.decodeAudioData(ab); })
+      .then(function (ab) { return decode(ctx, ab); })
       .then(function (b) { sfxBuffers[name] = b; })
       .catch(function () {});
     return sfxLoading[name];
+  }
+
+  // Safari before 14.1 has only the callback form of decodeAudioData and returns
+  // undefined, which turns the promise chain into a TypeError and leaves every clip
+  // undecoded. Wrap both forms.
+  function decode(ctx, ab) {
+    return new Promise(function (resolve, reject) {
+      const p = ctx.decodeAudioData(ab, resolve, reject);
+      if (p && p.then) p.then(resolve, reject);
+    });
   }
 
   function playSfxElement(name) {
@@ -106,23 +122,43 @@
   // context produces no sound while still happily accepting scheduled nodes, which
   // is what made the score go silent between clips. Resume on every state change
   // and on any user gesture, and keep polling the state, so it never stays parked.
+  let stuck = 0;               // consecutive wakes that found the context parked
   function wake() {
     const ctx = Music.ctx;
     if (!ctx) return;
-    if (ctx.state !== 'running') { try { ctx.resume(); } catch (e) {} }
+    if (ctx.state === 'running') { stuck = 0; return; }
+    // 'closed', or WebKit's 'interrupted' holding for several seconds with resume()
+    // refusing to take: the context is gone for good — iPadOS lands here after an
+    // audio-session interruption (a call, another app, Siri) and resume() resolves
+    // while the graph stays silent. Nothing short of a new context brings it back.
+    // Plain 'suspended' is never rebuilt: that is the ordinary pre-gesture state,
+    // and resume() does take there.
+    if (ctx.state === 'closed' || (ctx.state === 'interrupted' && ++stuck > 3)) {
+      rebuild();
+      return;
+    }
+    try { ctx.resume(); } catch (e) {}
   }
 
+  // Stand a fresh context up and put the score back on it. AudioBuffers are not
+  // bound to the context that decoded them, so the clips and tracks survive.
+  function rebuild() {
+    const old = Music.ctx;
+    const tier = Music.tier;
+    stuck = 0;
+    Music.ctx = null;
+    Music.current = null;
+    Music.tier = 0;
+    try { if (old && old.state !== 'closed') old.close(); } catch (e) {}
+    if (!actx()) return;
+    if (Music.started && !muted && !Music.ended && tier) playTier(tier);
+  }
+
+  let poll = null;
   function watchCtx(ctx) {
     ctx.onstatechange = wake;
-    ['pointerdown', 'touchend', 'keydown', 'click'].forEach(function (ev) {
-      document.addEventListener(ev, wake, true);
-    });
-    document.addEventListener('visibilitychange', function () {
-      if (!document.hidden) wake();
-    });
-    window.addEventListener('focus', wake);
-    window.addEventListener('pageshow', wake);
-    setInterval(wake, 1000);
+    // One poll for the life of the page — a rebuild must not stack another.
+    if (poll == null) poll = setInterval(wake, 1000);
   }
 
   function actx() {
@@ -136,12 +172,80 @@
     return Music.ctx;
   }
 
+  // ---- iPadOS audio session ----
+  // A page whose only output is Web Audio runs in iOS's "ambient" audio session:
+  // it follows the RINGER volume and is silenced outright by Silent mode — which is
+  // exactly a tablet where music and clips are all dead while everything else works.
+  // Playing an HTMLAudioElement promotes the page to the media playback session,
+  // which ignores the ring switch and follows the media volume. So we hold one
+  // silent looping element open for the life of the page. It is started once, from
+  // a user gesture, and never stopped: it was clips STARTING AND STOPPING elements
+  // that used to park the context (see the header), not an element simply running.
+  let holder = null;
+  function silentWavUrl() {
+    const sr = 8000, n = sr / 2;                 // half a second of 8-bit silence
+    const bytes = new Uint8Array(44 + n);
+    const dv = new DataView(bytes.buffer);
+    function tag(off, s) { for (let i = 0; i < s.length; i++) bytes[off + i] = s.charCodeAt(i); }
+    tag(0, 'RIFF'); dv.setUint32(4, 36 + n, true); tag(8, 'WAVEfmt ');
+    dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+    dv.setUint32(24, sr, true); dv.setUint32(28, sr, true);
+    dv.setUint16(32, 1, true); dv.setUint16(34, 8, true);
+    tag(36, 'data'); dv.setUint32(40, n, true);
+    for (let i = 0; i < n; i++) bytes[44 + i] = 128;   // 8-bit PCM silence is 0x80
+    let s = '';
+    for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return 'data:audio/wav;base64,' + btoa(s);
+  }
+
+  function holdSession() {
+    try {
+      if (!holder) {
+        holder = new Audio(silentWavUrl());
+        holder.loop = true;
+        holder.volume = 0.001;      // inaudible where volume is settable; iOS ignores
+                                    // it and plays the silence itself, which is the point
+        holder.setAttribute('playsinline', '');
+      }
+      if (holder.paused) {
+        const p = holder.play();
+        if (p && p.catch) p.catch(function () {});
+      }
+    } catch (e) { /* no audio support */ }
+  }
+
+  // The unlock every browser gates audio behind, and the one iPadOS needs to see a
+  // buffer actually start. Wired to the first gesture ANYWHERE on the page, not just
+  // to the Start button, and left armed so a later gesture recovers a parked session.
+  function unlock() {
+    const ctx = actx();
+    holdSession();
+    if (!ctx) return;
+    try {
+      const src = ctx.createBufferSource();
+      src.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+      src.connect(ctx.destination);
+      src.start(0);
+    } catch (e) {}
+  }
+
+  if (typeof document !== 'undefined') {
+    ['pointerdown', 'touchend', 'keydown', 'click'].forEach(function (ev) {
+      document.addEventListener(ev, unlock, true);
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) { wake(); holdSession(); }
+    });
+    window.addEventListener('focus', function () { wake(); holdSession(); });
+    window.addEventListener('pageshow', function () { wake(); holdSession(); });
+  }
+
   function fetchBuffer(name) {
     const ctx = actx();
     if (!ctx) return Promise.resolve(null);
     return fetch('sfx/' + name + '.mp3')
       .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.arrayBuffer(); })
-      .then(function (ab) { return ctx.decodeAudioData(ab); })
+      .then(function (ab) { return decode(ctx, ab); })
       .catch(function () { return null; });
   }
 
@@ -345,7 +449,13 @@
     },
     toggleMute: function () {
       muted = !muted;
-      if (muted) fadeOutCurrent(true);
+      if (muted) { fadeOutCurrent(true); Music.tier = 0; return muted; }
+      // Unmuting has to put the score back on: the tier it was playing was torn
+      // down, and updateMusic only starts a tier when the tier CHANGES.
+      unlock();
+      if (Music.started && !Music.ended && SB.ui && SB.ui.state && !SB.isTerminal(SB.ui.state)) {
+        playTier(tierFor(SB.ui.state));
+      }
       return muted;
     },
     // One clip, now. js/anim.js calls this at the moment a shot lands.
@@ -405,10 +515,12 @@
         buffers: Object.keys(Music.buffers).length,
         endings: Music.endBuffers ? [!!Music.endBuffers.win, !!Music.endBuffers.loss] : null,
         rate: Music.current ? Music.current.rate : 0,
+        session: !!(holder && !holder.paused),
         ctxState: Music.ctx ? Music.ctx.state : 'none' };
     },
     startAmbience: function () {
       Music.started = true;
+      unlock();          // this call is inside the Start button's click handler
       prewarmSfx();
       loadMusic().then(function () {
         if (!muted && !Music.ended && SB.ui && SB.ui.state && !SB.isTerminal(SB.ui.state)) {
