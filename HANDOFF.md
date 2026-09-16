@@ -72,6 +72,18 @@ are safe to paste anywhere.
   Generated prose reads `SB.names.terms` at render time, so it follows the toggle.
 - Third-party names go nowhere else: not card data, engine, tests, art prompts, docs
   or commit messages. Regenerate the file rather than editing it.
+- **The committed pack is missing every pilot box.** A piloting unit prints two rules
+  boxes like a leader does, and the generator only ever emitted the unit one, so all 30
+  pilot units lost their pilot ability and the 19 whose unit box is blank (jtl-035,
+  -046, -048, -057, -066, -084, -086, -094, -108, -109, -142, -145, -148, -150, -159,
+  -197, -236, -246, -255) carry no printed text at all and quietly fall back to the
+  generated describers. `toLines` now emits the second box as `Pilot: …` for them, and
+  the run reports `NO PILOT BOX (n/30)` when the dump does not carry one — but
+  `data/names-source.js` still holds the old text: rerun
+  `node tools/gen-source-names.mjs scratch --fetch` on a machine that can reach
+  api.dotgg.gg and commit the result. If the run still reports the gap, the dump keeps
+  the pilot box under a column other than `deployBox`; find it and widen the read the
+  way `TEXT_KEYS` does.
 
 ## Art
 

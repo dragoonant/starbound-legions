@@ -58,12 +58,23 @@ if (FETCH) {
 const SETS = ['sor', 'shd', 'twi', 'jtl', 'lof', 'sec', 'law', 'ash', 'ts26', 'ibh'];
 const ourIds = new Set();
 const isLeaderId = new Set();
+// A non-leader unit that can be played as a pilot prints TWO rules boxes, exactly as a
+// leader does: the unit box and the pilot box. Which of our cards those are is knowable
+// from our own data (a non-leader pilotSide holder), and toLines below needs it to label
+// the second box the source row carries. Leaders hold a pilotSide too and are not in
+// here: their second box is the deployed UNIT side, which the leader branch already
+// emits, and their pilot deploy option is printed as part of the epic action.
+const hasPilotSide = new Set();
 for (const set of SETS) {
   const p = join(root, 'data', 'cards-' + set + '.js');
   if (!existsSync(p)) continue;
   const src = readFileSync(p, 'utf8');
   for (const m of src.matchAll(/^\s*"([a-z0-9]{3,4}-\d{3})":/gm)) ourIds.add(m[1]);
   for (const m of src.matchAll(/^\s*"([a-z0-9]{3,4}-\d{3})":\s*\{"id":"[^"]+","type":"leader"/gm)) isLeaderId.add(m[1]);
+  // One card per line in these files, so the id and its pilotSide are the same match.
+  for (const m of src.matchAll(/^\s*"([a-z0-9]{3,4}-\d{3})":\s*\{(.*)$/gm)) {
+    if (m[2].includes('"pilotSide"') && !/^"id":"[^"]+","type":"leader"/.test(m[2])) hasPilotSide.add(m[1]);
+  }
 }
 if (!ourIds.size) { console.error('no card ids found in data/cards-*.js'); process.exit(2); }
 
@@ -222,7 +233,13 @@ if (unmapped.size) {
 // Printed text verbatim, split into the line array SB.cardText returns. Leaders carry
 // two faces plus the deploy action; label them the way the generated text does, so the
 // preview's trigger/text split still lands.
-function toLines(r, isLeader) {
+// A piloting unit carries two boxes too — the unit box in `text` and the pilot box in
+// the same second-box column a leader's unit side arrives in (`deployBox`; pull-sets.mjs
+// calls it backText). Only the unit box used to be emitted, so all 30 pilot units
+// shipped without their pilot ability, and the 19 whose unit box is blank shipped with
+// no printed text at all and fell back to the generated describers. Label it 'Pilot',
+// the label js/text.js gives the same box.
+function toLines(r, isLeader, isPilot) {
   const out = [];
   const push = (label, blob) => String(blob || '').split(/\r?\n+/).map(s => s.trim()).filter(Boolean)
     .forEach(s => out.push(label ? label + ': ' + s : s));
@@ -232,6 +249,7 @@ function toLines(r, isLeader) {
     push('Unit', r.deployBox);
   } else {
     push('', r.text);
+    if (isPilot) push('Pilot', r.deployBox);
   }
   return out;
 }
@@ -243,7 +261,7 @@ for (const id of [...ourIds].sort()) {
   const r = rows.get(id);
   if (!r) { missing.push(id); continue; }
   cards[id] = r.subtitle ? { name: r.name, subtitle: r.subtitle } : { name: r.name };
-  const l = toLines(r, isLeaderId.has(id));
+  const l = toLines(r, isLeaderId.has(id), hasPilotSide.has(id));
   if (l.length) text[id] = l;
 }
 
@@ -351,6 +369,29 @@ if (missing.length) {
   writeFileSync(join(SCRATCH, 'unmatched-ids.txt'), missing.join('\n') + '\n');
   console.log('UNMATCHED (' + missing.length + '): ' + missing.slice(0, 10).join(' ') +
     (missing.length > 10 ? ' … full list -> ' + join(SCRATCH, 'unmatched-ids.txt') : ''));
+}
+
+// A pilot unit that came out with no pilot box means the dump did not carry one in the
+// column read above — the gap that shipped 30 pilot cards missing their pilot ability,
+// silently, because a card whose unit box is blank simply falls back to the generated
+// describers and looks fine. Say so; it is a coverage gap, not corrupt text, so the
+// pack is still written.
+const pilotGaps = [...hasPilotSide].filter(id => rows.has(id) &&
+  !(text[id] || []).some(l => l.startsWith('Pilot: '))).sort();
+if (pilotGaps.length) {
+  writeFileSync(join(SCRATCH, 'pilot-box-gaps.txt'), pilotGaps.join('\n') + '\n');
+  console.log('NO PILOT BOX (' + pilotGaps.length + '/' + [...hasPilotSide].filter(id => rows.has(id)).length +
+    '): ' + pilotGaps.slice(0, 10).join(' ') +
+    (pilotGaps.length > 10 ? ' … full list -> ' + join(SCRATCH, 'pilot-box-gaps.txt') : ''));
+}
+// The mirror of it: a second box on a card that is neither a leader nor a pilot would be
+// text the emit above drops on the floor. Nothing prints one today; if the dump grows
+// one, this is how it gets noticed.
+const droppedBoxes = [...rows.keys()].filter(id => ourIds.has(id) && !isLeaderId.has(id) &&
+  !hasPilotSide.has(id) && String(rows.get(id).deployBox || '').trim()).sort();
+if (droppedBoxes.length) {
+  console.log('! second box dropped on ' + droppedBoxes.length + ' non-leader non-pilot card(s): ' +
+    droppedBoxes.slice(0, 10).join(' '));
 }
 
 // ---- --diff: audit the transcription pass ---------------------------------
