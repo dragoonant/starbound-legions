@@ -251,11 +251,13 @@ if (unmapped.size) {
 // two faces plus the deploy action; label them the way the generated text does, so the
 // preview's trigger/text split still lands.
 // A piloting unit carries two boxes too — the unit box in `text` and the pilot box in
-// the same second-box column a leader's unit side arrives in (`deployBox`; pull-sets.mjs
-// calls it backText). Only the unit box used to be emitted, so all 30 pilot units
+// the slot the dump gives a leader's EPIC ACTION. It is not in `deployBox`, which is
+// empty on all 30 pilot units; the dump has no pilot column of its own and reuses the
+// second-box column it already has. Only the unit box used to be emitted, so all 30
 // shipped without their pilot ability, and the 19 whose unit box is blank shipped with
 // no printed text at all and fell back to the generated describers. Label it 'Pilot',
-// the label js/text.js gives the same box.
+// the label js/text.js gives the same box; keep deployBox as the fallback in case a
+// later dump moves the box to the other second-box column.
 function toLines(r, isLeader, isPilot) {
   const out = [];
   const push = (label, blob) => String(blob || '').split(/\r?\n+/).map(s => s.trim()).filter(Boolean)
@@ -266,7 +268,7 @@ function toLines(r, isLeader, isPilot) {
     push('Unit', r.deployBox);
   } else {
     push('', r.text);
-    if (isPilot) push('Pilot', r.deployBox);
+    if (isPilot) push('Pilot', String(r.epicAction || '').trim() ? r.epicAction : r.deployBox);
   }
   return out;
 }
@@ -402,10 +404,11 @@ if (pilotGaps.length) {
     (pilotGaps.length > 10 ? ' … full list -> ' + join(SCRATCH, 'pilot-box-gaps.txt') : ''));
 }
 // The mirror of it: a second box on a card that is neither a leader nor a pilot would be
-// text the emit above drops on the floor. Nothing prints one today; if the dump grows
-// one, this is how it gets noticed.
+// text the emit above drops on the floor — in either of the columns a second box arrives
+// in. Nothing prints one today; if the dump grows one, this is how it gets noticed.
 const droppedBoxes = [...rows.keys()].filter(id => ourIds.has(id) && !isLeaderId.has(id) &&
-  !hasPilotSide.has(id) && String(rows.get(id).deployBox || '').trim()).sort();
+  !hasPilotSide.has(id) &&
+  (String(rows.get(id).deployBox || '').trim() || String(rows.get(id).epicAction || '').trim())).sort();
 if (droppedBoxes.length) {
   console.log('! second box dropped on ' + droppedBoxes.length + ' non-leader non-pilot card(s): ' +
     droppedBoxes.slice(0, 10).join(' '));

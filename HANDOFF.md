@@ -78,12 +78,10 @@ are safe to paste anywhere.
   -046, -048, -057, -066, -084, -086, -094, -108, -109, -142, -145, -148, -150, -159,
   -197, -236, -246, -255) carry no printed text at all and quietly fall back to the
   generated describers. `toLines` now emits the second box as `Pilot: …` for them, and
-  the run reports `NO PILOT BOX (n/30)` when the dump does not carry one — but
-  `data/names-source.js` still holds the old text: rerun
-  `node tools/gen-source-names.mjs scratch --fetch` on a machine that can reach
-  api.dotgg.gg and commit the result. If the run still reports the gap, the dump keeps
-  the pilot box under a column other than `deployBox`; find it and widen the read the
-  way `TEXT_KEYS` does.
+  the run reports `NO PILOT BOX (n/30)` when the dump does not carry one. The box is in
+  the dump's `epicAction` column — the slot a leader's epic action arrives in, reused;
+  `deployBox` is empty on all 30. Rerun `node tools/gen-source-names.mjs scratch --fetch`
+  on a machine that can reach api.dotgg.gg and commit the regenerated file.
 
 ## Art
 
