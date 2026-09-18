@@ -9026,10 +9026,18 @@
   "When Defeated: Heal 2 damage from a base."
  ],
  "jtl-034": [
-  "Grit (This unit gets +1/+0 for each damage on it.)"
+  "Grit (This unit gets +1/+0 for each damage on it.)",
+  "Pilot: Piloting [3 resources Vigilance Villainy] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)",
+  "Pilot: Attached unit gains Grit."
+ ],
+ "jtl-035": [
+  "Pilot: Piloting [2 resources Vigilance Villainy] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)",
+  "Pilot: Attached unit gains: “On Attack: Give an enemy unit in this arena –1/–1 for this phase.”"
  ],
  "jtl-036": [
-  "Shielded"
+  "Shielded",
+  "Pilot: Piloting [3 resources Vigilance Villainy]",
+  "Pilot: When this upgrade attaches to a unit: Give a Shield token to that unit."
  ],
  "jtl-037": [
   "On Attack: You may deal damage to a unit equal to the amount of damage on this unit."
@@ -9059,13 +9067,24 @@
   "When Played: You may give a Shield token to a damaged Vehicle unit."
  ],
  "jtl-045": [
-  "Restore 1 (When this unit attacks, heal 1 damage from your base.)"
+  "Restore 1 (When this unit attacks, heal 1 damage from your base.)",
+  "Pilot: Piloting [2 resources Vigilance Heroism] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)",
+  "Pilot: Attached unit gains Restore 1."
+ ],
+ "jtl-046": [
+  "Pilot: Piloting [2 resources Vigilance Heroism] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)",
+  "Pilot: Attached unit gains: “On Attack: Give an Experience token to this unit, then deal 1 damage to it.”"
  ],
  "jtl-047": [
   "When Played: Choose Grit, Restore 1, Sentinel, or Shielded. While this unit is in play, each friendly Vehicle unit gains the chosen keyword."
  ],
+ "jtl-048": [
+  "Pilot: Piloting [2 resources Vigilance Heroism] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)",
+  "Pilot: Attached unit gains: “On Attack: Discard a card from the defending player's deck. If that card costs 3 or less, draw a card.”"
+ ],
  "jtl-049": [
-  "If this unit would be defeated, you may instead attach her as an upgrade to a friendly Vehicle unit without a Pilot on it. (She's no longer a unit. Defeat all upgrades on her and remove all damage from her.)"
+  "If this unit would be defeated, you may instead attach her as an upgrade to a friendly Vehicle unit without a Pilot on it. (She's no longer a unit. Defeat all upgrades on her and remove all damage from her.)",
+  "Pilot: Piloting [3 resources Vigilance Heroism]"
  ],
  "jtl-050": [
   "Grit",
@@ -9093,8 +9112,14 @@
   "Shielded",
   "On Attack: You may take control of a non-Pilot upgrade on a unit and attach it to a different eligible unit."
  ],
+ "jtl-057": [
+  "Pilot: Piloting [2 resources Vigilance] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)",
+  "Pilot: When played as an upgrade: You may heal 2 damage from a unit."
+ ],
  "jtl-058": [
-  "Sentinel (Units in this arena can't attack your non-Sentinel units or your base.)"
+  "Sentinel (Units in this arena can't attack your non-Sentinel units or your base.)",
+  "Pilot: Piloting [2 resources Vigilance] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)",
+  "Pilot: Attached unit gains Sentinel."
  ],
  "jtl-059": [
   "This unit can't attack."
@@ -9116,6 +9141,10 @@
  ],
  "jtl-065": [
   "Shielded (When you play this unit, give a Shield token to it.)"
+ ],
+ "jtl-066": [
+  "Pilot: Piloting [1 resource Vigilance] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)",
+  "Pilot: Attached unit gains: “On Attack: You may heal 2 total damage from any number of units.”"
  ],
  "jtl-067": [
   "When Played: Give 2 Shield tokens to this unit."
@@ -9168,8 +9197,16 @@
  "jtl-083": [
   "When Played: You may pay 3 resources. If you do, attach this unit as an upgrade to a Fighter or Transport unit without a Pilot on it. Take control of that unit."
  ],
+ "jtl-084": [
+  "Pilot: Piloting [1 resource Command Villainy] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)",
+  "Pilot: When played as an upgrade: Create a TIE Fighter token."
+ ],
  "jtl-085": [
   "Each other friendly space unit gets +1/+1."
+ ],
+ "jtl-086": [
+  "Pilot: Piloting [1 resource Command Villainy] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)",
+  "Pilot: When played as an upgrade: You may give an Experience token to another unit."
  ],
  "jtl-087": [
   "Ambush (When you play this unit, it may attack an enemy unit.)",
@@ -9194,6 +9231,10 @@
  "jtl-093": [
   "This unit gets +1/+0 for each other friendly Pilot unit and upgrade."
  ],
+ "jtl-094": [
+  "Pilot: Piloting [3 resources Command Heroism] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)",
+  "Pilot: If this upgrade would be defeated, you may instead move him to the ground arena as a unit and exhaust him."
+ ],
  "jtl-096": [
   "Ambush (When you play this unit, it may attack an enemy unit.)",
   "When Played: You may pay 2 resources. If you do, move this unit to the ground arena and give 2 Experience tokens to it. (It's a ground unit.)"
@@ -9203,13 +9244,16 @@
   "When Played: You may attack with a Pilot unit or a unit with a Pilot on it. It gets +1/+0 and gains Restore 1 for this attack."
  ],
  "jtl-098": [
-  "When played as a unit/On Attack: The next Resistance card you play this phase costs 1 resource less."
+  "When played as a unit/On Attack: The next Resistance card you play this phase costs 1 resource less.",
+  "Pilot: Piloting [2 resources Command Heroism]",
+  "Pilot: When played as an upgrade: Search the top 5 cards of your deck for a Resistance card, reveal it, and draw it."
  ],
  "jtl-099": [
   "When Played: Create an X-Wing token."
  ],
  "jtl-100": [
-  "When played as a unit: Create an X-Wing token. You may attach this unit as an upgrade to a friendly Vehicle unit without a Pilot on it."
+  "When played as a unit: Create an X-Wing token. You may attach this unit as an upgrade to a friendly Vehicle unit without a Pilot on it.",
+  "Pilot: Piloting [2 resources Command Heroism] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)"
  ],
  "jtl-101": [
   "This unit costs 1 resource less to play for each friendly Pilot unit and upgrade.",
@@ -9234,6 +9278,13 @@
  ],
  "jtl-107": [
   "While you control a Vehicle unit, this unit gains Sentinel. (Units in this arena can't attack your non-Sentinel units or your base.)"
+ ],
+ "jtl-108": [
+  "Pilot: Piloting [2 resources Command] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)"
+ ],
+ "jtl-109": [
+  "Pilot: Piloting [2 resources Command] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)",
+  "Pilot: While you control a ground unit and a space unit, attached unit gains Sentinel."
  ],
  "jtl-110": [
   "Sentinel (Units in this arena can't attack your non-Sentinel units or your base.)"
@@ -9333,12 +9384,20 @@
  "jtl-141": [
   "While an enemy unit is damaged, this unit gets +3/+0."
  ],
+ "jtl-142": [
+  "Pilot: Piloting [3 resources Aggression Villainy]",
+  "Pilot: Attached unit gains: “On Attack: You may deal 1 damage to a unit. If a unit is defeated this way, you may deal 1 damage to a unit or base.”"
+ ],
  "jtl-143": [
   "You assign all indirect damage you deal to opponents.",
   "When Played: Deal 4 indirect damage to each opponent."
  ],
  "jtl-144": [
   "Deal damage to a non-leader unit equal to 1 less than its remaining HP."
+ ],
+ "jtl-145": [
+  "Pilot: Piloting [1 resource Aggression Heroism] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)",
+  "Pilot: When played as an upgrade: You may pay 2 resources. If you do, ready a Resistance unit."
  ],
  "jtl-146": [
   "Action [Exhaust]: Attack with a Fighter unit. It gets +2/+0 for this attack."
@@ -9347,8 +9406,18 @@
   "While this unit is upgraded, it gets +1/+0.",
   "On Attack: If you control Poe Dameron (as a unit, upgrade, or leader), you may deal 1 damage to a unit."
  ],
+ "jtl-148": [
+  "Pilot: Piloting [2 resources Aggression Heroism] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)",
+  "Pilot: When played as an upgrade: You may defeat an upgrade that costs 2 or less."
+ ],
  "jtl-149": [
   "On Attack: Deal 3 indirect damage to the defending player. (They assign 3 unpreventable damage among their base and units.)"
+ ],
+ "jtl-150": [
+  "Pilot: Piloting [1 resource Aggression Heroism] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)",
+  "Pilot: If attached unit is a Fighter, it gains Overwhelm.",
+  "Pilot: If attached unit is a Transport, it gets +0/+1.",
+  "Pilot: If attached unit is a Speeder, it gains Grit."
  ],
  "jtl-151": [
   "On Attack: You may deal 2 damage to a damaged unit."
@@ -9374,6 +9443,9 @@
  ],
  "jtl-158": [
   "When Played: If you control no other Fighter units, deal 1 damage to this unit."
+ ],
+ "jtl-159": [
+  "Pilot: Piloting [2 resources Aggression] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)"
  ],
  "jtl-160": [
   "On Attack: You may give a ground unit +2/+0 for this phase."
@@ -9467,7 +9539,9 @@
   "When this unit deals combat damage to an opponent's base: Each unit that opponent plays this phase costs 1 resource more."
  ],
  "jtl-189": [
-  "Shielded"
+  "Shielded",
+  "Pilot: Piloting [2 resources Cunning Villainy]",
+  "Pilot: When played as an upgrade: You may deal 1 damage to a unit. If attached unit is a Transport, you may deal 2 damage instead."
  ],
  "jtl-190": [
   "Shielded (When you play this unit, give a Shield token to it.)"
@@ -9488,6 +9562,10 @@
  "jtl-195": [
   "Exhaust an enemy unit. If you do, ready a friendly unit in the same arena with power equal to or less than that enemy unit."
  ],
+ "jtl-197": [
+  "Pilot: Piloting [2 resources Cunning Heroism] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)",
+  "Pilot: When attached unit completes an attack (and survives): You may return this upgrade to its owner's hand."
+ ],
  "jtl-198": [
   "Ambush (When you play this unit, it may attack an enemy unit.)",
   "When the regroup phase starts: Deal 1 damage to this unit."
@@ -9505,7 +9583,9 @@
   "When you play an upgrade on this unit: You may attack with this unit. It gets +1/+0 for this attack."
  ],
  "jtl-203": [
-  "Ambush"
+  "Ambush",
+  "Pilot: Piloting [2 resources Cunning Heroism]",
+  "Pilot: When played as an upgrade: You may attack with attached unit. If it's the Millennium Falcon, it deals its combat damage before the defender."
  ],
  "jtl-204": [
   "If an opponent controls 3 or more space units, this unit costs 3 resources less to play.",
@@ -9527,10 +9607,14 @@
   "If an opponent controls more space units than you, ready each space unit you control."
  ],
  "jtl-210": [
-  "When played as a unit: Exhaust up to 2 ground units."
+  "When played as a unit: Exhaust up to 2 ground units.",
+  "Pilot: Piloting [2 resources Cunning]",
+  "Pilot: When played as an upgrade: Exhaust an enemy unit in this arena."
  ],
  "jtl-211": [
-  "Raid 1 (This unit gets +1/+0 while attacking.)"
+  "Raid 1 (This unit gets +1/+0 while attacking.)",
+  "Pilot: Piloting [1 resource Cunning] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)",
+  "Pilot: Attached unit gains Raid 1."
  ],
  "jtl-213": [
   "When played as a unit: You may attach this unit as an upgrade to an enemy Vehicle unit without a Pilot on it."
@@ -9602,6 +9686,9 @@
  "jtl-235": [
   "Take control of a non-leader Vehicle unit that costs 6 or less without a Pilot on it. If you do, ready it. At the start of the next regroup phase, return that unit to its owner's hand."
  ],
+ "jtl-236": [
+  "Pilot: Piloting [1 resource Villainy] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)"
+ ],
  "jtl-237": [
   "On Attack: Deal 3 indirect damage to the defending player. (They assign 3 unpreventable damage among their base and units.)"
  ],
@@ -9626,6 +9713,9 @@
  ],
  "jtl-244": [
   "Choose up to 3 units. Those units lose all abilities and can't gain abilities for this round."
+ ],
+ "jtl-246": [
+  "Pilot: Piloting [2 resources Heroism] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)"
  ],
  "jtl-247": [
   "While this unit has a Pilot on it, it gets +1/+1."
@@ -9654,6 +9744,9 @@
  ],
  "jtl-254": [
   "Create 2 X-Wing tokens."
+ ],
+ "jtl-255": [
+  "Pilot: Piloting [1 resource] (You may play this as an upgrade on a friendly Vehicle without a Pilot.)"
  ],
  "jtl-256": [
   "A deck can have up to 15 copies of this card.",
