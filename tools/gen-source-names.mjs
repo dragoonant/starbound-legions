@@ -198,12 +198,6 @@ for (const r of rows.values()) {
 // trait present in one set and not the other shifts every id after it alphabetically.
 // It shipped exactly that way — cards rendered with traits belonging to other cards
 // entirely, off by one from 'bounty-hunter' onward. Read the map; never re-derive it.
-const traitMapPath = join(SCRATCH, 'trait-map.json');
-if (!existsSync(traitMapPath)) {
-  console.error('missing ' + traitMapPath + ' — run tools/convert-cards.mjs first: it owns the tr id assignment');
-  process.exit(2);
-}
-const slugToId = JSON.parse(readFileSync(traitMapPath, 'utf8'));
 // convert-cards keys the map by the source data's own slugs ('new-republic'); the rows
 // here carry display names ('New Republic').
 // Apostrophes VANISH rather than becoming separators — the source data slugs
@@ -211,6 +205,29 @@ const slugToId = JSON.parse(readFileSync(traitMapPath, 'utf8'));
 // mismatch this block exists to catch.
 const slug = t => String(t).toLowerCase().replace(/['’]/g, '')
   .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const traitMapPath = join(SCRATCH, 'trait-map.json');
+let slugToId;
+if (existsSync(traitMapPath)) {
+  slugToId = JSON.parse(readFileSync(traitMapPath, 'utf8'));
+} else {
+  // scratch/ is gitignored, so a fresh clone has no map and this tool refused to run at
+  // all. Read the assignment back out of the pack we last wrote: its T table is
+  // id -> trait name, which is convert-cards' own assignment, already committed. That is
+  // the opposite of the re-derivation warned about above — nothing is recomputed, and a
+  // trait the table has never seen still stops the run at the unmapped check below.
+  // tools/pull-sets.mjs rebuilds the same map the same way.
+  const prev = join(root, 'data', 'names-source.js');
+  const m = existsSync(prev) ? readFileSync(prev, 'utf8').match(/var T = \{([\s\S]*?)\};/) : null;
+  if (!m) {
+    console.error('missing ' + traitMapPath + ' and no T map in data/names-source.js to rebuild it from');
+    console.error('run tools/convert-cards.mjs first: it owns the tr id assignment');
+    process.exit(2);
+  }
+  slugToId = {};
+  for (const [id, name] of Object.entries(JSON.parse('{' + m[1] + '}'))) slugToId[slug(name)] = id;
+  console.log('trait map: no ' + traitMapPath + '; rebuilt ' + Object.keys(slugToId).length +
+    ' entries from the committed data/names-source.js');
+}
 const traitNames = {};
 const unmapped = new Set();
 for (const [id, r] of rows) {
