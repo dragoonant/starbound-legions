@@ -4,8 +4,14 @@
   'use strict';
 
   const OPEN_DELAY_MS = 300;
+  // Long press (touch/pen only): the hover preview's stand-in where there is no hover.
+  // 450ms is long enough that a tap or the start of a drag never trips it, short enough
+  // that it does not feel like the card ignored you.
+  const LONG_PRESS_MS = 450;
+  const LONG_PRESS_SLOP_PX = 10;
   const GAP = 12;
   let hoverTimer = null;
+  let pressTimer = null;
   let previewFor = null;   // cache key: iid or defId currently shown
 
   function el(tag, cls, text) {
@@ -110,10 +116,57 @@
       node.addEventListener('mouseleave', disarm);
       node.addEventListener('focus', arm);
       node.addEventListener('blur', disarm);
+      Preview.attachLongPress(node, cardId, getUnit, getState);
+    },
+
+    // Touch and pen have no hover, so the enlargement is reached by holding the card
+    // instead — anywhere a card renders, with no game state changed. Pointer Events
+    // only (§10): one path for touch and pen, and mouse is left alone because it
+    // already has hover. Distance still beats time — any drift past the slop hands the
+    // gesture back to the drag, which is the one that can commit an action.
+    attachLongPress: function (node, cardId, getUnit, getState) {
+      node.addEventListener('pointerdown', function (e) {
+        if (e.pointerType === 'mouse') return;
+        cancelPress();
+        const sx = e.clientX, sy = e.clientY;
+        function moved(ev) {
+          const dx = ev.clientX - sx, dy = ev.clientY - sy;
+          if (Math.sqrt(dx * dx + dy * dy) > LONG_PRESS_SLOP_PX) end();
+        }
+        function end() {
+          cancelPress();
+          document.removeEventListener('pointermove', moved, true);
+          document.removeEventListener('pointerup', end, true);
+          document.removeEventListener('pointercancel', end, true);
+        }
+        document.addEventListener('pointermove', moved, true);
+        document.addEventListener('pointerup', end, true);
+        document.addEventListener('pointercancel', end, true);
+        pressTimer = setTimeout(function () {
+          pressTimer = null;
+          end();
+          // The finger is still down. Take the gesture off the drag and swallow the
+          // click that follows, so the release cannot also play or attack with the
+          // card that was only being read.
+          if (SB.drag) {
+            if (SB.drag.cancel) SB.drag.cancel();
+            if (SB.drag.swallowClick) SB.drag.swallowClick();
+          }
+          Preview.hide();
+          SB.inspector.open(cardId, getUnit ? getUnit() : null, getState ? getState() : null);
+        }, LONG_PRESS_MS);
+      });
+      // iOS answers a hold with its own callout/selection menu over the card.
+      node.addEventListener('contextmenu', function (e) {
+        if (e.pointerType === 'mouse' || e.button === 2) return;   // desktop right-click is its own gesture
+        e.preventDefault();
+      });
     },
   };
 
-  // ---- B. inspector (tap) --------------------------------------------------
+  function cancelPress() { clearTimeout(pressTimer); pressTimer = null; }
+
+  // ---- B. inspector (tap / long press) --------------------------------------------------
   SB.inspector = {
     open: function (cardId, unit, state) {
       const box = ensure('inspector');
